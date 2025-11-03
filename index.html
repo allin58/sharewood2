@@ -13,22 +13,15 @@
     <input type="text" id="inputText" placeholder="Напиши что-нибудь..." />
     <button id="sendData">Отправить</button>
 
-    <h2>Ответ бота:</h2>
-    <div id="botResponse">Здесь появится ответ бота</div>
+
 
     <script>
-        Telegram.WebApp.sendData(JSON.stringify({ action: "my_event" }));
+        
         const tg = window.Telegram.WebApp;
         tg.expand();
 
         const user = tg.initDataUnsafe.user;
         document.getElementById('user-info').textContent = `Привет, ${user.first_name}!`;
-
-        const botResponse = document.getElementById('botResponse');
-
-
-
-
         
         document.getElementById('sendData').addEventListener('click', async () => {
             const text = document.getElementById('inputText').value.trim();
@@ -40,9 +33,7 @@
                 text: text
             }));
 
-            // Эмуляция ответа бота в Web App (для демонстрации)
-            // В реальном проекте можно сделать fetch на свой сервер, который общается с ботом
-            botResponse.textContent = `Бот получил: "${text}"`;
+
         });
     </script>
 </body>
