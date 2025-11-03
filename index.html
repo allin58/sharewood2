@@ -27,7 +27,8 @@
 
     log("WebApp инициализирован.");
     log("initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe || {}));
-
+    log("initData:", Telegram.WebApp.initData);
+    log("initDataUnsafe:", Telegram.WebApp.initDataUnsafe);
     document.getElementById("sendData").addEventListener("click", () => {
     alert("Перед tg.sendData()");
     Telegram.WebApp.sendData(JSON.stringify({ text: "test" }));
