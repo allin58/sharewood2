@@ -1,39 +1,41 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Mini App</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini App Test</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { font-size: 16px; padding: 6px; margin-top: 10px; }
+  </style>
 </head>
 <body>
-    <h1>Telegram Mini App</h1>
-    <p id="user-info">Загрузка информации о пользователе...</p>
+  <h2>🔍 Проверка tg.sendData()</h2>
+  <p>Введите любой текст и нажмите кнопку:</p>
+  <input id="inputText" placeholder="Ваш текст..." />
+  <button id="sendData">Отправить</button>
 
-    <input type="text" id="inputText" placeholder="Напиши что-нибудь..." />
-    <button id="sendData">Отправить</button>
+  <pre id="log" style="background:#f4f4f4; padding:10px; margin-top:20px; white-space:pre-wrap;"></pre>
 
+  <script>
+    const tg = window.Telegram.WebApp;
+    const log = msg => {
+      const t = new Date().toLocaleTimeString();
+      document.getElementById('log').textContent += `[${t}] ${msg}\n`;
+    };
 
+    log("WebApp инициализирован.");
+    log("initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe || {}));
 
-    <script>
-        
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
-        const user = tg.initDataUnsafe.user;
-        document.getElementById('user-info').textContent = `Привет, ${user.first_name}!`;
-        
-        document.getElementById('sendData').addEventListener('click', async () => {
-            const text = document.getElementById('inputText').value.trim();
-            if (!text) return alert("Введите текст!");
-
-            //alert("tg.sendData вызывается! ✅"); 
-            tg.sendData(JSON.stringify({
-                user_id: user.id,
-                text: text
-            }));
-           alert("tg.sendData вызван! ✅"); 
-        });
-    </script>
+    document.getElementById('sendData').addEventListener('click', () => {
+      const text = document.getElementById('inputText').value.trim();
+      if (!text) return alert('Введите текст!');
+      const payload = { text };
+      log('Вызов tg.sendData: ' + JSON.stringify(payload));
+      tg.sendData(JSON.stringify(payload));
+      log('✅ tg.sendData() отправлен — ждите ответа от бота.');
+    });
+  </script>
 </body>
 </html>
