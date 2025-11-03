@@ -28,8 +28,12 @@
     log("WebApp инициализирован.");
     log("initData: " + JSON.stringify(tg.initData || {}));
     log("initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe || {}));
+    
     log("initData:", Telegram.WebApp.initData);
     log("initDataUnsafe:", Telegram.WebApp.initDataUnsafe);
+    
+    log("Telegram.WebApp.version:", tg.version);
+    log("Telegram.WebApp.platform:", tg.platform);
     document.getElementById("sendData").addEventListener("click", () => {
     alert("Перед tg.sendData()");
     Telegram.WebApp.sendData(JSON.stringify({ text: "test" }));
