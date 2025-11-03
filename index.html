@@ -27,16 +27,22 @@
 
     log("WebApp инициализирован.");
     log("initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe || {}));
-    log("Telegram.WebApp.version:", Telegram.WebApp.version);
-    log("Telegram.WebApp.platform:", Telegram.WebApp.platform);
-    document.getElementById('sendData').addEventListener('click', () => {
-      const text = document.getElementById('inputText').value.trim();
-      if (!text) return alert('Введите текст!');
-      const payload = { text };
-      log('Вызов tg.sendData: ' + JSON.stringify(payload));
-      tg.sendData(JSON.stringify(payload));
-      log('✅ tg.sendData() отправлен — ждите ответа от бота.');
-    });
+
+    document.getElementById("sendData").addEventListener("click", () => {
+    alert("Перед tg.sendData()");
+    Telegram.WebApp.sendData(JSON.stringify({ text: "test" }));
+    alert("После tg.sendData()");
+});
+
+    
+    // document.getElementById('sendData').addEventListener('click', () => {
+    //   const text = document.getElementById('inputText').value.trim();
+    //   if (!text) return alert('Введите текст!');
+    //   const payload = { text };
+    //   log('Вызов tg.sendData: ' + JSON.stringify(payload));
+    //   tg.sendData(JSON.stringify(payload));
+    //   log('✅ tg.sendData() отправлен — ждите ответа от бота.');
+    // });
   </script>
 </body>
 </html>
