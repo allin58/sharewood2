@@ -21,10 +21,10 @@
         document.getElementById('user-info').textContent = `Привет, ${user.first_name}!`;
 
         document.getElementById('sendData').addEventListener('click', () => {
-            const text = document.getElementById('inputText').value;
-            if (text.trim() === "") return alert("Введите текст!");
+            const text = document.getElementById('inputText').value.trim();
+            if (!text) return alert("Введите текст!");
 
-            // Отправляем данные в бота
+            // Отправка данных в бота
             tg.sendData(JSON.stringify({
                 user_id: user.id,
                 text: text
@@ -35,4 +35,5 @@
     </script>
 </body>
 </html>
+
 
