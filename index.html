@@ -21,7 +21,7 @@
         tg.expand();
 
         const user = tg.initDataUnsafe.user;
-        document.getElementById('user-info').textContent = `Привет, ${tg.initData}!`;
+        document.getElementById('user-info').textContent = `Привет, ${JSON.stringify(tg.initDataUnsafe)}!`;
 
         const botResponse = document.getElementById('botResponse');
 
