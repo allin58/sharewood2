@@ -33,6 +33,7 @@
     document.getElementById("sendData").addEventListener("click", () => {
     alert("Перед tg.sendData()");
     Telegram.WebApp.sendData(JSON.stringify({ text: "test" }));
+    tg.sendData(JSON.stringify({ text: "тест" }));
     alert("После tg.sendData()");
 });
 
