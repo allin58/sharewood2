@@ -27,7 +27,7 @@
             const text = document.getElementById('inputText').value.trim();
             if (!text) return alert("Введите текст!");
 
-            // Отправка данных боту
+            alert("tg.sendData вызывается! ✅"); 
             tg.sendData(JSON.stringify({
                 user_id: user.id,
                 text: text
