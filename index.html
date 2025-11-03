@@ -16,7 +16,22 @@
     <h2>Ответ бота:</h2>
     <div id="botResponse">Здесь появится ответ бота</div>
 
+<pre id="log"></pre>
+
+
+    const logEl = document.getElementById('log');
+    logEl.textContent = "tg object: " + JSON.stringify(tg) + "\n" +
+                        "initData: " + tg.initData + "\n" +
+                        "initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe);
+
+
+    
     <script>
+    const logEl = document.getElementById('log');
+    logEl.textContent = "tg object: " + JSON.stringify(tg) + "\n" +
+                        "initData: " + tg.initData + "\n" +
+                        "initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe);
+        
         const tg = window.Telegram.WebApp;
         tg.expand();
 
