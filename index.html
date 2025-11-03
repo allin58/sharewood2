@@ -21,21 +21,19 @@
         tg.expand();
 
         const user = tg.initDataUnsafe.user;
-        document.getElementById('user-info').textContent = `Привет, ${JSON.stringify(tg.initDataUnsafe)}!`;
+        document.getElementById('user-info').textContent = `Привет, ${user.first_name}!`;
 
         const botResponse = document.getElementById('botResponse');
 
-// const user = Telegram.WebApp.initDataUnsafe.user; // Получаем текущего пользователя
+        document.getElementById('sendData').addEventListener('click', async () => {
+            const text = document.getElementById('inputText').value.trim();
+            if (!text) return alert("Введите текст!");
 
-// document.getElementById('sendData').addEventListener('click', () => {
-//     const text = document.getElementById('inputText').value.trim();
-//     if (!text) return alert("Введите текст!");
-
-//     Telegram.WebApp.sendData(JSON.stringify({
-//         user_id: user.id,
-//         text: text
-//     }));
-// });
+            // Отправка данных боту
+            tg.sendData(JSON.stringify({
+                user_id: user.id,
+                text: text
+            }));
 
             // Эмуляция ответа бота в Web App (для демонстрации)
             // В реальном проекте можно сделать fetch на свой сервер, который общается с ботом
