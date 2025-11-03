@@ -27,7 +27,8 @@
 
     log("WebApp инициализирован.");
     log("initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe || {}));
-
+    log("Telegram.WebApp.version:", Telegram.WebApp.version);
+    log("Telegram.WebApp.platform:", Telegram.WebApp.platform);
     document.getElementById('sendData').addEventListener('click', () => {
       const text = document.getElementById('inputText').value.trim();
       if (!text) return alert('Введите текст!');
