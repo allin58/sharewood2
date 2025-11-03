@@ -7,7 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <h1>Привет, Telegram!</h1>
+    <h1>Telegram Mini App</h1>
     <p id="user-info">Загрузка информации о пользователе...</p>
 
     <input type="text" id="inputText" placeholder="Напиши что-нибудь..." />
@@ -24,16 +24,14 @@
             const text = document.getElementById('inputText').value.trim();
             if (!text) return alert("Введите текст!");
 
-            // Отправка данных в бота
+            // Отправка данных в бот
             tg.sendData(JSON.stringify({
                 user_id: user.id,
                 text: text
             }));
 
-            alert("Данные отправлены!"); // Web App остаётся открытым
+            alert("Данные отправлены! Web App остаётся открытым");
         });
     </script>
 </body>
 </html>
-
-
