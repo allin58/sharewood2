@@ -11,7 +11,10 @@
     <p id="user-info">Загрузка информации о пользователе...</p>
 
     <input type="text" id="inputText" placeholder="Напиши что-нибудь..." />
-    <button id="sendData">Отправить в бота</button>
+    <button id="sendData">Отправить</button>
+
+    <h2>Ответ бота:</h2>
+    <div id="botResponse">Здесь появится ответ бота</div>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -20,22 +23,22 @@
         const user = tg.initDataUnsafe.user;
         document.getElementById('user-info').textContent = `Привет, ${user.first_name}!`;
 
-        console.log("InitDataUnsafe:", tg.initDataUnsafe);
-        console.log("InitData:", tg.initData);
+        const botResponse = document.getElementById('botResponse');
 
-        document.getElementById('sendData').addEventListener('click', () => {
+        document.getElementById('sendData').addEventListener('click', async () => {
             const text = document.getElementById('inputText').value.trim();
             if (!text) return alert("Введите текст!");
 
-            // Отправка данных в бот
+            // Отправка данных боту
             tg.sendData(JSON.stringify({
                 user_id: user.id,
                 text: text
             }));
 
-            alert("Данные отправлены! Web App остаётся открытым");
+            // Эмуляция ответа бота в Web App (для демонстрации)
+            // В реальном проекте можно сделать fetch на свой сервер, который общается с ботом
+            botResponse.textContent = `Бот получил: "${text}"`;
         });
     </script>
 </body>
 </html>
-
