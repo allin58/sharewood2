@@ -9,22 +9,28 @@
 <body>
     <h1>Привет, Telegram!</h1>
     <p id="user-info">Загрузка информации о пользователе...</p>
-    <button id="sendData">Отправить данные в бота</button>
+
+    <input type="text" id="inputText" placeholder="Напиши что-нибудь..." />
+    <button id="sendData">Отправить в бота</button>
 
     <script>
-        // Инициализация Web App
         const tg = window.Telegram.WebApp;
-
-        // Показать интерфейс
         tg.expand();
 
-        // Получение информации о пользователе
         const user = tg.initDataUnsafe.user;
         document.getElementById('user-info').textContent = `Привет, ${user.first_name}!`;
 
-        // Отправка данных обратно в бота
         document.getElementById('sendData').addEventListener('click', () => {
-            tg.sendData(`Привет от ${user.first_name}`);
+            const text = document.getElementById('inputText').value;
+            if (text.trim() === "") return alert("Введите текст!");
+
+            // Отправляем данные в бота
+            tg.sendData(JSON.stringify({
+                user_id: user.id,
+                text: text
+            }));
+
+            alert("Данные отправлены!"); // Web App остаётся открытым
         });
     </script>
 </body>
