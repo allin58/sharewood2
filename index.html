@@ -25,15 +25,28 @@
 
         const botResponse = document.getElementById('botResponse');
 
-        document.getElementById('sendData').addEventListener('click', async () => {
-            const text = document.getElementById('inputText').value.trim();
-            if (!text) return alert("Введите текст!");
 
-            // Отправка данных боту
-            tg.sendData(JSON.stringify({
-                user_id: user.id,
-                text: text
-            }));
+
+document.getElementById('sendData').addEventListener('click', () => {
+    const text = document.getElementById('inputText').value.trim();
+    if (!text) return alert("Введите текст!");
+
+    Telegram.WebApp.sendData(JSON.stringify({
+        user_id: user.id,
+        text: text
+    }));
+});
+
+        
+        // document.getElementById('sendData').addEventListener('click', async () => {
+        //     const text = document.getElementById('inputText').value.trim();
+        //     if (!text) return alert("Введите текст!");
+
+        //     // Отправка данных боту
+        //     tg.sendData(JSON.stringify({
+        //         user_id: user.id,
+        //         text: text
+        //     }));
 
             // Эмуляция ответа бота в Web App (для демонстрации)
             // В реальном проекте можно сделать fetch на свой сервер, который общается с ботом
