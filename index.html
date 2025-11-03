@@ -17,6 +17,7 @@
     <div id="botResponse">Здесь появится ответ бота</div>
 
     <script>
+        Telegram.WebApp.sendData(JSON.stringify({ action: "my_event" }));
         const tg = window.Telegram.WebApp;
         tg.expand();
 
