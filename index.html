@@ -20,6 +20,9 @@
         const user = tg.initDataUnsafe.user;
         document.getElementById('user-info').textContent = `Привет, ${user.first_name}!`;
 
+        console.log("InitDataUnsafe:", tg.initDataUnsafe);
+        console.log("InitData:", tg.initData);
+
         document.getElementById('sendData').addEventListener('click', () => {
             const text = document.getElementById('inputText').value.trim();
             if (!text) return alert("Введите текст!");
@@ -35,3 +38,4 @@
     </script>
 </body>
 </html>
+
