@@ -35,8 +35,7 @@
     log("Telegram.WebApp.version:", tg.version);
     log("Telegram.WebApp.platform:", tg.platform);
     document.getElementById("sendData").addEventListener("click", () => {
-    alert("Перед tg.sendData()");
-    Telegram.WebApp.sendData(JSON.stringify({ text: "test" }));
+    alert("Перед tg.sendData()");    
     tg.sendData(JSON.stringify({ text: "тест" }));
     alert("После tg.sendData()");
 });
