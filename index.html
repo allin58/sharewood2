@@ -168,7 +168,9 @@ const newPointBtn = document.getElementById('newPointBtn');
 const popupWindow = document.getElementById('popupWindow');
 const closeBtn = popupWindow.querySelector('.closeBtn');
 
+// -------------------------
 // 1️⃣ Настройка карты
+// -------------------------
 const params = new URLSearchParams(window.location.search);
 const lat = parseFloat(params.get("lat")) || 55.8892;
 const lon = parseFloat(params.get("lon")) || 37.445;
@@ -194,7 +196,9 @@ const greenIcon = L.icon({
 
 L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
 
-// 2️⃣ Функция обновления координат центра
+// -------------------------
+// 2️⃣ Обновление координат центра
+// -------------------------
 function updateCenterCoords() {
     const center = map.getCenter();
     coordsDiv.textContent = `Координаты: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
@@ -206,7 +210,20 @@ map.on('move', updateCenterCoords);
 map.on('moveend', updateCenterCoords);
 updateCenterCoords();
 
-// 3️⃣ Работа с Telegram WebApp
+// -------------------------
+// 3️⃣ Работа с кнопкой и всплывающим окном
+// -------------------------
+newPointBtn.addEventListener('click', () => {
+    popupWindow.style.display = 'block';
+});
+
+closeBtn.addEventListener('click', () => {
+    popupWindow.style.display = 'none';
+});
+
+// -------------------------
+// 4️⃣ Telegram WebApp
+// -------------------------
 function initTelegram() {
     const tg = window.Telegram?.WebApp;
     if (!tg) {
@@ -217,22 +234,31 @@ function initTelegram() {
     tg.ready();
     tg.expand();
 
-    const user = tg.initDataUnsafe?.user;
-    usernameDiv.textContent = user?.username || "-";
+    // Попытка получить username сразу
+    if (tg.initDataUnsafe?.user?.username) {
+        usernameDiv.textContent = tg.initDataUnsafe.user.username;
+    } else {
+        usernameDiv.textContent = "-";
+    }
+
+    // Таймаут: если данные пользователя приходят чуть позже
+    const tryUpdateUsername = () => {
+        if (tg.initDataUnsafe?.user?.username) {
+            usernameDiv.textContent = tg.initDataUnsafe.user.username;
+        } else {
+            // пробуем еще через 300 мс
+            setTimeout(tryUpdateUsername, 300);
+        }
+    };
+    tryUpdateUsername();
 }
 
-// 4️⃣ Работа с кнопкой и всплывающим окном
-newPointBtn.addEventListener('click', () => {
-    popupWindow.style.display = 'block';
-});
-
-closeBtn.addEventListener('click', () => {
-    popupWindow.style.display = 'none';
-});
-
-// 5️⃣ Инициализация Telegram безопасно после загрузки скрипта
+// -------------------------
+// 5️⃣ Инициализация Telegram после загрузки страницы
+// -------------------------
 window.addEventListener('load', initTelegram);
 </script>
+
 
 </body>
 </html>
