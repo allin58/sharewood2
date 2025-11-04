@@ -3,67 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mini App Debug</title>
+  <title>Mini App Android Fix</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-    }
-    input, button {
-      font-size: 16px;
-      padding: 8px 10px;
-      margin-top: 10px;
-    }
-    #log {
-      background: #f4f4f4;
-      padding: 10px;
-      margin-top: 20px;
-      white-space: pre-wrap;
-      font-size: 14px;
-    }
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { font-size: 16px; padding: 8px; margin-top: 10px; }
+    #log { background: #f4f4f4; padding: 10px; margin-top: 20px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h2>📡 Отладка tg.sendData()</h2>
-  <p>Введите текст и нажмите кнопку — данные должны уйти боту:</p>
+  <h2>📱 Android-совместимая Mini App</h2>
+  <p>Введите текст и нажмите кнопку:</p>
   <input id="inputText" placeholder="Ваш текст..." />
-  <button id="sendData">Отправить в бота</button>
+  <button id="sendData">Отправить</button>
 
   <pre id="log"></pre>
 
   <script>
     const tg = window.Telegram.WebApp;
     const logBox = document.getElementById('log');
+    function log(msg){ const t=new Date().toLocaleTimeString(); logBox.textContent+=`[${t}] ${msg}\n`; console.log(msg); }
 
-    function log(msg) {
-      const t = new Date().toLocaleTimeString();
-      logBox.textContent += `[${t}] ${msg}\n`;
-      console.log(msg);
-    }
-
-    // Проверим, что Telegram API доступен
     if (!tg) {
-      log("❌ Telegram WebApp API не найден. Открой страницу через Telegram Mini App, а не в браузере!");
+      log("❌ Telegram WebApp API не найден — открой через Telegram, не браузер!");
     } else {
-      log("✅ Telegram WebApp API инициализирован.");
+      tg.expand();
+      tg.ready();
+      log("✅ Telegram WebApp API готов.");
       log("Платформа: " + tg.platform);
       log("Версия API: " + tg.version);
     }
 
-    tg.ready(); // сигнал Telegram, что интерфейс готов
-
     document.getElementById("sendData").addEventListener("click", () => {
       const text = document.getElementById("inputText").value.trim();
       if (!text) return alert("Введите текст!");
-      const payload = { text };
 
+      const payload = { text };
       log("📤 Отправка данных: " + JSON.stringify(payload));
+
       try {
         tg.sendData(JSON.stringify(payload));
-        log("✅ tg.sendData() успешно вызван.");
+        log("✅ tg.sendData() вызван.");
       } catch (err) {
-        log("❌ Ошибка при tg.sendData(): " + err.message);
+        log("❌ Ошибка: " + err.message);
       }
     });
   </script>
