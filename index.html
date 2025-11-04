@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leaflet с крестиком и кнопкой</title>
+<title>Leaflet с крестиком и новой точкой</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
     #map {
@@ -12,7 +12,6 @@
         position: relative;
     }
 
-    /* Настоящий крестик по центру карты */
     .crosshair {
         position: absolute;
         top: 50%;
@@ -48,7 +47,6 @@
         margin-top: -1px;
     }
 
-    /* Блок с координатами */
     #coords {
         position: absolute;
         bottom: 50px;
@@ -60,7 +58,6 @@
         z-index: 1000;
     }
 
-    /* Кнопка "Новая точка" */
     #newPointBtn {
         position: absolute;
         bottom: 10px;
@@ -76,19 +73,19 @@
         cursor: pointer;
     }
 
-    /* Всплывающее окно */
     #popupWindow {
         position: absolute;
         bottom: 60px;
         left: 50%;
         transform: translateX(-50%);
         z-index: 1001;
-        width: 250px;
+        width: 280px;
         background: white;
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         padding: 16px;
-        display: none; /* скрыто по умолчанию */
+        display: none;
+        font-family: sans-serif;
     }
 
     #popupWindow .closeBtn {
@@ -115,6 +112,27 @@
     #popupWindow .closeBtn::after {
         transform: translateX(-50%) rotate(-45deg);
     }
+
+    #popupWindow label {
+        display: block;
+        margin-top: 10px;
+        font-weight: bold;
+    }
+
+    #popupWindow input, #popupWindow textarea {
+        width: 100%;
+        padding: 6px;
+        margin-top: 4px;
+        box-sizing: border-box;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+        font-family: sans-serif;
+    }
+
+    #popupWindow textarea {
+        resize: vertical;
+    }
 </style>
 </head>
 <body>
@@ -125,7 +143,16 @@
 
 <div id="popupWindow">
     <div class="closeBtn"></div>
-    <p>Здесь можно добавить информацию о новой точке</p>
+    <div>
+        <strong>Координаты:</strong>
+        <div id="popupCoords">—</div>
+    </div>
+    <div>
+        <strong>Имя пользователя:</strong>
+        <div id="username">Бот</div>
+    </div>
+    <label for="noteInput">Запись:</label>
+    <textarea id="noteInput" rows="4" placeholder="Введите текст..."></textarea>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -153,19 +180,26 @@ const greenIcon = L.icon({
     shadowSize: [41, 41]
 });
 
-// Пример метки
 L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
 
 const coordsDiv = document.getElementById('coords');
+const popupCoordsDiv = document.getElementById('popupCoords');
+const usernameDiv = document.getElementById('username');
+
 function updateCenterCoords() {
     const center = map.getCenter();
     coordsDiv.textContent = `Координаты: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
+    popupCoordsDiv.textContent = `${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
     window.currentCenter = { lat: center.lat, lon: center.lng };
 }
 
 map.on('move', updateCenterCoords);
 map.on('moveend', updateCenterCoords);
 updateCenterCoords();
+
+// Имя пользователя от "бота"
+const username = "Пользователь Бот";
+usernameDiv.textContent = username;
 
 // Работа с кнопкой и всплывающим окном
 const newPointBtn = document.getElementById('newPointBtn');
