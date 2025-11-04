@@ -55,6 +55,9 @@
 
     <div><strong>Координаты:</strong> <div id="popupCoords">—</div></div>
 
+    <label for="locationInput">Локация <span style="color:red;">*</span>:</label>
+    <input type="text" id="locationInput" placeholder="Введите название локации" required>
+
     <label for="noteInput">Запись:</label>
     <textarea id="noteInput" rows="4" placeholder="Введите текст..."></textarea>
 
@@ -106,10 +109,10 @@ updateCenterCoords();
 const popupWindow = document.getElementById('popupWindow');
 const closeBtn = popupWindow.querySelector('.closeBtn');
 const noteInput = document.getElementById('noteInput');
+const locationInput = document.getElementById('locationInput');
 const photoInput = document.getElementById('photoInput');
 const photoList = document.getElementById('photoList');
 const createBtn = document.getElementById('createBtn');
-const spinner = document.getElementById('spinner');
 const overlay = document.getElementById('popupOverlay');
 let selectedFiles = [];
 
@@ -132,38 +135,48 @@ photoInput.addEventListener('change', () => {
 });
 
 document.getElementById('newPointBtn').onclick = () => {
+    // сброс всех полей при новом открытии
     noteInput.value = '';
+    locationInput.value = '';
     photoInput.value = '';
     selectedFiles = [];
     renderPhotoList();
-    // сброс выбора цвета на default green
     document.querySelector('input[name="markerColor"][value="green"]').checked = true;
     popupWindow.style.display = 'block';
 };
 
 closeBtn.onclick = () => {
     noteInput.value = '';
+    locationInput.value = '';
     photoInput.value = '';
     selectedFiles = [];
     renderPhotoList();
     popupWindow.style.display = 'none';
 };
 
-function lockUI(lock) { overlay.classList.toggle('active', lock); createBtn.disabled = lock; noteInput.disabled = lock; photoInput.disabled = lock; }
+function lockUI(lock) {
+    overlay.classList.toggle('active', lock);
+    createBtn.disabled = lock;
+    noteInput.disabled = lock;
+    locationInput.disabled = lock;
+    photoInput.disabled = lock;
+}
 
 createBtn.onclick = () => {
     const coords = window.currentCenter;
     const note = noteInput.value.trim();
-    if (!note) return alert('Введите текст!');
+    const location = locationInput.value.trim();
+    if (!location) return alert('Введите название локации!');
+    if (!note) return alert('Введите текст записи!');
 
-    // получаем выбранный цвет
     const color = document.querySelector('input[name="markerColor"]:checked')?.value || 'green';
 
     const fd = new FormData();
     fd.append('lat', coords.lat);
     fd.append('lon', coords.lon);
     fd.append('note', note);
-    fd.append('color', color);  // <-- добавляем выбранный цвет
+    fd.append('location', location); // <-- отправляем локацию
+    fd.append('color', color);
     selectedFiles.forEach(f => fd.append('photos[]', f));
 
     lockUI(true);
@@ -174,6 +187,7 @@ createBtn.onclick = () => {
               alert('Отправлено успешно!');
               popupWindow.style.display = 'none';
               noteInput.value = '';
+              locationInput.value = '';
               photoInput.value = '';
               selectedFiles = [];
               renderPhotoList();
@@ -184,4 +198,4 @@ createBtn.onclick = () => {
 };
 </script>
 </body>
-</html>
+</
