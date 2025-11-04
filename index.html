@@ -203,7 +203,9 @@ updateCenterCoords();
     
 
 // Получаем логин Telegram через WebApp API
-const tg = window.Telegram?.WebApp;    
+const tg = window.Telegram?.WebApp;  
+tg.expand();
+tg.ready();    
 if (tg && tg.initDataUnsafe?.user) {
     const tgUser = tg.initDataUnsafe.user.username;    
     usernameDiv.textContent = tgUser;
