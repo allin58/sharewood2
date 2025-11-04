@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Цветные метки Leaflet с прицелом</title>
+    <title>Leaflet с крестиком</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
         #map {
@@ -12,19 +12,40 @@
             position: relative;
         }
 
-        /* Прицел по центру */
+        /* Настоящий крестик по центру карты */
         .crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 32px;
-            height: 32px;
-            margin-left: -16px;
-            margin-top: -16px;
+            width: 20px;
+            height: 20px;
+            margin-left: -10px;
+            margin-top: -10px;
             pointer-events: none;
             z-index: 999;
-            background: url('https://cdn-icons-png.flaticon.com/512/32/32384.png') center/contain no-repeat;
-            opacity: 0.8;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: red; /* цвет крестика */
+        }
+
+        .crosshair::before {
+            left: 50%;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            margin-left: -1px;
+        }
+
+        .crosshair::after {
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            margin-top: -1px;
         }
 
         /* Блок с координатами */
@@ -66,7 +87,7 @@
             shadowSize: [41, 41]
         });
 
-        // Метка для примера
+        // Пример метки
         L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
 
         // Элемент для вывода координат
@@ -75,16 +96,12 @@
         function updateCenterCoords() {
             const center = map.getCenter();
             coordsDiv.textContent = `Координаты: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
-            
-            // Можно использовать center.lat и center.lng как переменные
             window.currentCenter = { lat: center.lat, lon: center.lng };
         }
 
-        // Обновляем координаты при движении карты
         map.on('move', updateCenterCoords);
         map.on('moveend', updateCenterCoords);
 
-        // Первичное обновление
         updateCenterCoords();
     </script>
 </body>
