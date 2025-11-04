@@ -184,7 +184,7 @@ function addMarkerToMap(entry) {
 }
 
 // Загрузка всех меток с сервера
-fetch('http://localhost:5000/entries')
+fetch('https://ilqfijzvjq.loclx.io/entries')
     .then(r => r.json())
     .then(data => {
         if (data.status === 'success') {
@@ -212,7 +212,7 @@ createBtn.onclick = () => {
     selectedFiles.forEach(f => fd.append('photos[]', f));
 
     lockUI(true);
-    fetch('http://localhost:5000/upload', { method: 'POST', body: fd })
+    fetch('https://ilqfijzvjq.loclx.io/upload', { method: 'POST', body: fd })
       .then(r => r.json())
       .then(d => {
           if (d.status === 'success') {
