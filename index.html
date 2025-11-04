@@ -238,20 +238,31 @@ createBtn.addEventListener('click', () => {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(async response => {
+        const text = await response.text();  // получаем текст ответа
+        let data;
+        try {
+            data = JSON.parse(text);  // пробуем распарсить JSON
+        } catch (err) {
+            throw new Error(`Сервер вернул некорректный JSON. Текст ответа:\n${text}`);
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} ${response.statusText}\n${data.message || text}`);
+        }
+
         if (data.status === 'success') {
             alert('Данные успешно отправлены!\nID записи: ' + data.entry.id);
             popupWindow.style.display = 'none';
             noteInput.value = '';
             photoInput.value = '';
         } else {
-            alert('Ошибка: ' + data.message);
+            throw new Error('Ошибка от сервера: ' + (data.message || 'неизвестная ошибка'));
         }
     })
     .catch(err => {
         console.error('Ошибка при отправке:', err);
-        alert('Ошибка при отправке данных на сервер');
+        alert('Ошибка при отправке данных на сервер:\n' + err.message);
     });
 });
 </script>
