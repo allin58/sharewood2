@@ -3,67 +3,47 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sharewood Mini App</title>
+  <title>Keyboard Mini App</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    input, button { font-size: 16px; padding: 8px 10px; margin-top: 10px; }
-    #status { margin-bottom: 15px; padding: 10px; border-radius: 8px; font-weight: 500; }
-    #status.ok { background: #e6fbe6; color: #046d04; border: 1px solid #89d489; }
-    #status.bad { background: #fdeaea; color: #a30000; border: 1px solid #f5a3a3; }
-    #log { background: #f4f4f4; padding: 10px; margin-top: 20px; white-space: pre-wrap; }
+    input, button {
+      font-size: 16px; padding: 8px 12px; margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <h2>📡 Sharewood Mini App</h2>
-
-  <div id="status" class="bad">Проверка соединения...</div>
-
-  <p>Введите текст и отправьте его в бота:</p>
+  <h2>Keyboard Button Mini App</h2>
+  <p>Введите текст, чтобы отправить его в бота:</p>
   <input id="inputText" placeholder="Ваш текст..." />
   <button id="sendData">Отправить</button>
 
-  <pre id="log"></pre>
+  <pre id="log" style="background:#f4f4f4;padding:10px;margin-top:20px;"></pre>
 
   <script>
-    const tg = window.Telegram?.WebApp;
-    const statusBox = document.getElementById('status');
-    const logBox = document.getElementById('log');
-
-    function log(msg) {
+    const tg = window.Telegram.WebApp;
+    const log = (msg) => {
       const t = new Date().toLocaleTimeString();
-      logBox.textContent += `[${t}] ${msg}\n`;
-      console.log(msg);
-    }
+      document.getElementById("log").textContent += `[${t}] ${msg}\n`;
+    };
 
-    if (tg && tg.initDataUnsafe?.user) {
-      tg.expand();
-      tg.ready();
-      statusBox.textContent = "✅ Соединение с ботом активно";
-      statusBox.className = "ok";
-      log("Telegram WebApp API готов");
-      log("Пользователь: " + tg.initDataUnsafe.user.username);
-      log("Платформа: " + tg.platform);
-      log("Версия API: " + tg.version);
-    } else {
-      statusBox.textContent = "❌ Telegram API недоступен (открыто вне Telegram)";
-      statusBox.className = "bad";
-      log("Telegram WebApp API не найден");
-    }
+    tg.ready();
+    tg.expand();
+
+    log("✅ WebApp инициализирован.");
+    log("Платформа: " + tg.platform);
+    log("Версия: " + tg.version);
+    log("initData: " + JSON.stringify(tg.initDataUnsafe || {}));
 
     document.getElementById("sendData").addEventListener("click", () => {
       const text = document.getElementById("inputText").value.trim();
       if (!text) return alert("Введите текст!");
 
       const payload = { text };
-      log("📤 Отправка данных: " + JSON.stringify(payload));
+      log("📤 Отправка tg.sendData: " + JSON.stringify(payload));
 
-      try {
-        tg.sendData(JSON.stringify(payload));
-        log("✅ tg.sendData() вызван");
-      } catch (err) {
-        log("❌ Ошибка tg.sendData(): " + err.message);
-      }
+      tg.sendData(JSON.stringify(payload));
+      log("✅ tg.sendData() вызвано.");
     });
   </script>
 </body>
