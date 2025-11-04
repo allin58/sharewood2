@@ -1,180 +1,93 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Leaflet с крестиком и фото</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
-    #map {
-        height: 100vh;
-        width: 100%;
-        position: relative;
-    }
+    #map { height: 100vh; width: 100%; position: relative; }
 
     .crosshair {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 20px;
-        height: 20px;
-        margin-left: -10px;
-        margin-top: -10px;
-        pointer-events: none;
-        z-index: 999;
+        position: absolute; top: 50%; left: 50%;
+        width: 20px; height: 20px;
+        margin-left: -10px; margin-top: -10px;
+        pointer-events: none; z-index: 999;
     }
-
-    .crosshair::before,
-    .crosshair::after {
-        content: '';
-        position: absolute;
-        background: black;
+    .crosshair::before, .crosshair::after {
+        content: ''; position: absolute; background: black;
     }
-
-    .crosshair::before {
-        left: 50%;
-        top: 0;
-        width: 2px;
-        height: 100%;
-        margin-left: -1px;
-    }
-
-    .crosshair::after {
-        top: 50%;
-        left: 0;
-        width: 100%;
-        height: 2px;
-        margin-top: -1px;
-    }
+    .crosshair::before { left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px; }
+    .crosshair::after { top: 50%; left: 0; width: 100%; height: 2px; margin-top: -1px; }
 
     #coords {
-        position: absolute;
-        bottom: 50px;
-        left: 10px;
+        position: absolute; bottom: 50px; left: 10px;
         background: rgba(255,255,255,0.9);
-        padding: 6px 10px;
-        border-radius: 6px;
-        font-family: monospace;
-        z-index: 1000;
+        padding: 6px 10px; border-radius: 6px;
+        font-family: monospace; z-index: 1000;
     }
 
     #newPointBtn {
-        position: absolute;
-        bottom: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1000;
-        padding: 8px 16px;
-        font-size: 16px;
-        border: none;
-        border-radius: 6px;
-        background-color: #28a745;
-        color: white;
-        cursor: pointer;
+        position: absolute; bottom: 10px; left: 50%;
+        transform: translateX(-50%); z-index: 1000;
+        padding: 8px 16px; font-size: 16px;
+        border: none; border-radius: 6px;
+        background-color: #28a745; color: white; cursor: pointer;
     }
 
     #popupWindow {
-        position: absolute;
-        bottom: 60px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 1001;
-        width: 280px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        padding: 16px;
-        display: none;
-        font-family: sans-serif;
+        position: absolute; bottom: 60px; left: 50%;
+        transform: translateX(-50%); z-index: 1001;
+        width: 320px; background: white;
+        border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        padding: 16px; display: none; font-family: sans-serif;
     }
 
     #popupWindow .closeBtn {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
+        position: absolute; top: 6px; right: 6px;
+        width: 20px; height: 20px; cursor: pointer;
     }
-
-    #popupWindow .closeBtn::before,
-    #popupWindow .closeBtn::after {
-        content: '';
-        position: absolute;
-        width: 2px;
-        height: 100%;
-        background: black;
-        top: 0;
-        left: 50%;
+    #popupWindow .closeBtn::before, #popupWindow .closeBtn::after {
+        content: ''; position: absolute; width: 2px; height: 100%;
+        background: black; top: 0; left: 50%;
         transform: translateX(-50%) rotate(45deg);
     }
-
     #popupWindow .closeBtn::after {
         transform: translateX(-50%) rotate(-45deg);
     }
 
-    #popupWindow label {
-        display: block;
-        margin-top: 10px;
-        font-weight: bold;
-    }
+    #popupWindow label { display: block; margin-top: 10px; font-weight: bold; }
 
     #popupWindow input, #popupWindow textarea {
-        width: 100%;
-        padding: 6px;
-        margin-top: 4px;
-        box-sizing: border-box;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        font-size: 14px;
-        font-family: sans-serif;
+        width: 100%; padding: 6px; margin-top: 4px;
+        box-sizing: border-box; border-radius: 4px;
+        border: 1px solid #ccc; font-size: 14px;
     }
+    #popupWindow textarea { resize: vertical; }
 
-    #popupWindow textarea {
-        resize: vertical;
-    }
-
-    /* Список выбранных фото */
-    #photoList {
-        margin-top: 8px;
-        max-height: 100px;
-        overflow-y: auto;
-    }
+    #photoList { margin-top: 8px; max-height: 100px; overflow-y: auto; }
     .photoItem {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #f9f9f9;
-        padding: 4px 6px;
-        border-radius: 4px;
-        margin-bottom: 4px;
-        font-size: 13px;
+        display: flex; justify-content: space-between; align-items: center;
+        background: #f9f9f9; padding: 4px 6px; border-radius: 4px;
+        margin-bottom: 4px; font-size: 13px;
     }
-    .removePhoto {
-        color: red;
-        cursor: pointer;
-        font-weight: bold;
-    }
+    .removePhoto { color: red; cursor: pointer; font-weight: bold; }
 
     /* Спиннер */
-    #spinner {
-        display: none;
-        margin-top: 10px;
-        text-align: center;
-    }
+    #spinner { display: none; margin-top: 10px; text-align: center; }
     .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #007bff;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-        display: inline-block;
+        border: 4px solid #f3f3f3; border-top: 4px solid #007bff;
+        border-radius: 50%; width: 30px; height: 30px;
+        animation: spin 1s linear infinite; display: inline-block;
     }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    @keyframes spin { 0% {transform: rotate(0);} 100% {transform: rotate(360deg);} }
+
+    .popup-overlay {
+        position: absolute; inset: 0; background: rgba(255,255,255,0.7);
+        display: none; align-items: center; justify-content: center;
+        border-radius: 8px; z-index: 1002;
     }
+    .popup-overlay.active { display: flex; }
 </style>
 </head>
 <body>
@@ -184,11 +97,10 @@
 <button id="newPointBtn">Новая точка</button>
 
 <div id="popupWindow">
-    <div class="closeBtn"></div>
-    <div>
-        <strong>Координаты:</strong>
-        <div id="popupCoords">—</div>
-    </div>
+    <div class="closeBtn" title="Закрыть"></div>
+
+    <div><strong>Координаты:</strong> <div id="popupCoords">—</div></div>
+
     <label for="noteInput">Запись:</label>
     <textarea id="noteInput" rows="4" placeholder="Введите текст..."></textarea>
 
@@ -196,9 +108,14 @@
     <input type="file" id="photoInput" multiple accept="image/*">
     <div id="photoList"></div>
 
-    <button id="createBtn" style="margin-top:10px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer;">Создать</button>
+    <button id="createBtn" style="margin-top:10px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer;">
+        Создать
+    </button>
 
     <div id="spinner"><div class="loader"></div><div>Отправка...</div></div>
+    <div class="popup-overlay" id="popupOverlay">
+        <div><div class="loader"></div><div style="text-align:center;margin-top:6px;">Отправка...</div></div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -207,130 +124,110 @@ const params = new URLSearchParams(window.location.search);
 const lat = parseFloat(params.get("lat")) || 55.8892;
 const lon = parseFloat(params.get("lon")) || 37.445;
 
-const map = L.map('map', {
-    center: [lat, lon],
-    zoom: 12,
-    attributionControl: false
-});
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
+const map = L.map('map', { center: [lat, lon], zoom: 12, attributionControl: false });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 
 const greenIcon = L.icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
+    iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41]
 });
-
 L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
 
 const coordsDiv = document.getElementById('coords');
 const popupCoordsDiv = document.getElementById('popupCoords');
-
 function updateCenterCoords() {
-    const center = map.getCenter();
-    coordsDiv.textContent = `Координаты: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
-    popupCoordsDiv.textContent = `${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
-    window.currentCenter = { lat: center.lat, lon: center.lng };
+    const c = map.getCenter();
+    coordsDiv.textContent = `Координаты: ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`;
+    popupCoordsDiv.textContent = `${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`;
+    window.currentCenter = { lat: c.lat, lon: c.lng };
 }
 map.on('move', updateCenterCoords);
 map.on('moveend', updateCenterCoords);
 updateCenterCoords();
 
-const newPointBtn = document.getElementById('newPointBtn');
 const popupWindow = document.getElementById('popupWindow');
 const closeBtn = popupWindow.querySelector('.closeBtn');
-newPointBtn.addEventListener('click', () => popupWindow.style.display = 'block');
-closeBtn.addEventListener('click', () => popupWindow.style.display = 'none');
-
-const photoInput = document.getElementById('photoInput');
 const noteInput = document.getElementById('noteInput');
-const createBtn = document.getElementById('createBtn');
+const photoInput = document.getElementById('photoInput');
 const photoList = document.getElementById('photoList');
+const createBtn = document.getElementById('createBtn');
 const spinner = document.getElementById('spinner');
-
+const overlay = document.getElementById('popupOverlay');
 let selectedFiles = [];
+
+function renderPhotoList() {
+    photoList.innerHTML = '';
+    selectedFiles.forEach((file, i) => {
+        const div = document.createElement('div');
+        div.className = 'photoItem';
+        div.innerHTML = `<span>${file.name}</span> <span class="removePhoto" data-i="${i}">×</span>`;
+        photoList.appendChild(div);
+    });
+    photoList.querySelectorAll('.removePhoto').forEach(btn => {
+        btn.onclick = e => {
+            selectedFiles.splice(+btn.dataset.i, 1);
+            renderPhotoList();
+        };
+    });
+}
 
 photoInput.addEventListener('change', () => {
     selectedFiles = Array.from(photoInput.files);
     renderPhotoList();
 });
 
-function renderPhotoList() {
-    photoList.innerHTML = '';
-    selectedFiles.forEach((file, index) => {
-        const div = document.createElement('div');
-        div.className = 'photoItem';
-        div.innerHTML = `<span>${file.name}</span> <span class="removePhoto" data-index="${index}">×</span>`;
-        photoList.appendChild(div);
-    });
+document.getElementById('newPointBtn').onclick = () => {
+    // при каждом открытии — сбрасываем предыдущие значения
+    noteInput.value = '';
+    photoInput.value = '';
+    selectedFiles = [];
+    renderPhotoList();
+    popupWindow.style.display = 'block';
+};
 
-    photoList.querySelectorAll('.removePhoto').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const idx = parseInt(e.target.dataset.index);
-            selectedFiles.splice(idx, 1);
-            renderPhotoList();
-        });
-    });
+closeBtn.onclick = () => {
+    // очищаем при закрытии
+    noteInput.value = '';
+    photoInput.value = '';
+    selectedFiles = [];
+    renderPhotoList();
+    popupWindow.style.display = 'none';
+};
+
+function lockUI(lock) {
+    overlay.classList.toggle('active', lock);
+    createBtn.disabled = lock;
+    noteInput.disabled = lock;
+    photoInput.disabled = lock;
 }
 
-createBtn.addEventListener('click', () => {
-    const note = noteInput.value.trim();
+createBtn.onclick = () => {
     const coords = window.currentCenter;
+    const note = noteInput.value.trim();
+    if (!note) return alert('Введите текст!');
+    const fd = new FormData();
+    fd.append('lat', coords.lat);
+    fd.append('lon', coords.lon);
+    fd.append('note', note);
+    selectedFiles.forEach(f => fd.append('photos[]', f));
 
-    if (!coords) return alert('Координаты не определены!');
-    if (!note) return alert('Введите текст записи!');
-
-    const formData = new FormData();
-    formData.append('lat', coords.lat);
-    formData.append('lon', coords.lon);
-    formData.append('note', note);
-    selectedFiles.forEach(file => formData.append('photos[]', file));
-
-    spinner.style.display = 'block';
-    createBtn.disabled = true;
-
-    fetch('https://m6vtpwowza.loclx.io/upload', {
-        method: 'POST',
-        body: formData
-    })
-    .then(async response => {
-        const text = await response.text();
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch {
-            throw new Error(`Сервер вернул некорректный JSON. Текст ответа:\n${text}`);
-        }
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status} ${response.statusText}\n${data.message || text}`);
-        }
-
-        if (data.status === 'success') {
-            alert('Данные успешно отправлены!\nID записи: ' + data.entry.id);
-            popupWindow.style.display = 'none';
-            noteInput.value = '';
-            photoInput.value = '';
-            selectedFiles = [];
-            renderPhotoList();
-        } else {
-            throw new Error('Ошибка от сервера: ' + (data.message || 'неизвестная ошибка'));
-        }
-    })
-    .catch(err => {
-        console.error('Ошибка при отправке:', err);
-        alert('Ошибка при отправке данных на сервер:\n' + err.message);
-    })
-    .finally(() => {
-        spinner.style.display = 'none';
-        createBtn.disabled = false;
-    });
-});
+    lockUI(true);
+    fetch('https://0gwfujdrs7.loclx.io/upload', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(d => {
+          if (d.status === 'success') {
+              alert('Отправлено успешно!');
+              popupWindow.style.display = 'none';
+              noteInput.value = '';
+              photoInput.value = '';
+              selectedFiles = [];
+              renderPhotoList();
+          } else throw new Error(d.message || 'Ошибка');
+      })
+      .catch(e => alert('Ошибка: ' + e.message))
+      .finally(() => lockUI(false));
+};
 </script>
 </body>
 </html>
