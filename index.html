@@ -152,7 +152,7 @@
         <div id="popupCoords">—</div>
     </div>
     <div>
-        <strong>Телеграм логин:</strong>
+        <strong>Логин:</strong>
         <div id="username">—</div>
     </div>
     <label for="noteInput">Запись:</label>
@@ -200,14 +200,15 @@ function updateCenterCoords() {
 map.on('move', updateCenterCoords);
 map.on('moveend', updateCenterCoords);
 updateCenterCoords();
+    
 
 // Получаем логин Telegram через WebApp API
-if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) {
-    const tgUser = Telegram.WebApp.initDataUnsafe.user;
-    const login = tgUser.username ? '@' + tgUser.username : (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : ''));
-    usernameDiv.textContent = login;
+const tg = window.Telegram?.WebApp;    
+if (tg && tg.initDataUnsafe?.user) {
+    const tgUser = tg.initDataUnsafe.user.username;    
+    usernameDiv.textContent = tgUser;
 } else {
-    usernameDiv.textContent = "Не в Telegram";
+    usernameDiv.textContent = "-";
 }
 
 // Работа с кнопкой и всплывающим окном
