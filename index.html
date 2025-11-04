@@ -151,26 +151,12 @@
         <strong>Координаты:</strong>
         <div id="popupCoords">—</div>
     </div>
-    <div>
-        <strong>Логин:</strong>
-        <div id="username">—</div>
-    </div>
     <label for="noteInput">Запись:</label>
     <textarea id="noteInput" rows="4" placeholder="Введите текст..."></textarea>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-const coordsDiv = document.getElementById('coords');
-const popupCoordsDiv = document.getElementById('popupCoords');
-const usernameDiv = document.getElementById('username');
-const newPointBtn = document.getElementById('newPointBtn');
-const popupWindow = document.getElementById('popupWindow');
-const closeBtn = popupWindow.querySelector('.closeBtn');
-
-// -------------------------
-// 1️⃣ Настройка карты
-// -------------------------
 const params = new URLSearchParams(window.location.search);
 const lat = parseFloat(params.get("lat")) || 55.8892;
 const lon = parseFloat(params.get("lon")) || 37.445;
@@ -196,9 +182,10 @@ const greenIcon = L.icon({
 
 L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
 
-// -------------------------
-// 2️⃣ Обновление координат центра
-// -------------------------
+const coordsDiv = document.getElementById('coords');
+const popupCoordsDiv = document.getElementById('popupCoords');
+
+
 function updateCenterCoords() {
     const center = map.getCenter();
     coordsDiv.textContent = `Координаты: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
@@ -210,9 +197,13 @@ map.on('move', updateCenterCoords);
 map.on('moveend', updateCenterCoords);
 updateCenterCoords();
 
-// -------------------------
-// 3️⃣ Работа с кнопкой и всплывающим окном
-// -------------------------
+
+
+// Работа с кнопкой и всплывающим окном
+const newPointBtn = document.getElementById('newPointBtn');
+const popupWindow = document.getElementById('popupWindow');
+const closeBtn = popupWindow.querySelector('.closeBtn');
+
 newPointBtn.addEventListener('click', () => {
     popupWindow.style.display = 'block';
 });
@@ -220,44 +211,6 @@ newPointBtn.addEventListener('click', () => {
 closeBtn.addEventListener('click', () => {
     popupWindow.style.display = 'none';
 });
-
-// -------------------------
-// 4️⃣ Telegram WebApp
-// -------------------------
-function initTelegram() {
-    const tg = window.Telegram?.WebApp;
-    if (!tg) {
-        usernameDiv.textContent = "-";
-        return;
-    }
-
-    tg.ready();
-    tg.expand();
-
-    // Функция для обновления username
-    function updateUsername() {
-        const user = tg.initDataUnsafe?.user;
-        if (user?.username) {
-            usernameDiv.textContent = user.username;
-        } else {
-            usernameDiv.textContent = "-";
-        }
-    }
-
-    // Попытка сразу
-    updateUsername();
-
-    // Подписка на события, которые могут обновить данные пользователя
-    tg.onEvent('viewportChanged', updateUsername);
-    tg.onEvent('mainButtonClicked', updateUsername);
-    tg.onEvent('themeChanged', updateUsername); // на случай смены темы / обновления WebApp
-}
-
-// Инициализация Telegram после полной загрузки страницы
-window.addEventListener('load', initTelegram);
 </script>
-
-
-
 </body>
 </html>
