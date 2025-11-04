@@ -3,16 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Leaflet с метками, фото и цветом</title>
+<title>Leaflet с двухуровневыми метками</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
     #map { height: 100vh; width: 100%; position: relative; }
-    .crosshair {
-        position: absolute; top: 50%; left: 50%;
-        width: 20px; height: 20px;
-        margin-left: -10px; margin-top: -10px;
-        pointer-events: none; z-index: 999;
-    }
+    .crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin-left: -10px; margin-top: -10px; pointer-events: none; z-index: 999; }
     .crosshair::before, .crosshair::after { content: ''; position: absolute; background: black; }
     .crosshair::before { left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px; }
     .crosshair::after { top: 50%; left: 0; width: 100%; height: 2px; margin-top: -1px; }
@@ -20,12 +15,7 @@
     #coords { position: absolute; bottom: 50px; left: 10px; background: rgba(255,255,255,0.9); padding: 6px 10px; border-radius: 6px; font-family: monospace; z-index: 1000; }
     #newPointBtn { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 8px 16px; font-size: 16px; border: none; border-radius: 6px; background-color: #28a745; color: white; cursor: pointer; }
 
-    #popupWindow {
-        position: absolute; bottom: 60px; left: 50%;
-        transform: translateX(-50%); z-index: 1001; width: 340px;
-        background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        padding: 16px; display: none; font-family: sans-serif;
-    }
+    #popupWindow { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 1001; width: 340px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); padding: 16px; display: none; font-family: sans-serif; }
     #popupWindow .closeBtn { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; cursor: pointer; }
     #popupWindow .closeBtn::before, #popupWindow .closeBtn::after { content: ''; position: absolute; width: 2px; height: 100%; background: black; top: 0; left: 50%; transform: translateX(-50%) rotate(45deg); }
     #popupWindow .closeBtn::after { transform: translateX(-50%) rotate(-45deg); }
@@ -155,7 +145,7 @@ function lockUI(lock) {
     photoInput.disabled = lock;
 }
 
-// Добавление метки на карту
+// Двухуровневое добавление метки на карту
 function addMarkerToMap(entry) {
     const iconUrl = entry.color === 'red'
         ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png'
@@ -166,19 +156,35 @@ function addMarkerToMap(entry) {
         iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41]
     });
 
-    let popupHtml = `<strong>${entry.location}</strong><br>${entry.note}`;
-    if (entry.photos.length > 0) {
-        popupHtml += '<br>';
-        entry.photos.forEach(f => {
-            popupHtml += `<img src="uploads/${f}" style="width:50px;height:50px;margin:2px;">`;
-        });
-    }
+    const marker = L.marker([entry.lat, entry.lon], { icon }).addTo(map);
+    let clickedOnce = false;
 
-    L.marker([entry.lat, entry.lon], { icon }).addTo(map).bindPopup(popupHtml);
+    marker.bindPopup(entry.location);
+
+    marker.on('click', () => {
+        if (!clickedOnce) {
+            marker.getPopup().setContent(entry.location).openOn(map);
+            clickedOnce = true;
+        } else {
+            const detailPopup = document.createElement('div');
+            detailPopup.style.maxHeight = '300px';
+            detailPopup.style.overflowY = 'auto';
+            detailPopup.innerHTML = `
+                <strong>Локация:</strong> ${entry.location}<br>
+                <strong>Координаты:</strong> ${entry.lat.toFixed(6)}, ${entry.lon.toFixed(6)}<br>
+                <strong>Дата:</strong> ${new Date(entry.created_at).toLocaleString()}<br>
+                <strong>Запись:</strong><br>${entry.note}<br>
+                ${entry.photos.length ? '<strong>Фотографии:</strong><br>' : ''}
+                ${entry.photos.map(f => `<a href="uploads/${f}" target="_blank"><img src="uploads/${f}" style="width:50px;height:50px;margin:2px;"></a>`).join('')}
+            `;
+            marker.bindPopup(detailPopup).openPopup();
+            clickedOnce = false;
+        }
+    });
 }
 
-// Загрузка всех меток с сервера при старте
-fetch('https://ilqfijzvjq.loclx.io/entries')
+// Загрузка всех меток с сервера
+fetch('http://localhost:5000/entries')
     .then(r => r.json())
     .then(data => {
         if (data.status === 'success') {
@@ -206,7 +212,7 @@ createBtn.onclick = () => {
     selectedFiles.forEach(f => fd.append('photos[]', f));
 
     lockUI(true);
-    fetch('https://ilqfijzvjq.loclx.io/upload', { method: 'POST', body: fd })
+    fetch('http://localhost:5000/upload', { method: 'POST', body: fd })
       .then(r => r.json())
       .then(d => {
           if (d.status === 'success') {
@@ -217,7 +223,6 @@ createBtn.onclick = () => {
               photoInput.value = '';
               selectedFiles = [];
               renderPhotoList();
-              // добавляем метку сразу на карту
               addMarkerToMap(d.entry);
           } else throw new Error(d.message || 'Ошибка');
       })
