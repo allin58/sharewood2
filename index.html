@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leaflet с крестиком и новой точкой</title>
+<title>Leaflet с крестиком и Telegram логином</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
     #map {
@@ -12,6 +12,7 @@
         position: relative;
     }
 
+    /* Крестик по центру карты */
     .crosshair {
         position: absolute;
         top: 50%;
@@ -47,6 +48,7 @@
         margin-top: -1px;
     }
 
+    /* Координаты внизу карты */
     #coords {
         position: absolute;
         bottom: 50px;
@@ -58,6 +60,7 @@
         z-index: 1000;
     }
 
+    /* Кнопка "Новая точка" */
     #newPointBtn {
         position: absolute;
         bottom: 10px;
@@ -73,6 +76,7 @@
         cursor: pointer;
     }
 
+    /* Всплывающее окно */
     #popupWindow {
         position: absolute;
         bottom: 60px;
@@ -148,8 +152,8 @@
         <div id="popupCoords">—</div>
     </div>
     <div>
-        <strong>Имя пользователя:</strong>
-        <div id="username">Бот</div>
+        <strong>Телеграм логин:</strong>
+        <div id="username">—</div>
     </div>
     <label for="noteInput">Запись:</label>
     <textarea id="noteInput" rows="4" placeholder="Введите текст..."></textarea>
@@ -197,9 +201,14 @@ map.on('move', updateCenterCoords);
 map.on('moveend', updateCenterCoords);
 updateCenterCoords();
 
-// Имя пользователя от "бота"
-const username = "Пользователь Бот";
-usernameDiv.textContent = username;
+// Получаем логин Telegram через WebApp API
+if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) {
+    const tgUser = Telegram.WebApp.initDataUnsafe.user;
+    const login = tgUser.username ? '@' + tgUser.username : (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : ''));
+    usernameDiv.textContent = login;
+} else {
+    usernameDiv.textContent = "Не в Telegram";
+}
 
 // Работа с кнопкой и всплывающим окном
 const newPointBtn = document.getElementById('newPointBtn');
