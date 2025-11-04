@@ -14,7 +14,11 @@
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map').setView([55.751244, 37.618423], 10);
+        const params = new URLSearchParams(window.location.search);
+        const lat = params.get("lat");
+        const lon = params.get("lon");
+        
+        const map = L.map('map').setView([lat, lon], 10);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
@@ -39,10 +43,7 @@
             shadowSize: [41, 41]
         });
 
-        const params = new URLSearchParams(window.location.search);
-        const lat = params.get("lat");
-        const lon = params.get("lon");
-        
+
         // Добавляем метки с разными цветами
         //L.marker([55.751244, 37.618423], { icon: redIcon }).addTo(map).bindPopup('Красная метка — Москва');
         L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
