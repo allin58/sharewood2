@@ -161,6 +161,14 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+const coordsDiv = document.getElementById('coords');
+const popupCoordsDiv = document.getElementById('popupCoords');
+const usernameDiv = document.getElementById('username');
+const newPointBtn = document.getElementById('newPointBtn');
+const popupWindow = document.getElementById('popupWindow');
+const closeBtn = popupWindow.querySelector('.closeBtn');
+
+// 1️⃣ Настройка карты
 const params = new URLSearchParams(window.location.search);
 const lat = parseFloat(params.get("lat")) || 55.8892;
 const lon = parseFloat(params.get("lon")) || 37.445;
@@ -186,10 +194,7 @@ const greenIcon = L.icon({
 
 L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
 
-const coordsDiv = document.getElementById('coords');
-const popupCoordsDiv = document.getElementById('popupCoords');
-const usernameDiv = document.getElementById('username');
-
+// 2️⃣ Функция обновления координат центра
 function updateCenterCoords() {
     const center = map.getCenter();
     coordsDiv.textContent = `Координаты: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
@@ -200,24 +205,23 @@ function updateCenterCoords() {
 map.on('move', updateCenterCoords);
 map.on('moveend', updateCenterCoords);
 updateCenterCoords();
-    
 
-// Получаем логин Telegram через WebApp API
-const tg = window.Telegram?.WebApp;  
-tg.expand();
-tg.ready();    
-if (tg && tg.initDataUnsafe?.user) {
-    const tgUser = tg.initDataUnsafe.user.username;    
-    usernameDiv.textContent = tgUser;
-} else {
-    usernameDiv.textContent = "-";
+// 3️⃣ Работа с Telegram WebApp
+function initTelegram() {
+    const tg = window.Telegram?.WebApp;
+    if (!tg) {
+        usernameDiv.textContent = "-";
+        return;
+    }
+
+    tg.ready();
+    tg.expand();
+
+    const user = tg.initDataUnsafe?.user;
+    usernameDiv.textContent = user?.username || "-";
 }
 
-// Работа с кнопкой и всплывающим окном
-const newPointBtn = document.getElementById('newPointBtn');
-const popupWindow = document.getElementById('popupWindow');
-const closeBtn = popupWindow.querySelector('.closeBtn');
-
+// 4️⃣ Работа с кнопкой и всплывающим окном
 newPointBtn.addEventListener('click', () => {
     popupWindow.style.display = 'block';
 });
@@ -225,6 +229,10 @@ newPointBtn.addEventListener('click', () => {
 closeBtn.addEventListener('click', () => {
     popupWindow.style.display = 'none';
 });
+
+// 5️⃣ Инициализация Telegram безопасно после загрузки скрипта
+window.addEventListener('load', initTelegram);
 </script>
+
 </body>
 </html>
