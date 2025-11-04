@@ -17,15 +17,26 @@
         // Инициализация карты
         const map = L.map('map').setView([55.751244, 37.618423], 10); // Москва
 
-        // Добавляем слой с OpenStreetMap
+        // Добавляем слой OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Добавляем маркер
-        L.marker([55.751244, 37.618423]).addTo(map)
-            .bindPopup('Москва')
-            .openPopup();
+        // Массив меток
+        const markers = [
+            { coords: [55.751244, 37.618423], text: 'Москва' },
+            { coords: [55.8304, 37.4095], text: 'Химки' },
+            { coords: [55.7033, 37.5301], text: 'Лужники' },
+            { coords: [55.7558, 37.6173], text: 'Красная площадь' },
+            { coords: [55.9132, 37.8403], text: 'Мытищи' }
+        ];
+
+        // Добавляем все метки на карту
+        markers.forEach(marker => {
+            L.marker(marker.coords)
+                .addTo(map)
+                .bindPopup(marker.text);
+        });
     </script>
 </body>
 </html>
