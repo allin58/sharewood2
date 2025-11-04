@@ -39,10 +39,14 @@
             shadowSize: [41, 41]
         });
 
+        const params = new URLSearchParams(window.location.search);
+        const lat = params.get("lat");
+        const lon = params.get("lon");
+        
         // Добавляем метки с разными цветами
-        L.marker([55.751244, 37.618423], { icon: redIcon }).addTo(map).bindPopup('Красная метка — Москва');
-        L.marker([55.8304, 37.4095], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
-        L.marker([55.7033, 37.5301]).addTo(map).bindPopup('Обычная синяя метка — Лужники');
+        //L.marker([55.751244, 37.618423], { icon: redIcon }).addTo(map).bindPopup('Красная метка — Москва');
+        L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
+        //L.marker([55.7033, 37.5301]).addTo(map).bindPopup('Обычная синяя метка — Лужники');
     </script>
 </body>
 </html>
