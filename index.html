@@ -72,12 +72,24 @@
         const lat = parseFloat(params.get("lat")) || 55.8892;
         const lon = parseFloat(params.get("lon")) || 37.445;
 
-        const map = L.map('map').setView([lat, lon], 12);
+        // const map = L.map('map').setView([lat, lon], 12);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        //     attribution: '&copy; OpenStreetMap contributors'
+        // }).addTo(map);
+        
+        const map = L.map('map', {
+            center: [lat, lon],
+            zoom: 12,
+            attributionControl: false
+        });
 
+        // При желании можно добавить свою маленькую подпись
+        L.control.attribution({
+            prefix: false
+        }).addAttribution('© OpenStreetMap contributors').addTo(map);
+
+        
         const greenIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
             shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
