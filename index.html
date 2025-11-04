@@ -213,7 +213,7 @@ createBtn.onclick = () => {
     selectedFiles.forEach(f => fd.append('photos[]', f));
 
     lockUI(true);
-    fetch('https://0gwfujdrs7.loclx.io/upload', { method: 'POST', body: fd })
+    fetch('https://tl92cu0keh.loclx.io/upload', { method: 'POST', body: fd })
       .then(r => r.json())
       .then(d => {
           if (d.status === 'success') {
