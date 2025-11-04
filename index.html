@@ -1,125 +1,184 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet с крестиком</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <style>
-        #map {
-            height: 100vh;
-            width: 100%;
-            position: relative;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaflet с крестиком и кнопкой</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+    #map {
+        height: 100vh;
+        width: 100%;
+        position: relative;
+    }
 
-        /* Настоящий крестик по центру карты */
-        .crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
-            margin-left: -10px;
-            margin-top: -10px;
-            pointer-events: none;
-            z-index: 999;
-        }
+    /* Настоящий крестик по центру карты */
+    .crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        margin-left: -10px;
+        margin-top: -10px;
+        pointer-events: none;
+        z-index: 999;
+    }
 
-        .crosshair::before,
-        .crosshair::after {
-            content: '';
-            position: absolute;
-            background: black; /* цвет крестика */
-        }
+    .crosshair::before,
+    .crosshair::after {
+        content: '';
+        position: absolute;
+        background: black;
+    }
 
-        .crosshair::before {
-            left: 50%;
-            top: 0;
-            width: 2px;
-            height: 100%;
-            margin-left: -1px;
-        }
+    .crosshair::before {
+        left: 50%;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        margin-left: -1px;
+    }
 
-        .crosshair::after {
-            top: 50%;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            margin-top: -1px;
-        }
+    .crosshair::after {
+        top: 50%;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        margin-top: -1px;
+    }
 
-        /* Блок с координатами */
-        #coords {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(255,255,255,0.9);
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-family: monospace;
-            z-index: 1000;
-        }
-    </style>
+    /* Блок с координатами */
+    #coords {
+        position: absolute;
+        bottom: 50px;
+        left: 10px;
+        background: rgba(255,255,255,0.9);
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-family: monospace;
+        z-index: 1000;
+    }
+
+    /* Кнопка "Новая точка" */
+    #newPointBtn {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        padding: 8px 16px;
+        font-size: 16px;
+        border: none;
+        border-radius: 6px;
+        background-color: #28a745;
+        color: white;
+        cursor: pointer;
+    }
+
+    /* Всплывающее окно */
+    #popupWindow {
+        position: absolute;
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1001;
+        width: 250px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        padding: 16px;
+        display: none; /* скрыто по умолчанию */
+    }
+
+    #popupWindow .closeBtn {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    #popupWindow .closeBtn::before,
+    #popupWindow .closeBtn::after {
+        content: '';
+        position: absolute;
+        width: 2px;
+        height: 100%;
+        background: black;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+    }
+
+    #popupWindow .closeBtn::after {
+        transform: translateX(-50%) rotate(-45deg);
+    }
+</style>
 </head>
 <body>
-    <div id="map"></div>
-    <div class="crosshair"></div>
-    <div id="coords">Координаты: —</div>
+<div id="map"></div>
+<div class="crosshair"></div>
+<div id="coords">Координаты: —</div>
+<button id="newPointBtn">Новая точка</button>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const lat = parseFloat(params.get("lat")) || 55.8892;
-        const lon = parseFloat(params.get("lon")) || 37.445;
+<div id="popupWindow">
+    <div class="closeBtn"></div>
+    <p>Здесь можно добавить информацию о новой точке</p>
+</div>
 
-        // const map = L.map('map').setView([lat, lon], 12);
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const lat = parseFloat(params.get("lat")) || 55.8892;
+const lon = parseFloat(params.get("lon")) || 37.445;
 
-        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        //     attribution: '&copy; OpenStreetMap contributors'
-        // }).addTo(map);
-        
-        const map = L.map('map', {
-            center: [lat, lon],
-            zoom: 12,
-            attributionControl: false
-        });
+const map = L.map('map', {
+    center: [lat, lon],
+    zoom: 12,
+    attributionControl: false
+});
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-        
-        
-        // При желании можно добавить свою маленькую подпись
-        // L.control.attribution({
-        //     prefix: false
-        // }).addAttribution('© OpenStreetMap contributors').addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
 
-        
-        const greenIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
+const greenIcon = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
 
-        // Пример метки
-        L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
+// Пример метки
+L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная метка — Химки');
 
-        // Элемент для вывода координат
-        const coordsDiv = document.getElementById('coords');
+const coordsDiv = document.getElementById('coords');
+function updateCenterCoords() {
+    const center = map.getCenter();
+    coordsDiv.textContent = `Координаты: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
+    window.currentCenter = { lat: center.lat, lon: center.lng };
+}
 
-        function updateCenterCoords() {
-            const center = map.getCenter();
-            coordsDiv.textContent = `Координаты: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
-            window.currentCenter = { lat: center.lat, lon: center.lng };
-        }
+map.on('move', updateCenterCoords);
+map.on('moveend', updateCenterCoords);
+updateCenterCoords();
 
-        map.on('move', updateCenterCoords);
-        map.on('moveend', updateCenterCoords);
+// Работа с кнопкой и всплывающим окном
+const newPointBtn = document.getElementById('newPointBtn');
+const popupWindow = document.getElementById('popupWindow');
+const closeBtn = popupWindow.querySelector('.closeBtn');
 
-        updateCenterCoords();
-    </script>
+newPointBtn.addEventListener('click', () => {
+    popupWindow.style.display = 'block';
+});
+
+closeBtn.addEventListener('click', () => {
+    popupWindow.style.display = 'none';
+});
+</script>
 </body>
 </html>
