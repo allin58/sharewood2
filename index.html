@@ -3,55 +3,69 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mini App Test</title>
+  <title>Mini App Debug</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    input, button { font-size: 16px; padding: 6px; margin-top: 10px; }
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    input, button {
+      font-size: 16px;
+      padding: 8px 10px;
+      margin-top: 10px;
+    }
+    #log {
+      background: #f4f4f4;
+      padding: 10px;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
-  <h2>🔍 Проверка tg.sendData()</h2>
-  <p>Введите любой текст и нажмите кнопку:</p>
+  <h2>📡 Отладка tg.sendData()</h2>
+  <p>Введите текст и нажмите кнопку — данные должны уйти боту:</p>
   <input id="inputText" placeholder="Ваш текст..." />
-  <button id="sendData">Отправить</button>
+  <button id="sendData">Отправить в бота</button>
 
-  <pre id="log" style="background:#f4f4f4; padding:10px; margin-top:20px; white-space:pre-wrap;"></pre>
+  <pre id="log"></pre>
 
-
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script>
-const tg = window.Telegram.WebApp;
-
-document.getElementById("sendData").addEventListener("click", () => {
-  const payload = { text: "тест" };
-  tg.sendData(JSON.stringify(payload));
-});
-</script>
-
-  
-  <!-- <script>
+  <script>
     const tg = window.Telegram.WebApp;
-    const log = msg => {
+    const logBox = document.getElementById('log');
+
+    function log(msg) {
       const t = new Date().toLocaleTimeString();
-      document.getElementById('log').textContent += `[${t}] ${msg}\n`;
-    };
+      logBox.textContent += `[${t}] ${msg}\n`;
+      console.log(msg);
+    }
 
-    log("WebApp инициализирован.");
-    log("initData: " + JSON.stringify(tg.initData || {}));
-    log("initDataUnsafe: " + JSON.stringify(tg.initDataUnsafe || {}));
-    
-    log("initData:", Telegram.WebApp.initData);
-    log("initDataUnsafe:", Telegram.WebApp.initDataUnsafe);
-    
-    log("Telegram.WebApp.version:", tg.version);
-    log("Telegram.WebApp.platform:", tg.platform);
+    // Проверим, что Telegram API доступен
+    if (!tg) {
+      log("❌ Telegram WebApp API не найден. Открой страницу через Telegram Mini App, а не в браузере!");
+    } else {
+      log("✅ Telegram WebApp API инициализирован.");
+      log("Платформа: " + tg.platform);
+      log("Версия API: " + tg.version);
+    }
+
+    tg.ready(); // сигнал Telegram, что интерфейс готов
+
     document.getElementById("sendData").addEventListener("click", () => {
-    alert("Перед tg.sendData()");    
-    tg.sendData(JSON.stringify({ text: "тест" }));
-    alert("После tg.sendData()");
-});  
+      const text = document.getElementById("inputText").value.trim();
+      if (!text) return alert("Введите текст!");
+      const payload = { text };
 
-  </script> -->
+      log("📤 Отправка данных: " + JSON.stringify(payload));
+      try {
+        tg.sendData(JSON.stringify(payload));
+        log("✅ tg.sendData() успешно вызван.");
+      } catch (err) {
+        log("❌ Ошибка при tg.sendData(): " + err.message);
+      }
+    });
+  </script>
 </body>
 </html>
