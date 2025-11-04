@@ -7,86 +7,40 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
     #map { height: 100vh; width: 100%; position: relative; }
-
     .crosshair {
         position: absolute; top: 50%; left: 50%;
         width: 20px; height: 20px;
         margin-left: -10px; margin-top: -10px;
         pointer-events: none; z-index: 999;
     }
-    .crosshair::before, .crosshair::after {
-        content: ''; position: absolute; background: black;
-    }
+    .crosshair::before, .crosshair::after { content: ''; position: absolute; background: black; }
     .crosshair::before { left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px; }
     .crosshair::after { top: 50%; left: 0; width: 100%; height: 2px; margin-top: -1px; }
 
-    #coords {
-        position: absolute; bottom: 50px; left: 10px;
-        background: rgba(255,255,255,0.9);
-        padding: 6px 10px; border-radius: 6px;
-        font-family: monospace; z-index: 1000;
-    }
-
-    #newPointBtn {
-        position: absolute; bottom: 10px; left: 50%;
-        transform: translateX(-50%); z-index: 1000;
-        padding: 8px 16px; font-size: 16px;
-        border: none; border-radius: 6px;
-        background-color: #28a745; color: white; cursor: pointer;
-    }
-
+    #coords { position: absolute; bottom: 50px; left: 10px; background: rgba(255,255,255,0.9); padding: 6px 10px; border-radius: 6px; font-family: monospace; z-index: 1000; }
+    #newPointBtn { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 8px 16px; font-size: 16px; border: none; border-radius: 6px; background-color: #28a745; color: white; cursor: pointer; }
     #popupWindow {
         position: absolute; bottom: 60px; left: 50%;
-        transform: translateX(-50%); z-index: 1001;
-        width: 320px; background: white;
-        border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        transform: translateX(-50%); z-index: 1001; width: 340px;
+        background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         padding: 16px; display: none; font-family: sans-serif;
     }
-
-    #popupWindow .closeBtn {
-        position: absolute; top: 6px; right: 6px;
-        width: 20px; height: 20px; cursor: pointer;
-    }
-    #popupWindow .closeBtn::before, #popupWindow .closeBtn::after {
-        content: ''; position: absolute; width: 2px; height: 100%;
-        background: black; top: 0; left: 50%;
-        transform: translateX(-50%) rotate(45deg);
-    }
-    #popupWindow .closeBtn::after {
-        transform: translateX(-50%) rotate(-45deg);
-    }
-
+    #popupWindow .closeBtn { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; cursor: pointer; }
+    #popupWindow .closeBtn::before, #popupWindow .closeBtn::after { content: ''; position: absolute; width: 2px; height: 100%; background: black; top: 0; left: 50%; transform: translateX(-50%) rotate(45deg); }
+    #popupWindow .closeBtn::after { transform: translateX(-50%) rotate(-45deg); }
     #popupWindow label { display: block; margin-top: 10px; font-weight: bold; }
-
-    #popupWindow input, #popupWindow textarea {
-        width: 100%; padding: 6px; margin-top: 4px;
-        box-sizing: border-box; border-radius: 4px;
-        border: 1px solid #ccc; font-size: 14px;
-    }
+    #popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"] { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
     #popupWindow textarea { resize: vertical; }
 
     #photoList { margin-top: 8px; max-height: 100px; overflow-y: auto; }
-    .photoItem {
-        display: flex; justify-content: space-between; align-items: center;
-        background: #f9f9f9; padding: 4px 6px; border-radius: 4px;
-        margin-bottom: 4px; font-size: 13px;
-    }
+    .photoItem { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 4px 6px; border-radius: 4px; margin-bottom: 4px; font-size: 13px; }
     .removePhoto { color: red; cursor: pointer; font-weight: bold; }
 
-    /* Спиннер */
     #spinner { display: none; margin-top: 10px; text-align: center; }
-    .loader {
-        border: 4px solid #f3f3f3; border-top: 4px solid #007bff;
-        border-radius: 50%; width: 30px; height: 30px;
-        animation: spin 1s linear infinite; display: inline-block;
-    }
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: inline-block; }
     @keyframes spin { 0% {transform: rotate(0);} 100% {transform: rotate(360deg);} }
 
-    .popup-overlay {
-        position: absolute; inset: 0; background: rgba(255,255,255,0.7);
-        display: none; align-items: center; justify-content: center;
-        border-radius: 8px; z-index: 1002;
-    }
+    .popup-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: none; align-items: center; justify-content: center; border-radius: 8px; z-index: 1002; }
     .popup-overlay.active { display: flex; }
 </style>
 </head>
@@ -104,14 +58,17 @@
     <label for="noteInput">Запись:</label>
     <textarea id="noteInput" rows="4" placeholder="Введите текст..."></textarea>
 
+    <label>Цвет метки:</label>
+    <div>
+        <label><input type="radio" name="markerColor" value="green" checked> Зелёный</label>
+        <label style="margin-left:15px;"><input type="radio" name="markerColor" value="red"> Красный</label>
+    </div>
+
     <label for="photoInput">Фотографии:</label>
     <input type="file" id="photoInput" multiple accept="image/*">
     <div id="photoList"></div>
 
-    <button id="createBtn" style="margin-top:10px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer;">
-        Создать
-    </button>
-
+    <button id="createBtn" style="margin-top:10px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer;">Создать</button>
     <div id="spinner"><div class="loader"></div><div>Отправка...</div></div>
     <div class="popup-overlay" id="popupOverlay">
         <div><div class="loader"></div><div style="text-align:center;margin-top:6px;">Отправка...</div></div>
@@ -165,10 +122,7 @@ function renderPhotoList() {
         photoList.appendChild(div);
     });
     photoList.querySelectorAll('.removePhoto').forEach(btn => {
-        btn.onclick = e => {
-            selectedFiles.splice(+btn.dataset.i, 1);
-            renderPhotoList();
-        };
+        btn.onclick = e => { selectedFiles.splice(+btn.dataset.i, 1); renderPhotoList(); };
     });
 }
 
@@ -178,16 +132,16 @@ photoInput.addEventListener('change', () => {
 });
 
 document.getElementById('newPointBtn').onclick = () => {
-    // при каждом открытии — сбрасываем предыдущие значения
     noteInput.value = '';
     photoInput.value = '';
     selectedFiles = [];
     renderPhotoList();
+    // сброс выбора цвета на default green
+    document.querySelector('input[name="markerColor"][value="green"]').checked = true;
     popupWindow.style.display = 'block';
 };
 
 closeBtn.onclick = () => {
-    // очищаем при закрытии
     noteInput.value = '';
     photoInput.value = '';
     selectedFiles = [];
@@ -195,25 +149,25 @@ closeBtn.onclick = () => {
     popupWindow.style.display = 'none';
 };
 
-function lockUI(lock) {
-    overlay.classList.toggle('active', lock);
-    createBtn.disabled = lock;
-    noteInput.disabled = lock;
-    photoInput.disabled = lock;
-}
+function lockUI(lock) { overlay.classList.toggle('active', lock); createBtn.disabled = lock; noteInput.disabled = lock; photoInput.disabled = lock; }
 
 createBtn.onclick = () => {
     const coords = window.currentCenter;
     const note = noteInput.value.trim();
     if (!note) return alert('Введите текст!');
+
+    // получаем выбранный цвет
+    const color = document.querySelector('input[name="markerColor"]:checked')?.value || 'green';
+
     const fd = new FormData();
     fd.append('lat', coords.lat);
     fd.append('lon', coords.lon);
     fd.append('note', note);
+    fd.append('color', color);  // <-- добавляем выбранный цвет
     selectedFiles.forEach(f => fd.append('photos[]', f));
 
     lockUI(true);
-    fetch('https://tl92cu0keh.loclx.io/upload', { method: 'POST', body: fd })
+    fetch('https://0gwfujdrs7.loclx.io/upload', { method: 'POST', body: fd })
       .then(r => r.json())
       .then(d => {
           if (d.status === 'success') {
