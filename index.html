@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leaflet с крестиком и Telegram логином</title>
+<title>Leaflet с крестиком и фото</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
     #map {
@@ -153,6 +153,9 @@
     </div>
     <label for="noteInput">Запись:</label>
     <textarea id="noteInput" rows="4" placeholder="Введите текст..."></textarea>
+    <label for="photoInput">Фотографии:</label>
+    <input type="file" id="photoInput" multiple accept="image/*">
+    <button id="createBtn" style="margin-top:10px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer;">Создать</button>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -185,7 +188,6 @@ L.marker([lat, lon], { icon: greenIcon }).addTo(map).bindPopup('Зелёная �
 const coordsDiv = document.getElementById('coords');
 const popupCoordsDiv = document.getElementById('popupCoords');
 
-
 function updateCenterCoords() {
     const center = map.getCenter();
     coordsDiv.textContent = `Координаты: ${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
@@ -196,8 +198,6 @@ function updateCenterCoords() {
 map.on('move', updateCenterCoords);
 map.on('moveend', updateCenterCoords);
 updateCenterCoords();
-
-
 
 // Работа с кнопкой и всплывающим окном
 const newPointBtn = document.getElementById('newPointBtn');
@@ -210,6 +210,48 @@ newPointBtn.addEventListener('click', () => {
 
 closeBtn.addEventListener('click', () => {
     popupWindow.style.display = 'none';
+});
+
+// Работа с фото и кнопкой "Создать"
+const photoInput = document.getElementById('photoInput');
+const noteInput = document.getElementById('noteInput');
+const createBtn = document.getElementById('createBtn');
+
+createBtn.addEventListener('click', () => {
+    const files = photoInput.files;
+    const note = noteInput.value;
+    const coords = window.currentCenter;
+
+    if (!coords) {
+        alert('Координаты не определены!');
+        return;
+    }
+
+    if (!files.length) {
+        alert('Выберите хотя бы одну фотографию!');
+        return;
+    }
+
+    // Подготовка данных для отправки
+    const formData = new FormData();
+    formData.append('lat', coords.lat);
+    formData.append('lon', coords.lon);
+    formData.append('note', note);
+    for (let i = 0; i < files.length; i++) {
+        formData.append('photos[]', files[i]);
+    }
+
+    console.log('Данные для отправки:', {
+        lat: coords.lat,
+        lon: coords.lon,
+        note,
+        files
+    });
+
+    popupWindow.style.display = 'none';
+    noteInput.value = '';
+    photoInput.value = '';
+    alert('Данные готовы к отправке (см. консоль)');
 });
 </script>
 </body>
