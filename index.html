@@ -12,7 +12,6 @@
         position: relative;
     }
 
-    /* Крестик по центру карты */
     .crosshair {
         position: absolute;
         top: 50%;
@@ -48,7 +47,6 @@
         margin-top: -1px;
     }
 
-    /* Координаты внизу карты */
     #coords {
         position: absolute;
         bottom: 50px;
@@ -60,7 +58,6 @@
         z-index: 1000;
     }
 
-    /* Кнопка "Новая точка" */
     #newPointBtn {
         position: absolute;
         bottom: 10px;
@@ -76,7 +73,6 @@
         cursor: pointer;
     }
 
-    /* Всплывающее окно */
     #popupWindow {
         position: absolute;
         bottom: 60px;
@@ -199,7 +195,6 @@ map.on('move', updateCenterCoords);
 map.on('moveend', updateCenterCoords);
 updateCenterCoords();
 
-// Работа с кнопкой и всплывающим окном
 const newPointBtn = document.getElementById('newPointBtn');
 const popupWindow = document.getElementById('popupWindow');
 const closeBtn = popupWindow.querySelector('.closeBtn');
@@ -212,14 +207,13 @@ closeBtn.addEventListener('click', () => {
     popupWindow.style.display = 'none';
 });
 
-// Работа с фото и кнопкой "Создать"
 const photoInput = document.getElementById('photoInput');
 const noteInput = document.getElementById('noteInput');
 const createBtn = document.getElementById('createBtn');
 
 createBtn.addEventListener('click', () => {
     const files = photoInput.files;
-    const note = noteInput.value;
+    const note = noteInput.value.trim();
     const coords = window.currentCenter;
 
     if (!coords) {
@@ -227,12 +221,11 @@ createBtn.addEventListener('click', () => {
         return;
     }
 
-    if (!files.length) {
-        alert('Выберите хотя бы одну фотографию!');
+    if (!note) {
+        alert('Введите текст записи!');
         return;
     }
 
-    // Подготовка данных для отправки
     const formData = new FormData();
     formData.append('lat', coords.lat);
     formData.append('lon', coords.lon);
@@ -241,17 +234,25 @@ createBtn.addEventListener('click', () => {
         formData.append('photos[]', files[i]);
     }
 
-    console.log('Данные для отправки:', {
-        lat: coords.lat,
-        lon: coords.lon,
-        note,
-        files
+    fetch('http://192.168.100.33:5000/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Данные успешно отправлены!\nID записи: ' + data.entry.id);
+            popupWindow.style.display = 'none';
+            noteInput.value = '';
+            photoInput.value = '';
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Ошибка при отправке:', err);
+        alert('Ошибка при отправке данных на сервер');
     });
-
-    popupWindow.style.display = 'none';
-    noteInput.value = '';
-    photoInput.value = '';
-    alert('Данные готовы к отправке (см. консоль)');
 });
 </script>
 </body>
