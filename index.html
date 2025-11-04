@@ -234,7 +234,7 @@ createBtn.addEventListener('click', () => {
         formData.append('photos[]', files[i]);
     }
 
-    fetch('http://192.168.100.33:5000/upload', {
+    fetch('https://0gwfujdrs7.loclx.io/upload', {
         method: 'POST',
         body: formData
     })
