@@ -18,7 +18,19 @@
 
   <pre id="log" style="background:#f4f4f4; padding:10px; margin-top:20px; white-space:pre-wrap;"></pre>
 
-  <script>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+const tg = window.Telegram.WebApp;
+
+document.getElementById("sendData").addEventListener("click", () => {
+  const payload = { text: "тест" };
+  tg.sendData(JSON.stringify(payload));
+});
+</script>
+
+  
+  <!-- <script>
     const tg = window.Telegram.WebApp;
     const log = msg => {
       const t = new Date().toLocaleTimeString();
@@ -38,17 +50,8 @@
     alert("Перед tg.sendData()");    
     tg.sendData(JSON.stringify({ text: "тест" }));
     alert("После tg.sendData()");
-});
+});  
 
-    
-    // document.getElementById('sendData').addEventListener('click', () => {
-    //   const text = document.getElementById('inputText').value.trim();
-    //   if (!text) return alert('Введите текст!');
-    //   const payload = { text };
-    //   log('Вызов tg.sendData: ' + JSON.stringify(payload));
-    //   tg.sendData(JSON.stringify(payload));
-    //   log('✅ tg.sendData() отправлен — ждите ответа от бота.');
-    // });
-  </script>
+  </script> -->
 </body>
 </html>
