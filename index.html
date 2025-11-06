@@ -65,13 +65,10 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-// --- Карта ---
-const params = new URLSearchParams(window.location.search);
-const defaultLat = parseFloat(params.get("lat")) || 55.8892;
-const defaultLon = parseFloat(params.get("lon")) || 37.445;
-const map = L.map('map', { center:[defaultLat, defaultLon], zoom:12, attributionControl:false });
+const map = L.map('map', { center:[55.8892,37.445], zoom:12, attributionControl:false });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-let currentCenter = { lat: defaultLat, lon: defaultLon };
+
+let currentCenter = map.getCenter();
 map.on('move', ()=>{ const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng}; });
 
 // --- Popup ---
@@ -86,8 +83,8 @@ const saveBtn=document.getElementById('saveBtn');
 const spinner=document.getElementById('spinner');
 
 let selectedFiles=[];
-let currentEntryId=null;
 let existingPhotos=[];
+let currentEntryId=null;
 
 function renderPhotoList(){
     photoList.innerHTML='';
@@ -111,64 +108,46 @@ function renderPhotoList(){
     });
 }
 
-// --- Сжатие изображений ---
+// Сжатие фото
 async function resizeImage(file,maxWidth=1024,maxHeight=1024,quality=0.7){
     return new Promise(resolve=>{
         const img=new Image();
         img.onload=()=>{
             const canvas=document.createElement('canvas');
-            const ratio=Math.min(maxWidth/img.width, maxHeight/img.height,1);
-            canvas.width=img.width*ratio; canvas.height=img.height*ratio;
+            const ratio=Math.min(maxWidth/img.width,maxHeight/img.height,1);
+            canvas.width=img.width*ratio;
+            canvas.height=img.height*ratio;
             canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-            canvas.toBlob(blob=>resolve(new File([blob], file.name, {type:'image/jpeg'})), 'image/jpeg', quality);
+            canvas.toBlob(blob=>resolve(new File([blob],file.name,{type:'image/jpeg'})),'image/jpeg',quality);
         };
         img.src=URL.createObjectURL(file);
     });
 }
 
-// --- Добавление новых фото ---
 photoInput.addEventListener('change',()=>{selectedFiles=Array.from(photoInput.files); renderPhotoList();});
 
-// --- Закрытие popup ---
+// Закрытие popup
 popupClose.onclick=()=>{popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[];};
-
-// --- Сохранение метки ---
-saveBtn.onclick=async()=>{
-    const note=noteInput.value.trim();
-    const location=locationInput.value.trim();
-    const color=markerColorSelect.value;
-    if(!note || !location) return alert('Заполните обязательные поля!');
-    spinner.style.display='block';
-    const fd=new FormData();
-    fd.append('note',note); fd.append('location',location); fd.append('color',color);
-    existingPhotos.forEach(p=>fd.append('existingPhotos[]',p));
-    for(let f of selectedFiles){ fd.append('photos[]', await resizeImage(f)); }
-
-    fetch(`https://91c99ab5bb3f.ngrok-free.app/entry/${currentEntryId}`,{method:'POST', body:fd})
-      .then(r=>r.json()).then(d=>{
-        if(d.status==='success'){
-            alert('Сохранено!');
-            popupWindow.style.display='none';
-            // Обновляем иконку метки
-            const m=markersMap[currentEntryId];
-            m.setIcon(getIcon(color));
-        } else alert('Ошибка: '+d.message);
-      }).finally(()=>{spinner.style.display='none'; selectedFiles=[]; existingPhotos=[];});
-};
 
 // --- Иконки ---
 function getIcon(color){
-    const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-                yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png'};
-    return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+    const urls={
+        green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+        red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+        blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+        yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png'
+    };
+    return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
 }
 
-// --- Загрузка и отображение меток ---
+// --- Метки ---
 let markersMap={};
+
+// Загрузка всех меток
 async function loadMarkers(){
-    const r=await fetch('https://91c99ab5bb3f.ngrok-free.app/markers'); const data=await r.json();
+    const r=await fetch('https://91c99ab5bb3f.ngrok-free.app/markers'); 
+    const data=await r.json();
     if(data.status==='success'){
         data.markers.forEach(entry=>{
             const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
@@ -180,10 +159,11 @@ async function loadMarkers(){
 }
 loadMarkers();
 
-// --- Открытие редактируемого popup ---
+// Открытие popup для редактирования
 async function openEditPopup(entryId){
     currentEntryId=entryId;
-    const r=await fetch(`https://91c99ab5bb3f.ngrok-free.app/entry/${entryId}`); const d=await r.json();
+    const r=await fetch(`https://91c99ab5bb3f.ngrok-free.app/entry/${entryId}`); 
+    const d=await r.json();
     if(d.status!=='success') return;
     const entry=d.entry;
     document.getElementById('popupCoords').textContent=`${entry.lat.toFixed(6)}, ${entry.lon.toFixed(6)}`;
@@ -195,6 +175,56 @@ async function openEditPopup(entryId){
     renderPhotoList();
     popupWindow.style.display='block';
 }
+
+// --- Кнопка Новая точка ---
+document.getElementById('newPointBtn').onclick = () => {
+    noteInput.value=''; locationInput.value='';
+    markerColorSelect.value='green';
+    photoInput.value=''; selectedFiles=[]; existingPhotos=[];
+    renderPhotoList();
+    currentEntryId=null;
+    const c=map.getCenter();
+    currentCenter={lat:c.lat, lon:c.lng};
+    document.getElementById('popupCoords').textContent=`${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`;
+    popupWindow.style.display='block';
+};
+
+// --- Сохранение ---
+saveBtn.onclick=async()=>{
+    const note=noteInput.value.trim();
+    const location=locationInput.value.trim();
+    const color=markerColorSelect.value;
+    if(!note || !location) return alert('Заполните обязательные поля!');
+    spinner.style.display='block';
+    const fd=new FormData();
+    fd.append('note',note);
+    fd.append('location',location);
+    fd.append('color',color);
+    existingPhotos.forEach(p=>fd.append('existingPhotos[]',p));
+    for(let f of selectedFiles){ fd.append('photos[]', await resizeImage(f)); }
+
+    const url = currentEntryId ? `https://91c99ab5bb3f.ngrok-free.app/entry/${currentEntryId}` : 'https://91c99ab5bb3f.ngrok-free.app/upload';
+    fetch(url,{method:'POST', body:fd})
+      .then(r=>r.json())
+      .then(d=>{
+          if(d.status==='success'){
+              alert('Сохранено!');
+              popupWindow.style.display='none';
+              selectedFiles=[]; existingPhotos=[];
+              // Если новая метка, добавить на карту
+              if(!currentEntryId){
+                  const e=d.entry;
+                  const marker=L.marker([e.lat,e.lon],{icon:getIcon(e.color)}).addTo(map);
+                  marker.entryId=e.id;
+                  marker.on('click',()=>openEditPopup(e.id));
+                  markersMap[e.id]=marker;
+              } else {
+                  // Если редактирование, обновить иконку
+                  markersMap[currentEntryId].setIcon(getIcon(color));
+              }
+          } else alert('Ошибка: '+d.message);
+      }).finally(()=>{spinner.style.display='none';});
+};
 </script>
 </body>
 </html>
