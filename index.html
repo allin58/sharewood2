@@ -275,8 +275,18 @@ async function openEditPopup(entryId){
 }
 
 /* ------------------------ */
-/* Сохранение               */
+/* Мгновенное изменение цвета */
+markerColorSelect.addEventListener('change', ()=>{
+    if(currentEntryId){
+        const idStr = String(currentEntryId);
+        if(markersMap[idStr]){
+            markersMap[idStr].setIcon(getIcon(markerColorSelect.value));
+        }
+    }
+});
+
 /* ------------------------ */
+/* Сохранение               */
 saveBtn.onclick=async()=>{
     const note=noteInput.value.trim(), location=locationInput.value.trim();
     if(!note || !location) return alert('Заполните обязательные поля!');
@@ -309,7 +319,6 @@ saveBtn.onclick=async()=>{
 
 /* ------------------------ */
 /* Удаление                 */
-/* ------------------------ */
 deleteBtn.onclick=async()=>{
     if(!currentEntryId) return;
     if(!confirm('Удалить эту метку?')) return;
