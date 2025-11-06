@@ -2,158 +2,199 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Leaflet с двухуровневыми метками</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini App Map Markers</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 <style>
-    #map { height: 100vh; width: 100%; position: relative; }
-    .crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin-left: -10px; margin-top: -10px; pointer-events: none; z-index: 999; }
-    .crosshair::before, .crosshair::after { content: ''; position: absolute; background: black; }
-    .crosshair::before { left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px; }
-    .crosshair::after { top: 50%; left: 0; width: 100%; height: 2px; margin-top: -1px; }
+html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
+#map {height:100vh; width:100%;}
+.crosshair {
+  position:absolute; top:50%; left:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px;
+  pointer-events:none; z-index:999;
+}
+.crosshair::before, .crosshair::after {content:''; position:absolute; background:black;}
+.crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
+.crosshair::after {top:50%; left:0; width:100%; height:2px; margin-top:-1px;}
+#newPointBtn {position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+  z-index:1000; padding:8px 16px; border:none; border-radius:6px; background-color:#28a745; color:white; cursor:pointer;}
 
-    #coords { position: absolute; bottom: 50px; left: 10px; background: rgba(255,255,255,0.9); padding: 6px 10px; border-radius: 6px; font-family: monospace; z-index: 1000; }
-    #newPointBtn { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 8px 16px; font-size: 16px; border: none; border-radius: 6px; background-color: #28a745; color: white; cursor: pointer; }
-
-    #popupWindow { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 1001; width: 340px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); padding: 16px; display: none; font-family: sans-serif; }
-    #popupWindow .closeBtn { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; cursor: pointer; }
-    #popupWindow .closeBtn::before, #popupWindow .closeBtn::after { content: ''; position: absolute; width: 2px; height: 100%; background: black; top: 0; left: 50%; transform: translateX(-50%) rotate(45deg); }
-    #popupWindow .closeBtn::after { transform: translateX(-50%) rotate(-45deg); }
-    #popupWindow label { display: block; margin-top: 10px; font-weight: bold; }
-    #popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"] { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
-    #popupWindow textarea { resize: vertical; }
-
-    #photoList { margin-top: 8px; max-height: 100px; overflow-y: auto; }
-    .photoItem { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 4px 6px; border-radius: 4px; margin-bottom: 4px; font-size: 13px; }
-    .removePhoto { color: red; cursor: pointer; font-weight: bold; }
-
-    #spinner { display: none; margin-top: 10px; text-align: center; }
-    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: inline-block; }
-    @keyframes spin { 0% {transform: rotate(0);} 100% {transform: rotate(360deg);} }
-
-    .popup-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: none; align-items: center; justify-content: center; border-radius: 8px; z-index: 1002; }
-    .popup-overlay.active { display: flex; }
+/* Fullscreen popup */
+#popupWindow {
+    position: fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:white;
+    display:none; overflow-y:auto; padding:16px; box-sizing:border-box;
+}
+#popupWindow label {display:block; margin-top:10px; font-weight:bold;}
+#popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {
+  width:100%; padding:6px; margin-top:4px; box-sizing:border-box; border-radius:4px; border:1px solid #ccc; font-size:14px;
+}
+#popupWindow textarea {resize:vertical;}
+#photoList {margin-top:8px; max-height:150px; overflow-y:auto; display:flex; flex-wrap:wrap;}
+.photoItem {position:relative; margin:4px;}
+.photoItem img {width:70px; height:70px; object-fit:cover; border-radius:4px;}
+.removePhoto {position:absolute; top:-5px; right:-5px; background:red; color:white; border-radius:50%; width:18px; height:18px; text-align:center; line-height:18px; font-weight:bold; cursor:pointer;}
+#popupClose {position:absolute; top:10px; right:10px; font-size:24px; cursor:pointer;}
+#saveBtn {margin-top:12px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer; width:100%;}
+#spinner {display:none; text-align:center; margin-top:10px;}
+.loader {border:4px solid #f3f3f3; border-top:4px solid #007bff; border-radius:50%; width:30px; height:30px; animation:spin 1s linear infinite; display:inline-block;}
+@keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div class="crosshair"></div>
-<div id="coords">Координаты: —</div>
-<button id="newPointBtn">Новая точка</button>
+<div id="newPointBtn">Новая точка</div>
 
 <div id="popupWindow">
-    <div class="closeBtn" title="Закрыть"></div>
-
-    <div><strong>Координаты:</strong> <div id="popupCoords">—</div></div>
-
-    <label for="locationInput">Локация <span style="color:red;">*</span>:</label>
-    <input type="text" id="locationInput" placeholder="Введите название локации" required>
-
-    <label for="noteInput">Запись:</label>
-    <textarea id="noteInput" rows="4" placeholder="Введите текст..."></textarea>
-
-    <label>Цвет метки:</label>
-    <div>
-        <label><input type="radio" name="markerColor" value="green" checked> Зелёный</label>
-        <label style="margin-left:15px;"><input type="radio" name="markerColor" value="red"> Красный</label>
-    </div>
-
-    <label for="photoInput">Фотография:</label>
-    <input type="file" id="photoInput" accept="image/*">
-    <div id="photoList"></div>
-
-    <button id="createBtn" style="margin-top:10px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer;">Создать</button>
-    <div id="spinner"><div class="loader"></div><div>Отправка...</div></div>
-    <div class="popup-overlay" id="popupOverlay">
-        <div><div class="loader"></div><div style="text-align:center;margin-top:6px;">Отправка...</div></div>
-    </div>
+  <div id="popupClose">×</div>
+  <div><strong>Координаты:</strong> <span id="popupCoords">—</span></div>
+  <label>Локация *</label><input type="text" id="locationInput">
+  <label>Запись *</label><textarea id="noteInput" rows="4"></textarea>
+  <label>Цвет метки</label>
+  <select id="markerColor">
+    <option value="green">Зелёный</option>
+    <option value="red">Красный</option>
+    <option value="blue">Синий</option>
+    <option value="yellow">Жёлтый</option>
+  </select>
+  <label>Фотографии</label>
+  <input type="file" id="photoInput" multiple accept="image/*" capture="environment">
+  <div id="photoList"></div>
+  <button id="saveBtn">Сохранить</button>
+  <div id="spinner"><div class="loader"></div><div>Отправка...</div></div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-const map = L.map('map', { center:[55.8892,37.445], zoom:12, attributionControl:false });
+// --- Карта ---
+const params = new URLSearchParams(window.location.search);
+const defaultLat = parseFloat(params.get("lat")) || 55.8892;
+const defaultLon = parseFloat(params.get("lon")) || 37.445;
+const map = L.map('map', { center:[defaultLat, defaultLon], zoom:12, attributionControl:false });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let currentCenter = { lat: defaultLat, lon: defaultLon };
+map.on('move', ()=>{ const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng}; });
 
-const coordsDiv=document.getElementById('coords');
-const popupCoordsDiv=document.getElementById('popupCoords');
-function updateCenterCoords(){
-    const c=map.getCenter();
-    coordsDiv.textContent=`Координаты: ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`;
-    popupCoordsDiv.textContent=`${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`;
-    window.currentCenter={lat:c.lat, lon:c.lng};
-}
-map.on('move', updateCenterCoords);
-map.on('moveend', updateCenterCoords);
-updateCenterCoords();
-
+// --- Popup ---
 const popupWindow=document.getElementById('popupWindow');
-const closeBtn=popupWindow.querySelector('.closeBtn');
+const popupClose=document.getElementById('popupClose');
 const noteInput=document.getElementById('noteInput');
 const locationInput=document.getElementById('locationInput');
+const markerColorSelect=document.getElementById('markerColor');
 const photoInput=document.getElementById('photoInput');
 const photoList=document.getElementById('photoList');
-const createBtn=document.getElementById('createBtn');
-const overlay=document.getElementById('popupOverlay');
-let selectedFile=null;
+const saveBtn=document.getElementById('saveBtn');
+const spinner=document.getElementById('spinner');
 
-photoInput.addEventListener('change',()=>{selectedFile=photoInput.files[0];});
+let selectedFiles=[];
+let currentEntryId=null;
+let existingPhotos=[];
 
-document.getElementById('newPointBtn').onclick=()=>{
-    noteInput.value='';
-    locationInput.value='';
-    photoInput.value='';
-    selectedFile=null;
-    document.querySelector('input[name="markerColor"][value="green"]').checked=true;
-    popupWindow.style.display='block';
-};
-
-closeBtn.onclick=()=>{popupWindow.style.display='none'; noteInput.value=''; locationInput.value=''; photoInput.value=''; selectedFile=null;};
-
-function lockUI(lock){overlay.classList.toggle('active',lock); createBtn.disabled=lock; noteInput.disabled=lock; locationInput.disabled=lock; photoInput.disabled=lock;}
-
-function addMarkerToMap(entry){
-    const iconUrl=entry.color==='red'
-        ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png'
-        : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png';
-    const icon=L.icon({iconUrl, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
-    const marker=L.marker([entry.lat,entry.lon],{icon}).addTo(map);
-    marker.bindPopup(entry.location);
+function renderPhotoList(){
+    photoList.innerHTML='';
+    existingPhotos.forEach((p,i)=>{
+        const div=document.createElement('div'); div.className='photoItem';
+        div.innerHTML=`<img src="https://91c99ab5bb3f.ngrok-free.app/uploads/${p}"><div class="removePhoto" data-i="${i}">×</div>`;
+        photoList.appendChild(div);
+    });
+    selectedFiles.forEach((file,i)=>{
+        const div=document.createElement('div'); div.className='photoItem';
+        div.innerHTML=`<img src="${URL.createObjectURL(file)}"><div class="removePhoto" data-i="s${i}">×</div>`;
+        photoList.appendChild(div);
+    });
+    photoList.querySelectorAll('.removePhoto').forEach(btn=>{
+        btn.onclick=()=>{
+            const id=btn.dataset.i;
+            if(id.startsWith('s')) selectedFiles.splice(parseInt(id.slice(1)),1);
+            else existingPhotos.splice(parseInt(id),1);
+            renderPhotoList();
+        };
+    });
 }
 
-fetch('https://91c99ab5bb3f.ngrok-free.app/entries').then(r=>r.json()).then(data=>{
-    if(data.status==='success') data.entries.forEach(addMarkerToMap);
-});
+// --- Сжатие изображений ---
+async function resizeImage(file,maxWidth=1024,maxHeight=1024,quality=0.7){
+    return new Promise(resolve=>{
+        const img=new Image();
+        img.onload=()=>{
+            const canvas=document.createElement('canvas');
+            const ratio=Math.min(maxWidth/img.width, maxHeight/img.height,1);
+            canvas.width=img.width*ratio; canvas.height=img.height*ratio;
+            canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+            canvas.toBlob(blob=>resolve(new File([blob], file.name, {type:'image/jpeg'})), 'image/jpeg', quality);
+        };
+        img.src=URL.createObjectURL(file);
+    });
+}
 
-createBtn.onclick=()=>{
-    const coords=window.currentCenter;
+// --- Добавление новых фото ---
+photoInput.addEventListener('change',()=>{selectedFiles=Array.from(photoInput.files); renderPhotoList();});
+
+// --- Закрытие popup ---
+popupClose.onclick=()=>{popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[];};
+
+// --- Сохранение метки ---
+saveBtn.onclick=async()=>{
     const note=noteInput.value.trim();
     const location=locationInput.value.trim();
-    if(!location) return alert('Введите название локации!');
-    if(!note) return alert('Введите текст записи!');
-    const color=document.querySelector('input[name="markerColor"]:checked')?.value||'green';
-
+    const color=markerColorSelect.value;
+    if(!note || !location) return alert('Заполните обязательные поля!');
+    spinner.style.display='block';
     const fd=new FormData();
-    fd.append('lat', coords.lat);
-    fd.append('lon', coords.lon);
-    fd.append('note', note);
-    fd.append('location', location);
-    fd.append('color', color);
-    if(selectedFile) fd.append('photos[]', selectedFile);
+    fd.append('note',note); fd.append('location',location); fd.append('color',color);
+    existingPhotos.forEach(p=>fd.append('existingPhotos[]',p));
+    for(let f of selectedFiles){ fd.append('photos[]', await resizeImage(f)); }
 
-    lockUI(true);
-    fetch('https://91c99ab5bb3f.ngrok-free.app/upload',{method:'POST', body:fd})
-      .then(r=>r.json())
-      .then(d=>{
-          if(d.status==='success'){
-              alert('Отправлено успешно!');
-              popupWindow.style.display='none';
-              noteInput.value=''; locationInput.value=''; photoInput.value=''; selectedFile=null;
-              addMarkerToMap(d.entry);
-          } else throw new Error(d.message||'Ошибка');
-      })
-      .catch(e=>alert('Ошибка: '+e.message))
-      .finally(()=>lockUI(false));
+    fetch(`https://91c99ab5bb3f.ngrok-free.app/entry/${currentEntryId}`,{method:'POST', body:fd})
+      .then(r=>r.json()).then(d=>{
+        if(d.status==='success'){
+            alert('Сохранено!');
+            popupWindow.style.display='none';
+            // Обновляем иконку метки
+            const m=markersMap[currentEntryId];
+            m.setIcon(getIcon(color));
+        } else alert('Ошибка: '+d.message);
+      }).finally(()=>{spinner.style.display='none'; selectedFiles=[]; existingPhotos=[];});
 };
+
+// --- Иконки ---
+function getIcon(color){
+    const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png'};
+    return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+}
+
+// --- Загрузка и отображение меток ---
+let markersMap={};
+async function loadMarkers(){
+    const r=await fetch('https://91c99ab5bb3f.ngrok-free.app/markers'); const data=await r.json();
+    if(data.status==='success'){
+        data.markers.forEach(entry=>{
+            const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
+            marker.entryId=entry.id;
+            marker.on('click',()=>openEditPopup(entry.id));
+            markersMap[entry.id]=marker;
+        });
+    }
+}
+loadMarkers();
+
+// --- Открытие редактируемого popup ---
+async function openEditPopup(entryId){
+    currentEntryId=entryId;
+    const r=await fetch(`https://91c99ab5bb3f.ngrok-free.app/entry/${entryId}`); const d=await r.json();
+    if(d.status!=='success') return;
+    const entry=d.entry;
+    document.getElementById('popupCoords').textContent=`${entry.lat.toFixed(6)}, ${entry.lon.toFixed(6)}`;
+    noteInput.value=entry.note;
+    locationInput.value=entry.location;
+    markerColorSelect.value=entry.color;
+    existingPhotos=entry.photos.slice();
+    selectedFiles=[];
+    renderPhotoList();
+    popupWindow.style.display='block';
+}
 </script>
 </body>
 </html>
