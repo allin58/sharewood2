@@ -31,8 +31,17 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #statusDot {width:10px; height:10px; border-radius:50%; background:red; margin-right:6px;}
 
 #popupWindow {
-    position: fixed; top:0; left:0; width:100%; height:100%; z-index:2000; background:white;
-    display:none; overflow-y:auto; padding:16px; box-sizing:border-box;
+    position: fixed;
+    top:60px;
+    left:0;
+    width:100%;
+    height: calc(100% - 60px);
+    z-index:2000;
+    background:white;
+    display:none;
+    overflow-y:auto;
+    padding:16px;
+    box-sizing:border-box;
 }
 #popupWindow label {display:block; margin-top:10px; font-weight:bold;}
 #popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {
