@@ -8,34 +8,30 @@
 <style>
 html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #map {height:100vh; width:100%;}
-.crosshair {
-  position:absolute; top:50%; left:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px;
-  pointer-events:none; z-index:999;
-}
-.crosshair::before, .crosshair::after {content:''; position:absolute; background:black;}
-.crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
-.crosshair::after {top:50%; left:0; width:100%; height:2px; margin-top:-1px;}
-#newPointBtn {
-  position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
-  z-index:1000; padding:8px 16px; border:none; border-radius:6px;
-  background-color:#28a745; color:white; cursor:pointer;
-}
 
-/* Индикатор соединения */
+/* ---- Индикатор соединения ---- */
 #connectionStatus {
-    position:fixed; top:10px; right:10px; z-index:2500;
-    background:white; padding:6px 10px; border-radius:6px;
-    font-size:14px; box-shadow:0 0 4px rgba(0,0,0,0.2);
-    display:flex; align-items:center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #28a745;
+    color: white;
+    padding: 6px 10px;
+    text-align: center;
+    z-index: 3000;
+    font-size: 14px;
+    display: none;
+    font-weight: bold;
 }
-#statusDot {width:10px; height:10px; border-radius:50%; background:red; margin-right:6px;}
 
+/* ---- Попап ниже индикатора ---- */
 #popupWindow {
     position: fixed;
-    top:60px;
+    top: 40px; /* ниже индикатора */
     left:0;
     width:100%;
-    height: calc(100% - 60px);
+    height:calc(100% - 40px);
     z-index:2000;
     background:white;
     display:none;
@@ -43,11 +39,27 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
     padding:16px;
     box-sizing:border-box;
 }
+
+.crosshair {
+  position:absolute; top:50%; left:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px;
+  pointer-events:none; z-index:999;
+}
+.crosshair::before, .crosshair::after {content:''; position:absolute; background:black;}
+.crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
+.crosshair::after {top:50%; left:0; width:100%; height:2px; margin-top:-1px;}
+
+#newPointBtn {
+  position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+  z-index:1000; padding:8px 16px; border:none; border-radius:6px;
+  background-color:#28a745; color:white; cursor:pointer;
+}
+
 #popupWindow label {display:block; margin-top:10px; font-weight:bold;}
 #popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {
   width:100%; padding:6px; margin-top:4px; box-sizing:border-box; border-radius:4px; border:1px solid #ccc; font-size:14px;
 }
 #popupWindow textarea {resize:vertical;}
+
 #photoList {margin-top:8px; max-height:150px; overflow-y:auto; display:flex; flex-wrap:wrap;}
 .photoItem {position:relative; margin:4px;}
 .photoItem img {width:70px; height:70px; object-fit:cover; border-radius:4px; cursor:pointer;}
@@ -55,25 +67,28 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #popupClose {position:absolute; top:10px; right:10px; font-size:24px; cursor:pointer;}
 #saveBtn, #deleteBtn {margin-top:12px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer; width:100%;}
 #deleteBtn {background:red; margin-top:6px;}
+
 #spinner {display:none; text-align:center; margin-top:10px;}
 .loader {border:4px solid #f3f3f3; border-top:4px solid #007bff; border-radius:50%; width:30px; height:30px; animation:spin 1s linear infinite; display:inline-block;}
+
 #photoModal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:3000;}
 #photoModal img {max-width:90%; max-height:90%; border-radius:6px;}
 #photoModal span {position:absolute; top:20px; right:30px; font-size:30px; color:white; cursor:pointer;}
+
 @keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
+
+/* отступ карты вниз из-за индикатора */
+body {padding-top: 30px;}
+
 </style>
 </head>
 <body>
 
+<div id="connectionStatus">Соединение с сервером установлено</div>
+
 <div id="map"></div>
 <div class="crosshair"></div>
 <div id="newPointBtn">Новая точка</div>
-
-<!-- Индикатор соединения -->
-<div id="connectionStatus">
-  <span id="statusDot"></span>
-  <span id="statusText">Проверка соединения...</span>
-</div>
 
 <div id="popupWindow">
   <div id="popupClose">×</div>
@@ -100,40 +115,36 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 
-// =========================
-//     АДРЕС СЕРВЕРА
-// =========================
+/* -------------------------- */
+/*      🔧 ГЛАВНАЯ НАСТРОЙКА   */
+/* -------------------------- */
 const SERVER_URL = "https://91c99ab5bb3f.ngrok-free.app";
 
+/* Индикатор соединения */
+const connectionStatus = document.getElementById("connectionStatus");
 
-// ===== Индикатор соединения =====
-const statusDot = document.getElementById("statusDot");
-const statusText = document.getElementById("statusText");
-
-async function checkConnection() {
+async function pingServer() {
     try {
         const r = await fetch(`${SERVER_URL}/ping`, { method: "GET" });
         const d = await r.json();
+
         if (d.status === "success") {
-            statusDot.style.background = "green";
-            statusText.textContent = "Соединение установлено";
-            return true;
+            connectionStatus.style.display = "block";
+            connectionStatus.style.background = "#28a745";
+            connectionStatus.textContent = "Соединение с сервером установлено";
         }
-    } catch(e) {}
-
-    statusDot.style.background = "red";
-    statusText.textContent = "Нет соединения";
-    return false;
+    } catch (err) {
+        connectionStatus.style.display = "block";
+        connectionStatus.style.background = "#d9534f";
+        connectionStatus.textContent = "Нет соединения с сервером";
+    }
 }
+setInterval(pingServer, 5000);
+pingServer();
 
-checkConnection();
-setInterval(checkConnection, 10000);
-
-
-// =========================
-// ЛОГИКА КАРТЫ
-// =========================
-
+/* -------------------------- */
+/*         КАРТА              */
+/* -------------------------- */
 const params = new URLSearchParams(window.location.search);
 const defaultLat = parseFloat(params.get("lat")) || 54.1032;
 const defaultLon = parseFloat(params.get("lon")) || 28.3186;
@@ -144,6 +155,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 let currentCenter = { lat: defaultLat, lon: defaultLon };
 map.on('move', ()=>{ const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng}; });
 
+/* -------------------------- */
+/*           UI               */
+/* -------------------------- */
 const popupWindow=document.getElementById('popupWindow');
 const popupClose=document.getElementById('popupClose');
 const noteInput=document.getElementById('noteInput');
@@ -160,22 +174,27 @@ const closePhotoModal=document.getElementById('closePhotoModal');
 let selectedFiles=[], currentEntryId=null, existingPhotos=[];
 let markersMap={};
 
+/* -------------------------- */
+/*     Работа с фото          */
+/* -------------------------- */
 
-// ---------- ФОТО ----------
 function renderPhotoList(){
     photoList.innerHTML='';
+
     existingPhotos.forEach((p,i)=>{
         const div=document.createElement('div'); div.className='photoItem';
         div.innerHTML=`<img src="${SERVER_URL}/uploads/${p}" data-src="${p}">
                          <div class="removePhoto" data-i="${i}">×</div>`;
         photoList.appendChild(div);
     });
+
     selectedFiles.forEach((file,i)=>{
         const div=document.createElement('div'); div.className='photoItem';
         div.innerHTML=`<img src="${URL.createObjectURL(file)}">
                          <div class="removePhoto" data-i="s${i}">×</div>`;
         photoList.appendChild(div);
     });
+
     photoList.querySelectorAll('.removePhoto').forEach(btn=>{
         btn.onclick=()=>{
             const id=btn.dataset.i;
@@ -184,10 +203,10 @@ function renderPhotoList(){
             renderPhotoList();
         };
     });
+
     photoList.querySelectorAll('img').forEach(img=>{
         img.onclick=()=>{
-            let src = img.dataset.src ?
-                `${SERVER_URL}/uploads/${img.dataset.src}` : img.src;
+            const src = img.dataset.src ? `${SERVER_URL}/uploads/${img.dataset.src}` : img.src;
             photoModal.querySelector('img').src = src;
             photoModal.style.display='flex';
         };
@@ -212,83 +231,87 @@ photoInput.addEventListener('change',()=>{selectedFiles=Array.from(photoInput.fi
 popupClose.onclick=()=>{popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[];};
 closePhotoModal.onclick=()=>{photoModal.style.display='none';};
 
-
-// ---------- ИКОНКИ ----------
+/* -------------------------- */
+/*       Иконки               */
+/* -------------------------- */
 function getIcon(color){
-    const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-                yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png'};
-    return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+    const urls={
+        green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+        red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+        blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+        yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png'
+    };
+    return L.icon({
+        iconUrl:urls[color]||urls.green,
+        shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize:[25,41], iconAnchor:[12,41]
+    });
 }
 
+/* -------------------------- */
+/*       Маркеры              */
+/* -------------------------- */
 
-// ---------- МАРКЕРЫ ----------
 function addMarkerToMap(entry){
-    if(markersMap[entry.id]) return;
+    if(markersMap[entry.id]) map.removeLayer(markersMap[entry.id]);
+
     const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
     marker.entryId=entry.id;
     marker.on('click',()=>openEditPopup(entry.id));
     markersMap[entry.id]=marker;
 }
 
+/* -------------------------- */
+/*    Загрузка маркеров       */
+/* -------------------------- */
 
-// ---------- ЗАГРУЗКА ----------
 async function loadMarkers() {
-    if (!(await checkConnection())) return;
     try {
         const r = await fetch(`${SERVER_URL}/markers`);
         const data = await r.json();
+
         if (data.status === 'success') {
             data.markers.forEach(addMarkerToMap);
         }
     } catch (err) {
-        console.error('Ошибка при загрузке маркеров:', err);
+        console.error('Ошибка загрузки маркеров:', err);
     }
 }
 
+/* -------------------------- */
+/* 🔥 FIX: корректное обновление */
+/* -------------------------- */
+
 async function refreshMarkers() {
-    if (!(await checkConnection())) return;
     try {
         const r = await fetch(`${SERVER_URL}/markers`);
         const data = await r.json();
         if (data.status !== 'success') return;
 
-        const newMarkers = {};
-        data.markers.forEach(markerData => {
-            if (currentEntryId === markerData.id) return;
-
-            if (markersMap[markerData.id]) {
-                const marker = markersMap[markerData.id];
-                marker.setLatLng([markerData.lat, markerData.lon]);
-                marker.setIcon(getIcon(markerData.color));
-                newMarkers[markerData.id] = marker;
-            } else {
-                const marker = L.marker([markerData.lat, markerData.lon], {icon: getIcon(markerData.color)}).addTo(map);
-                marker.entryId = markerData.id;
-                marker.on('click', () => openEditPopup(markerData.id));
-                newMarkers[markerData.id] = marker;
-            }
+        const incoming = {};
+        data.markers.forEach(entry => {
+            incoming[entry.id] = entry;
+            addMarkerToMap(entry);
         });
 
         for (let id in markersMap) {
-            if (!newMarkers[id] && id !== currentEntryId) {
+            if (!incoming[id]) {
                 map.removeLayer(markersMap[id]);
+                delete markersMap[id];
             }
         }
 
-        markersMap = {...markersMap, ...newMarkers};
-
     } catch (err) {
-        console.error('Ошибка при обновлении маркеров:', err);
+        console.error("Ошибка обновления:", err);
     }
 }
 
 loadMarkers();
 setInterval(refreshMarkers, 30000);
 
-
-// ---------- НОВАЯ ТОЧКА ----------
+/* -------------------------- */
+/*      Новая точка           */
+/* -------------------------- */
 document.getElementById('newPointBtn').onclick = ()=>{
     currentEntryId=null; noteInput.value=''; locationInput.value=''; markerColorSelect.value='green';
     selectedFiles=[]; existingPhotos=[]; renderPhotoList();
@@ -297,45 +320,41 @@ document.getElementById('newPointBtn').onclick = ()=>{
     popupWindow.style.display='block';
 };
 
-
-// ---------- РЕДАКТИРОВАНИЕ ----------
+/* -------------------------- */
+/*     Редактирование         */
+/* -------------------------- */
 async function openEditPopup(entryId){
     currentEntryId=entryId;
-
-    if (!(await checkConnection())) {
-        alert("Нет соединения с сервером!");
-        return;
-    }
-
     const r=await fetch(`${SERVER_URL}/entry/${entryId}`);
     const d=await r.json();
     if(d.status!=='success') return;
 
     const entry=d.entry;
     document.getElementById('popupCoords').textContent=`${entry.lat.toFixed(6)}, ${entry.lon.toFixed(6)}`;
-    noteInput.value=entry.note; locationInput.value=entry.location; markerColorSelect.value=entry.color;
-    existingPhotos=entry.photos.slice(); selectedFiles=[];
+    noteInput.value=entry.note;
+    locationInput.value=entry.location;
+    markerColorSelect.value=entry.color;
+    existingPhotos=entry.photos.slice();
+    selectedFiles=[];
+
     renderPhotoList();
     deleteBtn.style.display='block';
     popupWindow.style.display='block';
 }
 
-
-// ---------- СОХРАНЕНИЕ ----------
+/* -------------------------- */
+/*        Сохранение          */
+/* -------------------------- */
 saveBtn.onclick = async()=>{
     const note=noteInput.value.trim();
     const location=locationInput.value.trim();
     if(!note || !location) return alert('Заполните обязательные поля!');
 
-    if (!(await checkConnection())) {
-        alert("Нет соединения с сервером!");
-        return;
-    }
-
     const color=markerColorSelect.value;
-    spinner.style.display='block';
 
+    spinner.style.display='block';
     const fd=new FormData();
+
     if(!currentEntryId){
         fd.append('lat', currentCenter.lat);
         fd.append('lon', currentCenter.lon);
@@ -351,46 +370,50 @@ saveBtn.onclick = async()=>{
         fd.append('photos[]', await resizeImage(f));
     }
 
-    const url = currentEntryId ?
-        `${SERVER_URL}/entry/${currentEntryId}` :
-        `${SERVER_URL}/upload`;
+    const url = currentEntryId
+        ? `${SERVER_URL}/entry/${currentEntryId}`
+        : `${SERVER_URL}/upload`;
 
-    fetch(url,{method:'POST', body:fd})
-      .then(r=>r.json()).then(d=>{
+    try {
+        const r = await fetch(url,{method:'POST', body:fd});
+        const d = await r.json();
+
         if(d.status==='success'){
             alert('Сохранено!');
             popupWindow.style.display='none';
             selectedFiles=[]; existingPhotos=[]; renderPhotoList();
 
-            if(!currentEntryId) addMarkerToMap(d.entry);
-            else markersMap[currentEntryId].setIcon(getIcon(color));
-
+            addMarkerToMap(d.entry);
         } else alert('Ошибка: '+d.message);
-      }).finally(()=>spinner.style.display='none');
-};
 
-
-// ---------- УДАЛЕНИЕ ----------
-deleteBtn.onclick = async ()=>{
-    if(!currentEntryId) return;
-
-    if (!(await checkConnection())) {
-        alert("Нет соединения с сервером!");
-        return;
+    } catch (err) {
+        alert("Ошибка соединения с сервером");
     }
 
+    spinner.style.display='none';
+};
+
+/* -------------------------- */
+/*         Удаление           */
+/* -------------------------- */
+deleteBtn.onclick = async()=>{
+    if(!currentEntryId) return;
     if(!confirm('Удалить эту метку?')) return;
 
-    fetch(`${SERVER_URL}/entry/${currentEntryId}`, {method:'DELETE'})
-      .then(r=>r.json()).then(d=>{
-          if(d.status==='success'){
-              alert('Удалено!');
-              popupWindow.style.display='none';
-              map.removeLayer(markersMap[currentEntryId]);
-              delete markersMap[currentEntryId];
-              currentEntryId=null;
-          } else alert('Ошибка: '+d.message);
-      });
+    try {
+        const r = await fetch(`${SERVER_URL}/entry/${currentEntryId}`, {method:'DELETE'});
+        const d = await r.json();
+
+        if(d.status==='success'){
+            alert('Удалено!');
+            popupWindow.style.display='none';
+            map.removeLayer(markersMap[currentEntryId]);
+            delete markersMap[currentEntryId];
+            currentEntryId=null;
+        }
+    } catch (err) {
+        alert("Ошибка соединения с сервером");
+    }
 };
 
 </script>
