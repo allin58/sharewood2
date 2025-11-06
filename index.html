@@ -89,8 +89,8 @@ if(isTelegram){
     Telegram.WebApp.ready();
     authData = Telegram.WebApp.initData;
 } else {
-    const username = prompt("Введите логин:", "admin");
-    const password = prompt("Введите пароль:", "secret123");
+    const username = prompt("Введите логин:", "");
+    const password = prompt("Введите пароль:", "");
     basicAuth = 'Basic ' + btoa(username + ':' + password);
 }
 
