@@ -6,7 +6,7 @@
 <title>Mini App Map Markers</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 <style>
-html, body {margin:0; padding:0; height:100%; font-family:sans-serif; padding-bottom:200px;} /* padding для клавиатуры */
+html, body {margin:0; padding:0; height:100%; font-family:sans-serif; padding-bottom:200px;}
 #map {height:100vh; width:100%;}
 
 .crosshair {
@@ -70,7 +70,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif; padding-bo
     <option value="yellow">Жёлтый</option>
   </select>
   <label>Фотографии:</label>
-  <input type="file" id="photoInput" multiple>
+  <input type="file" id="photoInput" multiple accept="image/*" capture="environment">
   <div id="photoList"></div>
   <button id="createBtn" style="margin-top:10px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer;">Создать</button>
   <div id="spinner"><div class="loader"></div><div>Отправка...</div></div>
@@ -79,7 +79,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif; padding-bo
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-// Получаем координаты из URL
+// ---------- Настройка карты ----------
 const params = new URLSearchParams(window.location.search);
 const defaultLat = parseFloat(params.get("lat")) || 55.8892;
 const defaultLon = parseFloat(params.get("lon")) || 37.445;
@@ -89,7 +89,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
 const coordsDiv = document.getElementById('popupCoords');
 let currentCenter = { lat: defaultLat, lon: defaultLon };
-
 function updateCenter() {
     const c = map.getCenter();
     coordsDiv.textContent = `${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`;
@@ -99,7 +98,7 @@ map.on('move', updateCenter);
 map.on('moveend', updateCenter);
 updateCenter();
 
-// Popup и формы
+// ---------- Popup и формы ----------
 const popupWindow=document.getElementById('popupWindow');
 const closeBtn=popupWindow.querySelector('.closeBtn');
 const noteInput=document.getElementById('noteInput');
@@ -110,6 +109,26 @@ const createBtn=document.getElementById('createBtn');
 const overlay=document.getElementById('popupOverlay');
 let selectedFiles=[];
 
+// ---------- Сжатие изображений перед отправкой ----------
+async function resizeImage(file, maxWidth=1024, maxHeight=1024, quality=0.7){
+    return new Promise((resolve)=>{
+        const img=new Image();
+        img.onload=()=>{
+            const canvas=document.createElement('canvas');
+            const ratio=Math.min(maxWidth/img.width, maxHeight/img.height, 1);
+            canvas.width = img.width * ratio;
+            canvas.height = img.height * ratio;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob=>{
+                resolve(new File([blob], file.name, {type:'image/jpeg'}));
+            }, 'image/jpeg', quality);
+        };
+        img.src=URL.createObjectURL(file);
+    });
+}
+
+// ---------- Работа с выбранными файлами ----------
 function renderPhotoList(){
     photoList.innerHTML='';
     selectedFiles.forEach((file,i)=>{
@@ -132,15 +151,22 @@ function ensureFieldVisible(input){
 ensureFieldVisible(locationInput);
 ensureFieldVisible(noteInput);
 
-photoInput.addEventListener('change', ()=>{selectedFiles=Array.from(photoInput.files); renderPhotoList();});
+// Выбор нескольких файлов
+photoInput.addEventListener('change', ()=>{
+    selectedFiles=Array.from(photoInput.files);
+    renderPhotoList();
+});
 
+// ---------- Управление popup ----------
 document.getElementById('newPointBtn').onclick=()=>{
     noteInput.value=''; locationInput.value=''; photoInput.value=''; selectedFiles=[]; renderPhotoList();
     document.getElementById('markerColor').value='green';
     popupWindow.style.display='block';
 };
-
-closeBtn.onclick=()=>{noteInput.value=''; locationInput.value=''; photoInput.value=''; selectedFiles=[]; renderPhotoList(); popupWindow.style.display='none';};
+closeBtn.onclick=()=>{
+    noteInput.value=''; locationInput.value=''; photoInput.value=''; selectedFiles=[]; renderPhotoList();
+    popupWindow.style.display='none';
+};
 
 function lockUI(lock){overlay.classList.toggle('active', lock); createBtn.disabled=lock; noteInput.disabled=lock; locationInput.disabled=lock; photoInput.disabled=lock;}
 
@@ -154,8 +180,8 @@ function getIcon(color){
     return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
 }
 
+// ---------- Загрузка меток ----------
 let markersMap={};
-
 function addMarkerToMap(entry){
     const marker=L.marker([entry.lat,entry.lon], {icon:getIcon(entry.color)}).addTo(map);
     marker.entryId = entry.id;
@@ -167,27 +193,58 @@ function addMarkerToMap(entry){
     markersMap[entry.id] = marker;
 }
 
-// Загрузка всех меток
 fetch('https://91c99ab5bb3f.ngrok-free.app/markers')
   .then(r=>r.json())
   .then(data=>{if(data.status==='success'){data.markers.forEach(addMarkerToMap);}});
 
-// Создание новой метки
-createBtn.onclick=()=>{
+// ---------- Создание новой метки ----------
+createBtn.onclick=async()=>{
     const note=noteInput.value.trim();
     const location=locationInput.value.trim();
     if(!note || !location) return alert('Заполните обязательные поля!');
     const color=document.getElementById('markerColor').value;
-    const fd=new FormData();
-    fd.append('lat', currentCenter.lat); fd.append('lon', currentCenter.lon);
-    fd.append('note', note); fd.append('location', location); fd.append('color', color);
-    selectedFiles.forEach(f=>fd.append('photos[]', f));
+
     lockUI(true);
+    const fd=new FormData();
+    fd.append('lat', currentCenter.lat);
+    fd.append('lon', currentCenter.lon);
+    fd.append('note', note);
+    fd.append('location', location);
+    fd.append('color', color);
+
+    // Сжимаем и добавляем все фото
+    for(let f of selectedFiles){
+        const resized=await resizeImage(f);
+        fd.append('photos[]', resized);
+    }
+
     fetch('https://91c99ab5bb3f.ngrok-free.app/upload',{method:'POST', body:fd})
       .then(r=>r.json())
-      .then(d=>{if(d.status==='success'){alert('Создано'); popupWindow.style.display='none'; noteInput.value=''; locationInput.value=''; photoInput.value=''; selectedFiles=[]; renderPhotoList(); addMarkerToMap(d.entry); }})
+      .then(d=>{
+          if(d.status==='success'){
+              alert('Создано!');
+              popupWindow.style.display='none';
+              noteInput.value=''; locationInput.value=''; photoInput.value=''; selectedFiles=[]; renderPhotoList();
+              addMarkerToMap(d.entry);
+          } else {alert('Ошибка: '+d.message);}
+      })
       .finally(()=>lockUI(false));
 };
+
+// ---------- Всплывающий popup с деталями метки ----------
+function showDetailPopup(marker, entry){
+    // можно добавить редактирование цвета, записи и фото
+    const content = document.createElement('div');
+    content.innerHTML=`
+        <strong>Локация:</strong> ${entry.location}<br>
+        <strong>Координаты:</strong> ${entry.lat.toFixed(6)}, ${entry.lon.toFixed(6)}<br>
+        <strong>Дата:</strong> ${new Date(entry.created_at).toLocaleString()}<br>
+        <strong>Запись:</strong><br>${entry.note}<br>
+        ${entry.photos.length ? '<strong>Фотографии:</strong><br>' : ''}
+        ${entry.photos.map(f=>`<a href="https://91c99ab5bb3f.ngrok-free.app/uploads/${f}" target="_blank"><img src="https://91c99ab5bb3f.ngrok-free.app/uploads/${f}" style="width:50px;height:50px;margin:2px;"></a>`).join('')}
+    `;
+    marker.bindPopup(content).openPopup();
+}
 </script>
 </body>
 </html>
