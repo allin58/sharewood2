@@ -192,8 +192,18 @@ saveBtn.onclick = async()=>{
 
     spinner.style.display='block';
     const fd=new FormData();
-    fd.append('note',note); fd.append('location',location); fd.append('color',color);
+
+    // добавляем координаты для новой точки
+    if(!currentEntryId){
+        fd.append('lat', currentCenter.lat);
+        fd.append('lon', currentCenter.lon);
+    }
+
+    fd.append('note',note);
+    fd.append('location',location);
+    fd.append('color',color);
     existingPhotos.forEach(p=>fd.append('existingPhotos[]',p));
+
     for(let f of selectedFiles){ fd.append('photos[]', await resizeImage(f)); }
 
     const url = currentEntryId ? `https://91c99ab5bb3f.ngrok-free.app/entry/${currentEntryId}` : 'https://91c99ab5bb3f.ngrok-free.app/upload';
