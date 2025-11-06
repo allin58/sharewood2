@@ -96,16 +96,19 @@ const closePhotoModal=document.getElementById('closePhotoModal');
 let selectedFiles=[], currentEntryId=null, existingPhotos=[];
 let markersMap={};
 
+// ---------- Работа с фотографиями ----------
 function renderPhotoList(){
     photoList.innerHTML='';
     existingPhotos.forEach((p,i)=>{
         const div=document.createElement('div'); div.className='photoItem';
-        div.innerHTML=`<img src="https://91c99ab5bb3f.ngrok-free.app/uploads/${p}" data-src="${p}"><div class="removePhoto" data-i="${i}">×</div>`;
+        div.innerHTML=`<img src="https://91c99ab5bb3f.ngrok-free.app/uploads/${p}" data-src="${p}">
+                         <div class="removePhoto" data-i="${i}">×</div>`;
         photoList.appendChild(div);
     });
     selectedFiles.forEach((file,i)=>{
         const div=document.createElement('div'); div.className='photoItem';
-        div.innerHTML=`<img src="${URL.createObjectURL(file)}"><div class="removePhoto" data-i="s${i}">×</div>`;
+        div.innerHTML=`<img src="${URL.createObjectURL(file)}">
+                         <div class="removePhoto" data-i="s${i}">×</div>`;
         photoList.appendChild(div);
     });
     photoList.querySelectorAll('.removePhoto').forEach(btn=>{
@@ -116,10 +119,10 @@ function renderPhotoList(){
             renderPhotoList();
         };
     });
-    // просмотр фото
     photoList.querySelectorAll('img').forEach(img=>{
         img.onclick=()=>{
-            let src = img.dataset.src ? `https://91c99ab5bb3f.ngrok-free.app/uploads/${img.dataset.src}` : img.src;
+            let src = img.dataset.src ? 
+                `https://91c99ab5bb3f.ngrok-free.app/uploads/${img.dataset.src}` : img.src;
             photoModal.querySelector('img').src = src;
             photoModal.style.display='flex';
         };
@@ -155,18 +158,66 @@ function getIcon(color){
 
 // ---------- Работа с маркерами ----------
 function addMarkerToMap(entry){
+    if(markersMap[entry.id]) return;
     const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
     marker.entryId=entry.id;
     marker.on('click',()=>openEditPopup(entry.id));
     markersMap[entry.id]=marker;
 }
 
-// ---------- Загрузка меток ----------
-async function loadMarkers(){
-    const r=await fetch('https://91c99ab5bb3f.ngrok-free.app/markers'); const data=await r.json();
-    if(data.status==='success'){ data.markers.forEach(addMarkerToMap); }
+// ---------- Загрузка и обновление маркеров ----------
+async function loadMarkers() {
+    try {
+        const r = await fetch('https://91c99ab5bb3f.ngrok-free.app/markers');
+        const data = await r.json();
+        if (data.status === 'success') {
+            data.markers.forEach(addMarkerToMap);
+        }
+    } catch (err) {
+        console.error('Ошибка при загрузке маркеров:', err);
+    }
 }
+
+async function refreshMarkers() {
+    try {
+        const r = await fetch('https://91c99ab5bb3f.ngrok-free.app/markers');
+        const data = await r.json();
+        if (data.status !== 'success') return;
+
+        const newMarkers = {};
+        data.markers.forEach(markerData => {
+            if (currentEntryId === markerData.id) return; // редактируемый маркер пропускаем
+
+            if (markersMap[markerData.id]) {
+                const marker = markersMap[markerData.id];
+                marker.setLatLng([markerData.lat, markerData.lon]);
+                marker.setIcon(getIcon(markerData.color));
+                newMarkers[markerData.id] = marker;
+            } else {
+                const marker = L.marker([markerData.lat, markerData.lon], {icon: getIcon(markerData.color)}).addTo(map);
+                marker.entryId = markerData.id;
+                marker.on('click', () => openEditPopup(markerData.id));
+                newMarkers[markerData.id] = marker;
+            }
+        });
+
+        // удаляем исчезнувшие маркеры
+        for (let id in markersMap) {
+            if (!newMarkers[id] && id !== currentEntryId) {
+                map.removeLayer(markersMap[id]);
+            }
+        }
+
+        markersMap = {...markersMap, ...newMarkers};
+
+    } catch (err) {
+        console.error('Ошибка при обновлении маркеров:', err);
+    }
+}
+
+// инициализация
 loadMarkers();
+setInterval(refreshMarkers, 30000); // обновляем каждые 30 секунд
 
 // ---------- Новая точка ----------
 document.getElementById('newPointBtn').onclick = ()=>{
