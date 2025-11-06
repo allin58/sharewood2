@@ -27,7 +27,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
     height: 12px;
     border-radius: 50%;
     margin-right: 6px;
-    background: #d9534f; /* красная по умолчанию */
+    background: #d9534f;
 }
 
 /* Попап */
@@ -250,11 +250,12 @@ function getIcon(color){
 }
 
 function addMarkerToMap(entry){
-    if(markersMap[entry.id]) return;
+    const idStr = String(entry.id);
+    if(markersMap[idStr]) return;
     const marker = L.marker([entry.lat, entry.lon], {icon: getIcon(entry.color)}).addTo(map);
-    marker.entryId = entry.id;
-    marker.on('click', ()=>openEditPopup(entry.id));
-    markersMap[entry.id] = marker;
+    marker.entryId = idStr;
+    marker.on('click', ()=>openEditPopup(idStr));
+    markersMap[idStr] = marker;
 }
 
 async function loadMarkers(){
@@ -275,11 +276,13 @@ async function refreshMarkers(){
         const d = await r.json();
         if(d.status !== 'success') return;
 
-        const serverIds = new Set(d.markers.map(m => m.id));
+        const serverIds = new Set(d.markers.map(m => String(m.id)));
 
+        // Добавляем или обновляем
         d.markers.forEach(m => {
-            if(markersMap[m.id]){
-                const mk = markersMap[m.id];
+            const idStr = String(m.id);
+            if(markersMap[idStr]){
+                const mk = markersMap[idStr];
                 mk.setLatLng([m.lat, m.lon]);
                 mk.setIcon(getIcon(m.color));
             } else {
@@ -287,8 +290,9 @@ async function refreshMarkers(){
             }
         });
 
-        Object.keys(markersMap).forEach(id => {
-            if(!serverIds.has(id)){
+        // Удаляем маркеры, которых нет на сервере и которые не редактируются
+        Object.keys(markersMap).forEach(id=>{
+            if(!serverIds.has(id) && id !== String(currentEntryId)){
                 map.removeLayer(markersMap[id]);
                 delete markersMap[id];
             }
@@ -348,11 +352,15 @@ saveBtn.onclick=async()=>{
         const d=await r.json();
         if(d.status==='success'){
             alert('Сохранено!'); popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[]; renderPhotoList();
-            if(!currentEntryId) addMarkerToMap(d.entry); 
+            const entry = d.entry;
+            const idStr = String(entry.id);
+            if(!currentEntryId) addMarkerToMap(entry);
             else {
-                markersMap[currentEntryId].setIcon(getIcon(color));
-                markersMap[currentEntryId].setLatLng([d.entry.lat, d.entry.lon]);
+                const mk = markersMap[idStr];
+                mk.setIcon(getIcon(color));
+                mk.setLatLng([entry.lat, entry.lon]);
             }
+            currentEntryId = null;
         } else alert('Ошибка: '+d.message);
     }catch(err){ alert('Ошибка соединения с сервером'); }
     finally{ spinner.style.display='none'; }
@@ -369,7 +377,10 @@ deleteBtn.onclick=async()=>{
         const d=await r.json();
         if(d.status==='success'){
             alert('Удалено!'); popupWindow.style.display='none';
-            map.removeLayer(markersMap[currentEntryId]); delete markersMap[currentEntryId]; currentEntryId=null;
+            const idStr = String(currentEntryId);
+            map.removeLayer(markersMap[idStr]);
+            delete markersMap[idStr];
+            currentEntryId=null;
         } else alert('Ошибка: '+d.message);
     }catch(err){ alert('Ошибка соединения с сервером'); }
 };
