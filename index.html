@@ -8,16 +8,13 @@
 <style>
 html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #map {height:100vh; width:100%;}
-
 #connectionStatus {position: fixed; top: 10px; right: 10px; z-index: 3000; display:flex; align-items:center; font-size:14px; font-weight:bold; pointer-events:none;}
 #connectionDot {width:12px; height:12px; border-radius:50%; margin-right:6px; background:#d9534f;}
-
 #popupWindow {position: fixed; top:40px; left:0; width:100%; height:calc(100%-40px); z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
 .crosshair {position:absolute; top:50%; left:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:999;}
 .crosshair::before, .crosshair::after {content:''; position:absolute; background:black;}
 .crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
 .crosshair::after {top:50%; left:0; width:100%; height:2px; margin-top:-1px;}
-
 #newPointBtn {position:absolute; bottom:10px; left:50%; transform:translateX(-50%); z-index:1000; padding:8px 16px; border:none; border-radius:6px; background-color:#28a745; color:white; cursor:pointer;}
 #popupWindow label {display:block; margin-top:10px; font-weight:bold;}
 #popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {width:100%; padding:6px; margin-top:4px; box-sizing:border-box; border-radius:4px; border:1px solid #ccc; font-size:14px;}
@@ -71,32 +68,32 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 <div id="photoModal"><span id="closePhotoModal">×</span><img src=""></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
-const SERVER_URL = "https://7093e3d2448e.ngrok-free.app"; // твой backend
+const SERVER_URL = "https://YOUR_BACKEND_URL"; // <-- backend
 const tg = window.Telegram.WebApp;
+tg.expand(); // расширяем вебапп
+
+let initData = tg.initData; // сохраняем initData
 
 /* ------------------------ */
-/* helper для initData       */
-/* ------------------------ */
-function withAuth(formData) {
-    formData.append("initData", tg.initData);
-    return formData;
-}
-
-/* ------------------------ */
-/* ping сервер               */
+/* Индикатор соединения      */
 /* ------------------------ */
 const connectionDot = document.getElementById("connectionDot");
 const connectionText = document.getElementById("connectionText");
+
 async function pingServer() {
     try {
-        const r = await fetch(`${SERVER_URL}/ping`);
+        const r = await fetch(`${SERVER_URL}/ping?initData=${encodeURIComponent(initData)}`);
         const d = await r.json();
         if(d.status==="success"){
             connectionDot.style.background = "#28a745";
             connectionText.textContent = "Есть соединение";
-        } else throw new Error();
-    } catch {
+        } else {
+            connectionDot.style.background = "#d9534f";
+            connectionText.textContent = "Нет соединения";
+        }
+    } catch{
         connectionDot.style.background = "#d9534f";
         connectionText.textContent = "Нет соединения";
     }
@@ -104,7 +101,7 @@ async function pingServer() {
 setInterval(pingServer,5000); pingServer();
 
 /* ------------------------ */
-/* карта                     */
+/* Карта                    */
 /* ------------------------ */
 const params = new URLSearchParams(window.location.search);
 const defaultLat = parseFloat(params.get("lat")) || 54.1032;
@@ -115,7 +112,7 @@ let currentCenter={lat:defaultLat, lon:defaultLon};
 map.on('move',()=>{const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng};});
 
 /* ------------------------ */
-/* UI и фото                 */
+/* UI элементы              */
 /* ------------------------ */
 const popupWindow=document.getElementById('popupWindow');
 const popupClose=document.getElementById('popupClose');
@@ -133,6 +130,9 @@ const closePhotoModal=document.getElementById('closePhotoModal');
 let selectedFiles=[], currentEntryId=null, existingPhotos=[];
 let markersMap={};
 
+/* ------------------------ */
+/* Работа с фото            */
+/* ------------------------ */
 function renderPhotoList(){
     photoList.innerHTML='';
     existingPhotos.forEach((p,i)=>{
@@ -168,7 +168,7 @@ popupClose.onclick=()=>{popupWindow.style.display='none'; selectedFiles=[]; exis
 closePhotoModal.onclick=()=>{photoModal.style.display='none';};
 
 /* ------------------------ */
-/* маркеры                  */
+/* Маркеры                  */
 /* ------------------------ */
 function getIcon(color){
     const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
@@ -178,6 +178,7 @@ function getIcon(color){
     return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
                    iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
 }
+
 function addMarkerToMap(entry){
     const idStr=String(entry.id);
     if(markersMap[idStr]) return;
@@ -188,21 +189,19 @@ function addMarkerToMap(entry){
 }
 
 /* ------------------------ */
-/* загрузка и обновление маркеров */
+/* Загрузка и обновление    */
 async function loadMarkers(){
     try{
-        const fd = withAuth(new FormData());
-        const r=await fetch(`${SERVER_URL}/markers`, {method:'POST', body:fd});
-        const d = await r.json();
+        const r=await fetch(`${SERVER_URL}/markers?initData=${encodeURIComponent(initData)}`);
+        const d=await r.json();
         if(d.status==='success') d.markers.forEach(addMarkerToMap);
     }catch(err){console.error('Ошибка при загрузке маркеров',err);}
 }
 async function refreshMarkers(){
     try{
-        const fd = withAuth(new FormData());
-        const r=await fetch(`${SERVER_URL}/markers`, {method:'POST', body:fd});
+        const r=await fetch(`${SERVER_URL}/markers?initData=${encodeURIComponent(initData)}`);
         let d={status:'error', markers:[]};
-        try{ d = await r.json(); } catch(e){ console.warn('Некорректный JSON при обновлении маркеров'); return; }
+        try{ d = await r.json(); } catch(e){ return; }
         if(d.status!=='success') return;
         const serverIds=new Set(d.markers.map(m=>String(m.id)));
         d.markers.forEach(m=>{
@@ -223,7 +222,7 @@ async function refreshMarkers(){
 loadMarkers(); setInterval(refreshMarkers,30000);
 
 /* ------------------------ */
-/* новая точка              */
+/* Новая точка              */
 document.getElementById('newPointBtn').onclick=()=>{
     currentEntryId=null; noteInput.value=''; locationInput.value=''; markerColorSelect.value='green';
     selectedFiles=[]; existingPhotos=[]; renderPhotoList();
@@ -232,14 +231,13 @@ document.getElementById('newPointBtn').onclick=()=>{
 };
 
 /* ------------------------ */
-/* редактирование           */
+/* Редактирование           */
 async function openEditPopup(entryId){
     currentEntryId=entryId;
     try{
-        const fd = withAuth(new FormData());
-        const r=await fetch(`${SERVER_URL}/entry/${entryId}`, {method:'POST', body:fd});
+        const r=await fetch(`${SERVER_URL}/entry/${entryId}?initData=${encodeURIComponent(initData)}`);
         let d={status:'error', entry:null};
-        try{ d=await r.json(); } catch(e){ console.warn('Некорректный JSON при открытии метки'); return; }
+        try{ d=await r.json(); } catch(e){ return; }
         if(d.status!=='success') return;
         const e=d.entry;
         document.getElementById('popupCoords').textContent=`${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
@@ -250,37 +248,42 @@ async function openEditPopup(entryId){
 }
 
 /* ------------------------ */
-/* мгновенное изменение цвета */
+/* Мгновенное изменение цвета */
 markerColorSelect.addEventListener('change', ()=>{
     if(currentEntryId){
         const idStr = String(currentEntryId);
-        if(markersMap[idStr]) markersMap[idStr].setIcon(getIcon(markerColorSelect.value));
+        if(markersMap[idStr]){
+            markersMap[idStr].setIcon(getIcon(markerColorSelect.value));
+        }
     }
 });
 
 /* ------------------------ */
-/* сохранение               */
+/* Сохранение               */
 saveBtn.onclick=async()=>{
     const note=noteInput.value.trim(), location=locationInput.value.trim();
     if(!note || !location) return alert('Заполните обязательные поля!');
     const color=markerColorSelect.value; spinner.style.display='block';
-    const fd = new FormData();
+    const fd=new FormData();
+    fd.append('initData', initData); // передаем initData
     if(!currentEntryId){ fd.append('lat',currentCenter.lat); fd.append('lon',currentCenter.lon); }
     fd.append('note',note); fd.append('location',location); fd.append('color',color);
     existingPhotos.forEach(p=>fd.append('existingPhotos[]',p));
-    for(let f of selectedFiles) fd.append('photos[]',await resizeImage(f));
-    withAuth(fd);
-
+    for(let f of selectedFiles) fd.append('photos[]',f);
     const url=currentEntryId?`${SERVER_URL}/entry/${currentEntryId}`:`${SERVER_URL}/upload`;
     try{
         const r=await fetch(url,{method:'POST',body:fd});
-        const d=await r.json();
+        let d={status:'error', entry:null};
+        try{ d=await r.json(); } catch(e){ d={status:'success', entry:null}; }
         if(d.status==='success'){
             alert('Сохранено!'); popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[]; renderPhotoList();
             if(d.entry){
                 const idStr=String(d.entry.id);
                 if(!currentEntryId) addMarkerToMap(d.entry);
-                else {markersMap[idStr].setIcon(getIcon(d.entry.color)); markersMap[idStr].setLatLng([d.entry.lat,d.entry.lon]);}
+                else {
+                    markersMap[idStr].setIcon(getIcon(d.entry.color));
+                    markersMap[idStr].setLatLng([d.entry.lat,d.entry.lon]);
+                }
             }
             currentEntryId=null;
         } else alert('Ошибка: '+(d.message||'Неизвестная ошибка'));
@@ -289,14 +292,18 @@ saveBtn.onclick=async()=>{
 };
 
 /* ------------------------ */
-/* удаление                 */
+/* Удаление                 */
 deleteBtn.onclick=async()=>{
     if(!currentEntryId) return;
     if(!confirm('Удалить эту метку?')) return;
-    const fd = withAuth(new FormData());
     try{
-        const r=await fetch(`${SERVER_URL}/entry/${currentEntryId}`,{method:'DELETE',body:fd});
-        const d=await r.json();
+        const r=await fetch(`${SERVER_URL}/entry/${currentEntryId}`,{
+            method:'DELETE',
+            headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:`initData=${encodeURIComponent(initData)}`
+        });
+        let d={status:'error'};
+        try{ d=await r.json(); } catch(e){ d={status:'success'}; }
         if(d.status==='success'){
             alert('Удалено!'); popupWindow.style.display='none';
             const idStr=String(currentEntryId);
