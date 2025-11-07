@@ -75,7 +75,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 const SERVER_URL = "https://7093e3d2448e.ngrok-free.app"; // замените на ваш backend
 const tg = window.Telegram.WebApp;
 tg.expand(); 
-
+tg.ready(); // уведомляем Telegram, что JS готов
 // Получаем initData от Telegram
 let initData = tg.initData; 
 
