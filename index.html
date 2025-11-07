@@ -87,6 +87,22 @@ let currentCenter={lat:54.1032, lon:28.3186};
 let selectedFiles=[], existingPhotos=[], currentEntryId=null;
 let markersMap={};
 
+// --- UI ELEMENTS ---
+const connectionDot = document.getElementById("connectionDot");
+const connectionText = document.getElementById("connectionText");
+const popupWindow=document.getElementById('popupWindow');
+const popupClose=document.getElementById('popupClose');
+const noteInput=document.getElementById('noteInput');
+const locationInput=document.getElementById('locationInput');
+const markerColorSelect=document.getElementById('markerColor');
+const photoInput=document.getElementById('photoInput');
+const photoList=document.getElementById('photoList');
+const saveBtn=document.getElementById('saveBtn');
+const deleteBtn=document.getElementById('deleteBtn');
+const spinner=document.getElementById('spinner');
+const photoModal=document.getElementById('photoModal');
+const closePhotoModal=document.getElementById('closePhotoModal');
+
 // --- UTILS ---
 async function fetchWithInitData(url, options={}) {
     options.headers = options.headers || {};
@@ -109,6 +125,25 @@ function getIcon(color){
                    iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
 }
 
+// --- SERVER CONNECTION STATUS ---
+async function pingServer(){
+    try {
+        const data = await fetchWithInitData(`${SERVER_URL}/ping`, {method:'POST'});
+        if(data.status==='success'){
+            connectionDot.style.background="#28a745";
+            connectionText.textContent="Есть соединение";
+        } else {
+            connectionDot.style.background="#d9534f";
+            connectionText.textContent="Нет соединения";
+        }
+    } catch {
+        connectionDot.style.background="#d9534f";
+        connectionText.textContent="Нет соединения";
+    }
+}
+setInterval(pingServer, 5000);
+pingServer();
+
 // --- MAP ---
 const params = new URLSearchParams(window.location.search);
 const defaultLat = parseFloat(params.get("lat")) || currentCenter.lat;
@@ -117,20 +152,7 @@ const map = L.map('map',{center:[defaultLat, defaultLon], zoom:12, attributionCo
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 map.on('move',()=>{const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng};});
 
-// --- UI ELEMENTS ---
-const popupWindow=document.getElementById('popupWindow');
-const popupClose=document.getElementById('popupClose');
-const noteInput=document.getElementById('noteInput');
-const locationInput=document.getElementById('locationInput');
-const markerColorSelect=document.getElementById('markerColor');
-const photoInput=document.getElementById('photoInput');
-const photoList=document.getElementById('photoList');
-const saveBtn=document.getElementById('saveBtn');
-const deleteBtn=document.getElementById('deleteBtn');
-const spinner=document.getElementById('spinner');
-const photoModal=document.getElementById('photoModal');
-const closePhotoModal=document.getElementById('closePhotoModal');
-
+// --- PHOTO LIST ---
 function renderPhotoList(){
     photoList.innerHTML='';
     existingPhotos.forEach((p,i)=>{
@@ -172,7 +194,6 @@ function addMarkerToMap(entry){
     marker.on('click',()=>openEditPopup(idStr));
     markersMap[idStr]=marker;
 }
-
 async function loadMarkers(){
     const data = await fetchWithInitData(`${SERVER_URL}/markers`);
     if(data.status==='success') data.markers.forEach(addMarkerToMap);
@@ -238,5 +259,6 @@ deleteBtn.onclick=async()=>{
     } else alert('Ошибка: '+(data.message||'Неизвестная ошибка'));
 };
 </script>
+
 </body>
 </html>
