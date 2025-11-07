@@ -84,7 +84,6 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 const SERVER_URL = "https://7093e3d2448e.ngrok-free.app";
 let MINI_APP_TOKEN = "";
 
-// Проверка токена в URL
 const params = new URLSearchParams(window.location.search);
 if(params.has("token") && params.get("token").trim() !== ""){
     MINI_APP_TOKEN = params.get("token").trim();
@@ -103,18 +102,12 @@ if(params.has("token") && params.get("token").trim() !== ""){
 }
 
 function initApp(){
-    // -------------------------
-    // Универсальный fetch с токеном
-    // -------------------------
     async function fetchWithToken(url, options = {}) {
         options = options || {};
         options.headers = {...(options.headers||{}), "X-App-Token": MINI_APP_TOKEN};
         return fetch(url, options);
     }
 
-    // -------------------------
-    // DOM элементы
-    // -------------------------
     const connectionDot = document.getElementById("connectionDot");
     const connectionText = document.getElementById("connectionText");
     const popupWindow = document.getElementById('popupWindow');
@@ -134,9 +127,6 @@ function initApp(){
     let selectedFiles=[], currentEntryId=null, existingPhotos=[];
     let markersMap={};
 
-    // -------------------------
-    // Индикатор соединения
-    // -------------------------
     async function pingServer(){
         try{
             const r = await fetchWithToken(`${SERVER_URL}/ping`);
@@ -155,9 +145,6 @@ function initApp(){
     }
     setInterval(pingServer,5000); pingServer();
 
-    // -------------------------
-    // Карта
-    // -------------------------
     const defaultLat = parseFloat(params.get("lat")) || 54.1032;
     const defaultLon = parseFloat(params.get("lon")) || 28.3186;
     const map = L.map('map', { center:[defaultLat, defaultLon], zoom:12, attributionControl:false });
@@ -165,35 +152,37 @@ function initApp(){
     let currentCenter={lat:defaultLat, lon:defaultLon};
     map.on('move',()=>{const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng};});
 
-    // -------------------------
-    // Работа с фото
-    // -------------------------
     function renderPhotoList(){
         photoList.innerHTML='';
         existingPhotos.forEach((p,i)=>{
-            const div=document.createElement('div'); div.className='photoItem';
-            div.innerHTML=`<img src="${SERVER_URL}/uploads/${p}" data-src="${p}">
+            const div=document.createElement('div'); 
+            div.className='photoItem';
+            const imgUrl = `${SERVER_URL}/uploads/${p}`;
+            div.innerHTML=`<img src="${imgUrl}" data-src="${p}">
                              <div class="removePhoto" data-i="${i}">×</div>`;
             photoList.appendChild(div);
         });
         selectedFiles.forEach((file,i)=>{
-            const div=document.createElement('div'); div.className='photoItem';
+            const div=document.createElement('div'); 
+            div.className='photoItem';
             div.innerHTML=`<img src="${URL.createObjectURL(file)}">
                              <div class="removePhoto" data-i="s${i}">×</div>`;
             photoList.appendChild(div);
         });
+
         photoList.querySelectorAll('.removePhoto').forEach(btn=>{
             btn.onclick=()=>{
-                const id=btn.dataset.i;
+                const id = btn.dataset.i;
                 if(id.startsWith('s')) selectedFiles.splice(parseInt(id.slice(1)),1);
                 else existingPhotos.splice(parseInt(id),1);
                 renderPhotoList();
             };
         });
+
         photoList.querySelectorAll('img').forEach(img=>{
             img.onclick=()=>{
-                let src=img.dataset.src?`${SERVER_URL}/uploads/${img.dataset.src}`:img.src;
-                photoModal.querySelector('img').src=src;
+                let src = img.dataset.src ? `${SERVER_URL}/uploads/${img.dataset.src}` : img.src;
+                photoModal.querySelector('img').src = src;
                 photoModal.style.display='flex';
             };
         });
@@ -217,9 +206,6 @@ function initApp(){
     popupClose.onclick=()=>{popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[];};
     closePhotoModal.onclick=()=>{photoModal.style.display='none';};
 
-    // -------------------------
-    // Маркеры
-    // -------------------------
     function getIcon(color){
         const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
                     red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
@@ -249,7 +235,7 @@ function initApp(){
         try{
             const r = await fetchWithToken(`${SERVER_URL}/markers`);
             let d={status:'error', markers:[]};
-            try{ d = await r.json(); } catch(e){ console.warn('Некорректный JSON при обновлении маркеров'); return; }
+            try{ d = await r.json(); } catch(e){ console.warn('Некорректный JSON'); return; }
             if(d.status!=='success') return;
             const serverIds=new Set(d.markers.map(m=>String(m.id)));
             d.markers.forEach(m=>{
@@ -265,14 +251,11 @@ function initApp(){
                     delete markersMap[id];
                 }
             });
-        }catch(err){console.error('Ошибка при обновлении маркеров',err);}
+        }catch(err){console.error(err);}
     }
 
     loadMarkers(); setInterval(refreshMarkers,30000);
 
-    // -------------------------
-    // Новая точка
-    // -------------------------
     newPointBtn.onclick=()=>{
         currentEntryId=null; noteInput.value=''; locationInput.value=''; markerColorSelect.value='green';
         selectedFiles=[]; existingPhotos=[]; renderPhotoList();
@@ -280,22 +263,24 @@ function initApp(){
         deleteBtn.style.display='none'; popupWindow.style.display='block';
     };
 
-    // -------------------------
-    // Редактирование
-    // -------------------------
     async function openEditPopup(entryId){
-        currentEntryId=entryId;
-        try{
-            const r=await fetchWithToken(`${SERVER_URL}/entry/${entryId}`);
-            let d={status:'error', entry:null};
-            try{ d=await r.json(); } catch(e){ console.warn('Некорректный JSON при открытии метки'); return; }
-            if(d.status!=='success') return;
-            const e=d.entry;
-            document.getElementById('popupCoords').textContent=`${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
-            noteInput.value=e.note; locationInput.value=e.location; markerColorSelect.value=e.color;
-            existingPhotos=e.photos.slice(); selectedFiles=[]; renderPhotoList();
-            deleteBtn.style.display='block'; popupWindow.style.display='block';
-        }catch(err){console.error('Ошибка соединения при открытии метки',err);}
+        currentEntryId = entryId;
+        try {
+            const r = await fetchWithToken(`${SERVER_URL}/entry/${entryId}`);
+            let d = {status:'error', entry:null};
+            try { d = await r.json(); } catch(e){ console.warn('Некорректный JSON'); return; }
+            if(d.status !== 'success') return;
+            const e = d.entry;
+            document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
+            noteInput.value = e.note;
+            locationInput.value = e.location;
+            markerColorSelect.value = e.color;
+            existingPhotos = e.photos ? e.photos.slice() : [];
+            selectedFiles = [];
+            renderPhotoList();
+            deleteBtn.style.display='block';
+            popupWindow.style.display='block';
+        } catch(err){ console.error(err); }
     }
 
     markerColorSelect.addEventListener('change', ()=>{
@@ -307,9 +292,6 @@ function initApp(){
         }
     });
 
-    // -------------------------
-    // Сохранение
-    // -------------------------
     saveBtn.onclick=async()=>{
         const note=noteInput.value.trim(), location=locationInput.value.trim();
         if(!note || !location) return alert('Заполните обязательные поля!');
@@ -323,7 +305,7 @@ function initApp(){
         try{
             const r = await fetchWithToken(url,{method:'POST',body:fd});
             let d={status:'error', entry:null};
-            try{ d=await r.json(); } catch(e){ console.warn('Некорректный JSON при сохранении метки'); d={status:'success', entry:null}; }
+            try{ d=await r.json(); } catch(e){ console.warn('Некорректный JSON'); d={status:'success', entry:null}; }
             if(d.status==='success'){
                 alert('Сохранено!'); popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[]; renderPhotoList();
                 if(d.entry){
@@ -336,27 +318,24 @@ function initApp(){
                 }
                 currentEntryId=null;
             } else alert('Ошибка: '+(d.message||'Неизвестная ошибка'));
-        }catch(err){console.error('Ошибка соединения при сохранении',err);}
+        }catch(err){console.error(err);}
         finally{ spinner.style.display='none'; }
     };
 
-    // -------------------------
-    // Удаление
-    // -------------------------
     deleteBtn.onclick=async()=>{
         if(!currentEntryId) return;
         if(!confirm('Удалить эту метку?')) return;
         try{
             const r=await fetchWithToken(`${SERVER_URL}/entry/${currentEntryId}`,{method:'DELETE'});
             let d={status:'error'};
-            try{ d=await r.json(); } catch(e){ console.warn('Некорректный JSON при удалении'); d={status:'success'}; }
+            try{ d=await r.json(); } catch(e){ console.warn('Некорректный JSON'); d={status:'success'}; }
             if(d.status==='success'){
                 alert('Удалено!'); popupWindow.style.display='none';
                 const idStr=String(currentEntryId);
                 map.removeLayer(markersMap[idStr]); delete markersMap[idStr];
                 currentEntryId=null;
             } else alert('Ошибка: '+(d.message||'Неизвестная ошибка'));
-        }catch(err){console.error('Ошибка соединения при удалении',err);}
+        }catch(err){console.error(err);}
     };
 }
 </script>
