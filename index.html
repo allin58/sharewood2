@@ -8,28 +8,20 @@
 <style>
 html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #map {height:100vh; width:100%;}
-#connectionStatus {
-    position: fixed; top: 10px; right: 10px; z-index: 3000; display:flex; align-items:center;
-    font-size:14px; font-weight:bold; pointer-events:none;
-}
+
+#connectionStatus {position: fixed; top: 10px; right: 10px; z-index: 3000; display:flex; align-items:center; font-size:14px; font-weight:bold;}
 #connectionDot {width:12px; height:12px; border-radius:50%; margin-right:6px; background:#d9534f;}
-.crosshair {
-  position:absolute; top:50%; left:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px;
-  pointer-events:none; z-index:999;
-}
+
+#popupWindow {position: fixed; top:40px; left:0; width:100%; height:calc(100%-40px); z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
+.crosshair {position:absolute; top:50%; left:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:999;}
 .crosshair::before, .crosshair::after {content:''; position:absolute; background:black;}
 .crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
 .crosshair::after {top:50%; left:0; width:100%; height:2px; margin-top:-1px;}
-#newPointBtn {position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
-  z-index:1000; padding:8px 16px; border:none; border-radius:6px; background-color:#28a745; color:white; cursor:pointer;}
-#popupWindow {
-    position: fixed; top:40px; left:0; width:100%; height:calc(100%-40px);
-    z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;
-}
+
+#newPointBtn {position:absolute; bottom:10px; left:50%; transform:translateX(-50%); z-index:1000; padding:8px 16px; border:none; border-radius:6px; background-color:#28a745; color:white; cursor:pointer;}
+
 #popupWindow label {display:block; margin-top:10px; font-weight:bold;}
-#popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {
-  width:100%; padding:6px; margin-top:4px; box-sizing:border-box; border-radius:4px; border:1px solid #ccc; font-size:14px;
-}
+#popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {width:100%; padding:6px; margin-top:4px; box-sizing:border-box; border-radius:4px; border:1px solid #ccc; font-size:14px;}
 #popupWindow textarea {resize:vertical;}
 #photoList {margin-top:8px; max-height:150px; overflow-y:auto; display:flex; flex-wrap:wrap;}
 .photoItem {position:relative; margin:4px;}
@@ -40,6 +32,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #deleteBtn {background:red; margin-top:6px;}
 #spinner {display:none; text-align:center; margin-top:10px;}
 .loader {border:4px solid #f3f3f3; border-top:4px solid #007bff; border-radius:50%; width:30px; height:30px; animation:spin 1s linear infinite; display:inline-block;}
+
 #photoModal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:3000;}
 #photoModal img {max-width:90%; max-height:90%; border-radius:6px;}
 #photoModal span {position:absolute; top:20px; right:30px; font-size:30px; color:white; cursor:pointer;}
@@ -81,62 +74,50 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-const SERVER_URL = "https://7093e3d2448e.ngrok-free.app"; // замените на ваш ngrok URL
+// --- TELEGRAM WEBAPP ---
+const tg = window.Telegram.WebApp;
+tg.expand();
+const INIT_DATA = tg.initData;
 
-/* ------------------------ */
-/* Telegram WebApp initData  */
-/* ------------------------ */
-function getInitData() {
-    return window.Telegram?.WebApp?.initData || "";
-}
+// --- SERVER URL ---
+const SERVER_URL = "https://7093e3d2448e.ngrok-free.app";
 
+// --- GLOBAL STATE ---
+let currentCenter={lat:54.1032, lon:28.3186};
+let selectedFiles=[], existingPhotos=[], currentEntryId=null;
+let markersMap={};
+
+// --- UTILS ---
 async function fetchWithInitData(url, options={}) {
-    const initData = getInitData();
-    options = {...options};
-    if(!options.headers) options.headers={};
-    if(!options.method) options.method = 'GET';
-
-    if(options.method.toUpperCase()==='GET'){
-        const sep = url.includes('?') ? '&' : '?';
-        url += `${sep}initData=${encodeURIComponent(initData)}`;
+    options.headers = options.headers || {};
+    if (!(options.body instanceof FormData)) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify({...(options.body||{}), initData: INIT_DATA});
     } else {
-        if(options.body instanceof FormData){
-            options.body.append('initData', initData);
-        } else {
-            options.body = JSON.stringify({...options.body, initData});
-            options.headers['Content-Type'] = 'application/json';
-        }
+        options.body.append('initData', INIT_DATA);
     }
-
     const r = await fetch(url, options);
     return r.json();
 }
 
-/* ------------------------ */
-/* Connection indicator */
-const connectionDot = document.getElementById("connectionDot");
-const connectionText = document.getElementById("connectionText");
-async function pingServer(){
-    try{
-        const d = await fetchWithInitData(`${SERVER_URL}/ping`, { method:'POST' });
-        if(d.status==='success'){connectionDot.style.background="#28a745"; connectionText.textContent="Есть соединение";}
-        else {connectionDot.style.background="#d9534f"; connectionText.textContent="Нет соединения";}
-    }catch{connectionDot.style.background="#d9534f"; connectionText.textContent="Нет соединения";}
+function getIcon(color){
+    const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png'};
+    return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                   iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
 }
-setInterval(pingServer,5000); pingServer();
 
-/* ------------------------ */
-/* Map setup */
+// --- MAP ---
 const params = new URLSearchParams(window.location.search);
-const defaultLat = parseFloat(params.get("lat")) || 54.1032;
-const defaultLon = parseFloat(params.get("lon")) || 28.3186;
+const defaultLat = parseFloat(params.get("lat")) || currentCenter.lat;
+const defaultLon = parseFloat(params.get("lon")) || currentCenter.lon;
 const map = L.map('map',{center:[defaultLat, defaultLon], zoom:12, attributionControl:false});
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-let currentCenter={lat:defaultLat, lon:defaultLon};
 map.on('move',()=>{const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng};});
 
-/* ------------------------ */
-/* UI Elements */
+// --- UI ELEMENTS ---
 const popupWindow=document.getElementById('popupWindow');
 const popupClose=document.getElementById('popupClose');
 const noteInput=document.getElementById('noteInput');
@@ -150,11 +131,6 @@ const spinner=document.getElementById('spinner');
 const photoModal=document.getElementById('photoModal');
 const closePhotoModal=document.getElementById('closePhotoModal');
 
-let selectedFiles=[], currentEntryId=null, existingPhotos=[];
-let markersMap={};
-
-/* ------------------------ */
-/* Photo handling */
 function renderPhotoList(){
     photoList.innerHTML='';
     existingPhotos.forEach((p,i)=>{
@@ -168,7 +144,8 @@ function renderPhotoList(){
         photoList.appendChild(div);
     });
     photoList.querySelectorAll('.removePhoto').forEach(btn=>{
-        btn.onclick=()=>{ const id=btn.dataset.i;
+        btn.onclick=()=>{
+            const id=btn.dataset.i;
             if(id.startsWith('s')) selectedFiles.splice(parseInt(id.slice(1)),1);
             else existingPhotos.splice(parseInt(id),1);
             renderPhotoList();
@@ -183,74 +160,26 @@ function renderPhotoList(){
     });
 }
 photoInput.addEventListener('change',()=>{selectedFiles=Array.from(photoInput.files); renderPhotoList();});
-popupClose.onclick=()=>{popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[];};
+popupClose.onclick=()=>{popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[]; renderPhotoList();};
 closePhotoModal.onclick=()=>{photoModal.style.display='none';};
 
-async function resizeImage(file,maxWidth=1024,maxHeight=1024,quality=0.7){
-    return new Promise(resolve=>{
-        const img=new Image();
-        img.onload=()=>{
-            const canvas=document.createElement('canvas');
-            const ratio=Math.min(maxWidth/img.width,maxHeight/img.height,1);
-            canvas.width=img.width*ratio; canvas.height=img.height*ratio;
-            canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-            canvas.toBlob(blob=>resolve(new File([blob], file.name, {type:'image/jpeg'})),'image/jpeg',quality);
-        };
-        img.src=URL.createObjectURL(file);
-    });
-}
-
-/* ------------------------ */
-/* Markers */
-function getIcon(color){
-    const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-                yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png'};
-    return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                   iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
-}
+// --- MARKERS ---
 function addMarkerToMap(entry){
     const idStr=String(entry.id);
     if(markersMap[idStr]) return;
-    const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
+    const marker=L.marker([entry.lat, entry.lon],{icon:getIcon(entry.color)}).addTo(map);
     marker.entryId=idStr;
     marker.on('click',()=>openEditPopup(idStr));
     markersMap[idStr]=marker;
 }
 
-/* ------------------------ */
-/* Load and refresh markers */
 async function loadMarkers(){
-    try{
-        const d=await fetchWithInitData(`${SERVER_URL}/markers`);
-        if(d.status==='success') d.markers.forEach(addMarkerToMap);
-    }catch(err){console.error('Ошибка при загрузке маркеров',err);}
+    const data = await fetchWithInitData(`${SERVER_URL}/markers`);
+    if(data.status==='success') data.markers.forEach(addMarkerToMap);
 }
-async function refreshMarkers(){
-    try{
-        const d=await fetchWithInitData(`${SERVER_URL}/markers`);
-        if(d.status!=='success') return;
-        const serverIds=new Set(d.markers.map(m=>String(m.id)));
-        d.markers.forEach(m=>{
-            const idStr=String(m.id);
-            if(markersMap[idStr]){
-                markersMap[idStr].setLatLng([m.lat,m.lon]);
-                markersMap[idStr].setIcon(getIcon(m.color));
-            } else addMarkerToMap(m);
-        });
-        Object.keys(markersMap).forEach(id=>{
-            if(!serverIds.has(id) && id!==String(currentEntryId)){
-                map.removeLayer(markersMap[id]);
-                delete markersMap[id];
-            }
-        });
-    }catch(err){console.error('Ошибка при обновлении маркеров',err);}
-}
-loadMarkers(); setInterval(refreshMarkers,30000);
+loadMarkers();
 
-/* ------------------------ */
-/* New marker */
+// --- NEW POINT ---
 document.getElementById('newPointBtn').onclick=()=>{
     currentEntryId=null; noteInput.value=''; locationInput.value=''; markerColorSelect.value='green';
     selectedFiles=[]; existingPhotos=[]; renderPhotoList();
@@ -258,73 +187,55 @@ document.getElementById('newPointBtn').onclick=()=>{
     deleteBtn.style.display='none'; popupWindow.style.display='block';
 };
 
-/* ------------------------ */
-/* Edit marker */
+// --- EDIT POINT ---
 async function openEditPopup(entryId){
     currentEntryId=entryId;
-    try{
-        const d=await fetchWithInitData(`${SERVER_URL}/entry/${entryId}`);
-        if(d.status!=='success') return;
-        const e=d.entry;
-        document.getElementById('popupCoords').textContent=`${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
-        noteInput.value=e.note; locationInput.value=e.location; markerColorSelect.value=e.color;
-        existingPhotos=e.photos.slice(); selectedFiles=[]; renderPhotoList();
-        deleteBtn.style.display='block'; popupWindow.style.display='block';
-    }catch(err){console.error('Ошибка соединения при открытии метки',err);}
+    const data = await fetchWithInitData(`${SERVER_URL}/entry/${entryId}`);
+    if(data.status!=='success') return;
+    const e=data.entry;
+    document.getElementById('popupCoords').textContent=`${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
+    noteInput.value=e.note; locationInput.value=e.location; markerColorSelect.value=e.color;
+    existingPhotos=e.photos.slice(); selectedFiles=[]; renderPhotoList();
+    deleteBtn.style.display='block'; popupWindow.style.display='block';
 }
 
-/* ------------------------ */
-/* Instant color change */
-markerColorSelect.addEventListener('change', ()=>{
-    if(currentEntryId){
-        const idStr = String(currentEntryId);
-        if(markersMap[idStr]) markersMap[idStr].setIcon(getIcon(markerColorSelect.value));
-    }
-});
-
-/* ------------------------ */
-/* Save */
+// --- SAVE ---
 saveBtn.onclick=async()=>{
     const note=noteInput.value.trim(), location=locationInput.value.trim();
     if(!note || !location) return alert('Заполните обязательные поля!');
-    const color=markerColorSelect.value; spinner.style.display='block';
+    spinner.style.display='block';
     const fd=new FormData();
     if(!currentEntryId){ fd.append('lat',currentCenter.lat); fd.append('lon',currentCenter.lon); }
-    fd.append('note',note); fd.append('location',location); fd.append('color',color);
+    fd.append('note',note); fd.append('location',location); fd.append('color',markerColorSelect.value);
     existingPhotos.forEach(p=>fd.append('existingPhotos[]',p));
-    for(let f of selectedFiles) fd.append('photos[]',await resizeImage(f));
+    for(let f of selectedFiles) fd.append('photos[]',f);
     const url=currentEntryId?`${SERVER_URL}/entry/${currentEntryId}`:`${SERVER_URL}/upload`;
-    try{
-        const d=await fetchWithInitData(url,{method:'POST', body:fd});
-        if(d.status==='success'){
-            alert('Сохранено!'); popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[]; renderPhotoList();
-            if(d.entry){
-                const idStr=String(d.entry.id);
-                if(!currentEntryId) addMarkerToMap(d.entry);
-                else {
-                    markersMap[idStr].setIcon(getIcon(d.entry.color));
-                    markersMap[idStr].setLatLng([d.entry.lat,d.entry.lon]);
-                }
+    const data = await fetchWithInitData(url, {method:'POST', body:fd});
+    spinner.style.display='none';
+    if(data.status==='success'){
+        alert('Сохранено!'); popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[]; renderPhotoList();
+        if(data.entry){
+            const idStr=String(data.entry.id);
+            if(!currentEntryId) addMarkerToMap(data.entry);
+            else {
+                markersMap[idStr].setIcon(getIcon(data.entry.color));
+                markersMap[idStr].setLatLng([data.entry.lat,data.entry.lon]);
             }
-            currentEntryId=null;
-        } else alert('Ошибка: '+(d.message||'Неизвестная ошибка'));
-    }catch(err){console.error('Ошибка соединения при сохранении',err);}
-    finally{spinner.style.display='none';}
+        }
+        currentEntryId=null;
+    } else alert('Ошибка: '+(data.message||'Неизвестная ошибка'));
 };
 
-/* ------------------------ */
-/* Delete */
+// --- DELETE ---
 deleteBtn.onclick=async()=>{
     if(!currentEntryId) return;
     if(!confirm('Удалить эту метку?')) return;
-    try{
-        const d=await fetchWithInitData(`${SERVER_URL}/entry/${currentEntryId}`,{method:'DELETE'});
-        if(d.status==='success'){
-            alert('Удалено!'); popupWindow.style.display='none';
-            const idStr=String(currentEntryId);
-            map.removeLayer(markersMap[idStr]); delete markersMap[idStr]; currentEntryId=null;
-        } else alert('Ошибка: '+(d.message||'Неизвестная ошибка'));
-    }catch(err){console.error('Ошибка соединения при удалении',err);}
+    const data = await fetchWithInitData(`${SERVER_URL}/entry/${currentEntryId}`, {method:'DELETE'});
+    if(data.status==='success'){
+        alert('Удалено!'); popupWindow.style.display='none';
+        const idStr=String(currentEntryId); map.removeLayer(markersMap[idStr]); delete markersMap[idStr];
+        currentEntryId=null;
+    } else alert('Ошибка: '+(data.message||'Неизвестная ошибка'));
 };
 </script>
 </body>
