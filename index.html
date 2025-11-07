@@ -40,7 +40,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 
 @keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
 
-#tokenModal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;justify-content:center;align-items:center;z-index:4000; display:none;}
+#tokenModal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;justify-content:center;align-items:center;z-index:4000;}
 #tokenModalContent {background:white;padding:20px;border-radius:8px;width:300px;text-align:center;}
 #tokenModal input {width:100%;padding:8px;margin-top:10px;}
 #tokenModal button {margin-top:12px;padding:8px 12px;}
@@ -101,7 +101,7 @@ const App = {
     markersMap: {},
 
     init: function(){
-        // Создаём карту сразу
+        // Карта
         const params = new URLSearchParams(window.location.search);
         const defaultLat = parseFloat(params.get("lat")) || 54.1032;
         const defaultLon = parseFloat(params.get("lon")) || 28.3186;
@@ -114,15 +114,14 @@ const App = {
         // UI
         this.cacheElements();
         this.bindUI();
+
+        // Ping
         this.pingServer();
         setInterval(()=>this.pingServer(),5000);
 
         // Маркеры
         this.loadMarkers();
         setInterval(()=>this.refreshMarkers(),30000);
-
-        // После закрытия токена, корректный размер карты
-        setTimeout(()=>this.map.invalidateSize(), 200);
     },
 
     cacheElements: function(){
@@ -185,37 +184,30 @@ const App = {
         this.markersMap[idStr]=marker;
     },
 
-    // ... остальные функции: loadMarkers, refreshMarkers, renderPhotoList, resizeImage, newPoint, openEditPopup, saveEntry, deleteEntry
+    // Здесь можно вставить все функции loadMarkers, refreshMarkers, renderPhotoList, resizeImage, newPoint, openEditPopup, saveEntry, deleteEntry
 };
 
 // ------------------------
 // Запуск
 // ------------------------
-function waitForWebApp(callback){
-    if(window.Telegram && window.Telegram.WebApp){
-        window.Telegram.WebApp.ready();
-        callback(true);
-    } else { setTimeout(()=>waitForWebApp(callback),100); }
-}
-
 window.addEventListener('DOMContentLoaded', ()=>{
-    waitForWebApp((inMiniApp)=>{
-        const tokenFromUrl = new URLSearchParams(window.location.search).get("token");
-        if(inMiniApp && tokenFromUrl){
-            App.MINI_APP_TOKEN = tokenFromUrl;
+    const inMiniApp = !!(window.Telegram && window.Telegram.WebApp);
+    const tokenFromUrl = new URLSearchParams(window.location.search).get("token");
+
+    if(inMiniApp && tokenFromUrl){
+        App.MINI_APP_TOKEN = tokenFromUrl;
+        App.init();
+    } else if(!inMiniApp){
+        document.getElementById('tokenModal').style.display = 'flex';
+        document.getElementById('tokenSubmit').onclick = ()=>{
+            const val = document.getElementById('manualToken').value.trim();
+            if(!val) return alert('Введите токен!');
+            App.MINI_APP_TOKEN = val;
             document.getElementById('tokenModal').style.display = 'none';
+            setTimeout(()=>App.map?.invalidateSize(), 100); // пересчёт размеров после закрытия модалки
             App.init();
-        } else if(!inMiniApp){
-            document.getElementById('tokenModal').style.display = 'flex';
-            document.getElementById('tokenSubmit').onclick = ()=>{
-                const val = document.getElementById('manualToken').value.trim();
-                if(!val) return alert('Введите токен!');
-                App.MINI_APP_TOKEN = val;
-                document.getElementById('tokenModal').style.display = 'none';
-                App.init();
-            };
-        } else { alert('В Mini App токен не найден в URL!'); }
-    });
+        };
+    } else { alert('В Mini App токен не найден в URL!'); }
 });
 </script>
 </body>
