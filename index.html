@@ -155,15 +155,17 @@ function initApp(){
     function renderPhotoList(){
         photoList.innerHTML='';
         existingPhotos.forEach((p,i)=>{
-            const div=document.createElement('div'); 
+            const div=document.createElement('div');
             div.className='photoItem';
-            const imgUrl = `${SERVER_URL}/uploads/${p}`;
-            div.innerHTML=`<img src="${imgUrl}" data-src="${p}">
+            let imgUrl = typeof p==='string'
+                ? `${SERVER_URL}/uploads/${p}?token=${MINI_APP_TOKEN}`
+                : (p.url ? `${p.url}?token=${MINI_APP_TOKEN}` : `${SERVER_URL}/uploads/${p.filename}?token=${MINI_APP_TOKEN}`);
+            div.innerHTML=`<img src="${imgUrl}" data-src="${typeof p==='string'?p:(p.filename||'')}">
                              <div class="removePhoto" data-i="${i}">×</div>`;
             photoList.appendChild(div);
         });
         selectedFiles.forEach((file,i)=>{
-            const div=document.createElement('div'); 
+            const div=document.createElement('div');
             div.className='photoItem';
             div.innerHTML=`<img src="${URL.createObjectURL(file)}">
                              <div class="removePhoto" data-i="s${i}">×</div>`;
@@ -181,7 +183,7 @@ function initApp(){
 
         photoList.querySelectorAll('img').forEach(img=>{
             img.onclick=()=>{
-                let src = img.dataset.src ? `${SERVER_URL}/uploads/${img.dataset.src}` : img.src;
+                let src = img.dataset.src ? `${SERVER_URL}/uploads/${img.dataset.src}?token=${MINI_APP_TOKEN}` : img.src;
                 photoModal.querySelector('img').src = src;
                 photoModal.style.display='flex';
             };
@@ -275,7 +277,7 @@ function initApp(){
             noteInput.value = e.note;
             locationInput.value = e.location;
             markerColorSelect.value = e.color;
-            existingPhotos = e.photos ? e.photos.slice() : [];
+            existingPhotos = Array.isArray(e.photos) ? e.photos.slice() : [];
             selectedFiles = [];
             renderPhotoList();
             deleteBtn.style.display='block';
@@ -299,7 +301,7 @@ function initApp(){
         const fd=new FormData();
         if(!currentEntryId){ fd.append('lat',currentCenter.lat); fd.append('lon',currentCenter.lon); }
         fd.append('note',note); fd.append('location',location); fd.append('color',color);
-        existingPhotos.forEach(p=>fd.append('existingPhotos[]',p));
+        existingPhotos.forEach(p=>fd.append('existingPhotos[]',typeof p==='string'?p:p.filename));
         for(let f of selectedFiles) fd.append('photos[]',await resizeImage(f));
         const url=currentEntryId?`${SERVER_URL}/entry/${currentEntryId}`:`${SERVER_URL}/upload`;
         try{
@@ -318,7 +320,7 @@ function initApp(){
                 }
                 currentEntryId=null;
             } else alert('Ошибка: '+(d.message||'Неизвестная ошибка'));
-        }catch(err){console.error(err);}
+        }catch(err){ console.error(err); }
         finally{ spinner.style.display='none'; }
     };
 
