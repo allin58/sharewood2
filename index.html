@@ -8,8 +8,10 @@
 <style>
 html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #map {height:100vh; width:100%;}
-#connectionStatus {position: fixed; top: 10px; right: 10px; z-index: 3000; display:flex; align-items:center; font-size:14px; font-weight:bold; pointer-events:none;}
+#connectionStatus {position: fixed; top: 10px; right: 10px; z-index: 3000; display:flex; flex-direction:column; align-items:flex-end; font-size:14px; font-weight:bold; pointer-events:none; background:rgba(255,255,255,0.9); padding:8px 12px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.2);}
+#connectionStatusRow {display:flex; align-items:center;}
 #connectionDot {width:12px; height:12px; border-radius:50%; margin-right:6px; background:#d9534f;}
+#telegramUsername {font-size:12px; color:#666; margin-top:4px; font-weight:normal;}
 #popupWindow {position: fixed; top:40px; left:0; width:100%; height:calc(100%-40px); z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
 .crosshair {position:absolute; top:50%; left:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:999;}
 .crosshair::before, .crosshair::after {content:''; position:absolute; background:black;}
@@ -42,8 +44,11 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 <body>
 
 <div id="connectionStatus">
-    <div id="connectionDot"></div>
-    <span id="connectionText">Нет соединения</span>
+    <div id="connectionStatusRow">
+        <div id="connectionDot"></div>
+        <span id="connectionText">Нет соединения</span>
+    </div>
+    <div id="telegramUsername"></div>
 </div>
 
 <div id="map"></div>
@@ -89,6 +94,55 @@ const SERVER_URL = "https://a8bddfc0cecf.ngrok-free.app";
 let TELEGRAM_INIT_DATA = "";
 const params = new URLSearchParams(window.location.search);
 let appInitialized = false;
+let telegramUsername = "";
+
+
+// Функция для получения данных пользователя из Telegram WebApp API
+function getTelegramUser() {
+    let userData = { username: null, firstName: null };
+    
+    // Сначала пытаемся получить из Telegram WebApp API
+    if (window.Telegram && window.Telegram.WebApp) {
+        const webApp = window.Telegram.WebApp;
+        const initDataUnsafe = webApp.initDataUnsafe;
+        if (initDataUnsafe && initDataUnsafe.user) {
+            userData.username = initDataUnsafe.user.username;
+            userData.firstName = initDataUnsafe.user.first_name;
+        }
+    }
+    
+    // Если не получилось, парсим из initData
+    if (!userData.username && !userData.firstName && TELEGRAM_INIT_DATA) {
+        try {
+            const params = new URLSearchParams(TELEGRAM_INIT_DATA);
+            const userParam = params.get('user');
+            if (userParam) {
+                const user = JSON.parse(decodeURIComponent(userParam));
+                userData.username = user.username;
+                userData.firstName = user.first_name;
+            }
+        } catch (e) {
+            console.error('Ошибка при парсинге initData:', e);
+        }
+    }
+    
+    return userData;
+}
+
+// Функция для получения username из Telegram WebApp API
+function getTelegramUsername() {
+    const userData = getTelegramUser();
+    // Возвращаем username если есть, иначе first_name
+    return userData.username || userData.firstName || null;
+}
+
+// Функция для проверки, является ли значение username
+function isUsername(value) {
+    if (!value) return false;
+    // Username в Telegram: только буквы, цифры и подчеркивания, длина от 5 до 32 символов
+    // Но также проверяем, что это не first_name (first_name может содержать пробелы)
+    return /^[a-zA-Z0-9_]+$/.test(value) && value.length >= 1 && !value.includes(' ');
+}
 
 // Получаем initData из Telegram WebApp API
 function getInitData() {
@@ -102,7 +156,11 @@ function getInitData() {
         
         if (initData && initData.trim() !== "") {
             TELEGRAM_INIT_DATA = initData;
+            // Получаем username
+            telegramUsername = getTelegramUsername();
             document.getElementById('tokenModal').style.display = 'none';
+            // Обновляем отображение username
+            updateTelegramUsername();
             initApp();
             return;
         }
@@ -111,11 +169,17 @@ function getInitData() {
     // Если не в Telegram или нет initData, проверяем параметры URL (для тестирования)
     if(params.has("initData") && params.get("initData").trim() !== ""){
         TELEGRAM_INIT_DATA = params.get("initData").trim();
+        // Получаем username
+        telegramUsername = getTelegramUsername();
         document.getElementById('tokenModal').style.display = 'none';
+        // Обновляем отображение username
+        updateTelegramUsername();
         initApp();
     } else {
         // Для тестирования вне Telegram - показываем модальное окно
         // Но все равно инициализируем карту (она будет работать без initData для визуализации)
+        // Обновляем отображение username (скроем, если нет данных)
+        updateTelegramUsername();
         initApp();
         const tokenModal = document.getElementById('tokenModal');
         tokenModal.style.display = 'flex';
@@ -123,8 +187,39 @@ function getInitData() {
             const val = document.getElementById('manualToken').value.trim();
             if(!val) return alert('Введите initData!');
             TELEGRAM_INIT_DATA = val;
+            // Получаем username
+            telegramUsername = getTelegramUsername();
+            updateTelegramUsername();
             tokenModal.style.display = 'none';
         };
+    }
+}
+
+// Функция для обновления отображения username
+function updateTelegramUsername() {
+    const usernameElement = document.getElementById('telegramUsername');
+    const userData = getTelegramUser();
+    
+    // Если есть username, показываем его с @
+    if (userData.username) {
+        usernameElement.textContent = '@' + userData.username;
+        usernameElement.style.display = 'block';
+    } 
+    // Если нет username, но есть first_name, показываем first_name без @
+    else if (userData.firstName) {
+        usernameElement.textContent = userData.firstName;
+        usernameElement.style.display = 'block';
+    } 
+    // Если есть сохраненное значение telegramUsername (fallback)
+    else if (telegramUsername) {
+        const displayText = isUsername(telegramUsername) ? '@' + telegramUsername : telegramUsername;
+        usernameElement.textContent = displayText;
+        usernameElement.style.display = 'block';
+    } 
+    // Если ничего нет, скрываем элемент
+    else {
+        usernameElement.textContent = '';
+        usernameElement.style.display = 'none';
     }
 }
 
@@ -151,6 +246,8 @@ function initApp(){
 
     const connectionDot = document.getElementById("connectionDot");
     const connectionText = document.getElementById("connectionText");
+    // Обновляем отображение username
+    updateTelegramUsername();
     const popupWindow = document.getElementById('popupWindow');
     const popupClose = document.getElementById('popupClose');
     const noteInput = document.getElementById('noteInput');
