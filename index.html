@@ -133,11 +133,13 @@ function getInitData(){
         TELEGRAM_INIT_DATA = Telegram.WebApp.initData;
         telegramUsername = getTelegramUsername();
         document.getElementById('loginForm').style.display='none';
+        updateUsernameDisplay();
         initApp();
     } else {
         TELEGRAM_INIT_DATA = null;
         telegramUsername = null;
         document.getElementById('loginForm').style.display='flex';
+        updateUsernameDisplay();
         initApp();
     }
 }
