@@ -73,38 +73,71 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 
 <div id="tokenModal">
   <div id="tokenModalContent">
-    <h3>Введите токен</h3>
-    <input type="text" id="manualToken" placeholder="Token">
+    <h3>Тестовый режим</h3>
+    <p>Приложение должно запускаться через Telegram Bot</p>
+    <p>Для тестирования вставьте initData:</p>
+    <input type="text" id="manualToken" placeholder="initData">
     <button id="tokenSubmit">Подтвердить</button>
   </div>
 </div>
 
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 const SERVER_URL = "https://a8bddfc0cecf.ngrok-free.app";
-let MINI_APP_TOKEN = "";
+let TELEGRAM_INIT_DATA = "";
 
-const params = new URLSearchParams(window.location.search);
-if(params.has("token") && params.get("token").trim() !== ""){
-    MINI_APP_TOKEN = params.get("token").trim();
-    document.getElementById('tokenModal').style.display = 'none';
-    initApp();
-} else {
-    const tokenModal = document.getElementById('tokenModal');
-    tokenModal.style.display = 'flex';
-    document.getElementById('tokenSubmit').onclick = () => {
-        const val = document.getElementById('manualToken').value.trim();
-        if(!val) return alert('Введите токен!');
-        MINI_APP_TOKEN = val;
-        tokenModal.style.display = 'none';
+// Получаем initData из Telegram WebApp API
+function getInitData() {
+    // Проверяем, запущено ли приложение в Telegram
+    if (window.Telegram && window.Telegram.WebApp) {
+        const webApp = window.Telegram.WebApp;
+        webApp.ready();
+
+        // Получаем initData из Telegram WebApp
+        const initData = webApp.initData;
+
+        if (initData && initData.trim() !== "") {
+            TELEGRAM_INIT_DATA = initData;
+            document.getElementById('tokenModal').style.display = 'none';
+            initApp();
+            return;
+        }
+    }
+
+    // Если не в Telegram или нет initData, проверяем параметры URL (для тестирования)
+    const params = new URLSearchParams(window.location.search);
+    if(params.has("initData") && params.get("initData").trim() !== ""){
+        TELEGRAM_INIT_DATA = params.get("initData").trim();
+        document.getElementById('tokenModal').style.display = 'none';
         initApp();
-    };
+    } else {
+        // Для тестирования вне Telegram - показываем модальное окно
+        const tokenModal = document.getElementById('tokenModal');
+        tokenModal.style.display = 'flex';
+        document.getElementById('tokenSubmit').onclick = () => {
+            const val = document.getElementById('manualToken').value.trim();
+            if(!val) return alert('Введите initData!');
+            TELEGRAM_INIT_DATA = val;
+            tokenModal.style.display = 'none';
+            initApp();
+        };
+    }
 }
+
+// Инициализируем при загрузке страницы
+getInitData();
 
 function initApp(){
     async function fetchWithToken(url, options = {}) {
         options = options || {};
-        options.headers = {...(options.headers||{}), "X-App-Token": MINI_APP_TOKEN};
+        // Отправляем initData в заголовке
+        if (TELEGRAM_INIT_DATA) {
+            options.headers = {
+                ...(options.headers||{}),
+                "X-Telegram-Init-Data": TELEGRAM_INIT_DATA
+            };
+        }
         return fetch(url, options);
     }
 
@@ -158,8 +191,8 @@ function initApp(){
             const div=document.createElement('div');
             div.className='photoItem';
             let imgUrl = typeof p==='string'
-                ? `${SERVER_URL}/uploads/${p}?token=${MINI_APP_TOKEN}`
-                : (p.url ? `${p.url}?token=${MINI_APP_TOKEN}` : `${SERVER_URL}/uploads/${p.filename}?token=${MINI_APP_TOKEN}`);
+                ? `${SERVER_URL}/uploads/${p}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}`
+                : (p.url ? `${p.url}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}` : `${SERVER_URL}/uploads/${p.filename}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}`);
             div.innerHTML=`<img src="${imgUrl}" data-src="${typeof p==='string'?p:(p.filename||'')}">
                              <div class="removePhoto" data-i="${i}">×</div>`;
             photoList.appendChild(div);
@@ -183,7 +216,9 @@ function initApp(){
 
         photoList.querySelectorAll('img').forEach(img=>{
             img.onclick=()=>{
-                let src = img.dataset.src ? `${SERVER_URL}/uploads/${img.dataset.src}?token=${MINI_APP_TOKEN}` : img.src;
+                let src = img.dataset.src
+                    ? `${SERVER_URL}/uploads/${img.dataset.src}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}`
+                    : img.src;
                 photoModal.querySelector('img').src = src;
                 photoModal.style.display='flex';
             };
