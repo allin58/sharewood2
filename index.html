@@ -97,43 +97,13 @@ let TELEGRAM_INIT_DATA = "";
 const params = new URLSearchParams(window.location.search);
 let appInitialized = false;
 let telegramUsername = "";
-let telegramRole = ""; // <-- добавляем роль пользователя
 
-// Получаем данные пользователя из backend
-async function fetchUserRole() {
-    try {
-        const r = await fetch(`${SERVER_URL}/me`, {
-            headers: TELEGRAM_INIT_DATA ? {"X-Telegram-Init-Data": TELEGRAM_INIT_DATA} : {}
-        });
-        if(r.ok){
-            const d = await r.json();
-            telegramRole = d.role || "";
-            return d;
-        }
-    } catch(err) { console.error(err); }
-    return {};
-}
-
-// Функция для обновления отображения username с _admin
-async function updateTelegramUsername() {
-    const usernameElement = document.getElementById('telegramUsername');
-    let displayName = "";
-    const userData = getTelegramUser();
-    const backendData = await fetchUserRole();
-
-    if(userData.username) displayName = '@' + userData.username;
-    else if(userData.firstName) displayName = userData.firstName;
-    else if(telegramUsername) displayName = isUsername(telegramUsername) ? '@' + telegramUsername : telegramUsername;
-
-    if(backendData.role === "admin") displayName += "_admin";
-
-    usernameElement.textContent = displayName;
-    usernameElement.style.display = displayName ? "block" : "none";
-}
 
 // Функция для получения данных пользователя из Telegram WebApp API
 function getTelegramUser() {
     let userData = { username: null, firstName: null };
+
+    // Сначала пытаемся получить из Telegram WebApp API
     if (window.Telegram && window.Telegram.WebApp) {
         const webApp = window.Telegram.WebApp;
         const initDataUnsafe = webApp.initDataUnsafe;
@@ -142,6 +112,8 @@ function getTelegramUser() {
             userData.firstName = initDataUnsafe.user.first_name;
         }
     }
+
+    // Если не получилось, парсим из initData
     if (!userData.username && !userData.firstName && TELEGRAM_INIT_DATA) {
         try {
             const params = new URLSearchParams(TELEGRAM_INIT_DATA);
@@ -151,37 +123,64 @@ function getTelegramUser() {
                 userData.username = user.username;
                 userData.firstName = user.first_name;
             }
-        } catch (e) { console.error('Ошибка при парсинге initData:', e); }
+        } catch (e) {
+            console.error('Ошибка при парсинге initData:', e);
+        }
     }
+
     return userData;
 }
 
+// Функция для получения username из Telegram WebApp API
+function getTelegramUsername() {
+    const userData = getTelegramUser();
+    // Возвращаем username если есть, иначе first_name
+    return userData.username || userData.firstName || null;
+}
+
+// Функция для проверки, является ли значение username
 function isUsername(value) {
     if (!value) return false;
+    // Username в Telegram: только буквы, цифры и подчеркивания, длина от 5 до 32 символов
+    // Но также проверяем, что это не first_name (first_name может содержать пробелы)
     return /^[a-zA-Z0-9_]+$/.test(value) && value.length >= 1 && !value.includes(' ');
 }
 
+// Получаем initData из Telegram WebApp API
 function getInitData() {
+    // Проверяем, запущено ли приложение в Telegram
     if (window.Telegram && window.Telegram.WebApp) {
         const webApp = window.Telegram.WebApp;
         webApp.ready();
+
+        // Получаем initData из Telegram WebApp
         const initData = webApp.initData;
+
         if (initData && initData.trim() !== "") {
             TELEGRAM_INIT_DATA = initData;
-            telegramUsername = getTelegramUser().username || "";
+            // Получаем username
+            telegramUsername = getTelegramUsername();
             document.getElementById('tokenModal').style.display = 'none';
+            // Обновляем отображение username
             updateTelegramUsername();
             initApp();
             return;
         }
     }
+
+    // Если не в Telegram или нет initData, проверяем параметры URL (для тестирования)
     if(params.has("initData") && params.get("initData").trim() !== ""){
         TELEGRAM_INIT_DATA = params.get("initData").trim();
-        telegramUsername = getTelegramUser().username || "";
+        // Получаем username
+        telegramUsername = getTelegramUsername();
         document.getElementById('tokenModal').style.display = 'none';
+        // Обновляем отображение username
         updateTelegramUsername();
         initApp();
     } else {
+        // Для тестирования вне Telegram - показываем модальное окно
+        // Но все равно инициализируем карту (она будет работать без initData для визуализации)
+        // Обновляем отображение username (скроем, если нет данных)
         updateTelegramUsername();
         initApp();
         const tokenModal = document.getElementById('tokenModal');
@@ -190,21 +189,61 @@ function getInitData() {
             const val = document.getElementById('manualToken').value.trim();
             if(!val) return alert('Введите initData!');
             TELEGRAM_INIT_DATA = val;
-            telegramUsername = getTelegramUser().username || "";
+            // Получаем username
+            telegramUsername = getTelegramUsername();
             updateTelegramUsername();
             tokenModal.style.display = 'none';
         };
     }
 }
 
+// Функция для обновления отображения username
+async function updateTelegramUsername() {
+    const usernameElement = document.getElementById('telegramUsername');
+    const userData = getTelegramUser();
+
+    let displayName = userData.username || userData.firstName || telegramUsername || '';
+
+    // Запрашиваем роль пользователя с сервера
+    let isAdmin = false;
+    try {
+        const r = await fetch(`${SERVER_URL}/me`, {
+            headers: TELEGRAM_INIT_DATA ? { "X-Telegram-Init-Data": TELEGRAM_INIT_DATA } : {}
+        });
+        const d = await r.json();
+        if (d.status === "success" && d.user.role === "admin") {
+            isAdmin = true;
+        }
+    } catch (e) {
+        console.warn("Не удалось получить роль пользователя:", e);
+    }
+
+    if (isAdmin) {
+        displayName += "_admin";
+    }
+
+    if (displayName) {
+        usernameElement.textContent = displayName.startsWith("@") ? displayName : "@" + displayName;
+        usernameElement.style.display = 'block';
+    } else {
+        usernameElement.textContent = '';
+        usernameElement.style.display = 'none';
+    }
+}
+
+
+// Инициализируем при загрузке страницы
 getInitData();
 
 function initApp(){
-    if (appInitialized) return;
+    // Защита от повторной инициализации
+    if (appInitialized) {
+        return;
+    }
     appInitialized = true;
-
     async function fetchWithToken(url, options = {}) {
         options = options || {};
+        // Отправляем initData в заголовке
         if (TELEGRAM_INIT_DATA) {
             options.headers = {
                 ...(options.headers||{}),
@@ -216,6 +255,8 @@ function initApp(){
 
     const connectionDot = document.getElementById("connectionDot");
     const connectionText = document.getElementById("connectionText");
+    // Обновляем отображение username
+    updateTelegramUsername();
     const popupWindow = document.getElementById('popupWindow');
     const popupClose = document.getElementById('popupClose');
     const noteInput = document.getElementById('noteInput');
@@ -341,9 +382,8 @@ function initApp(){
             const r = await fetchWithToken(`${SERVER_URL}/markers`);
             const d = await r.json();
             if(d.status==='success') d.markers.forEach(addMarkerToMap);
-        }catch(err){ console.error('Ошибка при загрузке маркеров',err); }
+        }catch(err){ console.error('Ошибка при загрузке маркеров',err);}
     }
-
     async function refreshMarkers(){
         try{
             const r = await fetchWithToken(`${SERVER_URL}/markers`);
