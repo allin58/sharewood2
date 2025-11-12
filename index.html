@@ -32,10 +32,11 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #photoModal img {max-width:90%; max-height:90%; border-radius:6px;}
 #photoModal span {position:absolute; top:20px; right:30px; font-size:30px; color:white; cursor:pointer;}
 @keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
-#tokenModal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;justify-content:center;align-items:center;z-index:4000;}
-#tokenModalContent {background:white;padding:20px;border-radius:8px;width:300px;text-align:center;}
-#tokenModalContent input {width:100%;padding:8px;margin-top:10px;}
-#tokenModalContent button {margin-top:12px;padding:8px 12px;}
+#tokenModal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;z-index:4000;}
+#tokenModalContent {background:white;padding:20px;border-radius:8px;width:300px;text-align:center;max-width:90%;box-shadow:0 4px 6px rgba(0,0,0,0.3);}
+#tokenModalContent input {width:100%;padding:8px;margin-top:10px;box-sizing:border-box;}
+#tokenModalContent button {margin-top:12px;padding:8px 12px;cursor:pointer;}
+#tokenModalContent p {margin:8px 0;font-size:14px;}
 </style>
 </head>
 <body>
@@ -86,6 +87,8 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 <script>
 const SERVER_URL = "https://a8bddfc0cecf.ngrok-free.app";
 let TELEGRAM_INIT_DATA = "";
+const params = new URLSearchParams(window.location.search);
+let appInitialized = false;
 
 // Получаем initData из Telegram WebApp API
 function getInitData() {
@@ -93,10 +96,10 @@ function getInitData() {
     if (window.Telegram && window.Telegram.WebApp) {
         const webApp = window.Telegram.WebApp;
         webApp.ready();
-
+        
         // Получаем initData из Telegram WebApp
         const initData = webApp.initData;
-
+        
         if (initData && initData.trim() !== "") {
             TELEGRAM_INIT_DATA = initData;
             document.getElementById('tokenModal').style.display = 'none';
@@ -104,15 +107,16 @@ function getInitData() {
             return;
         }
     }
-
+    
     // Если не в Telegram или нет initData, проверяем параметры URL (для тестирования)
-    const params = new URLSearchParams(window.location.search);
     if(params.has("initData") && params.get("initData").trim() !== ""){
         TELEGRAM_INIT_DATA = params.get("initData").trim();
         document.getElementById('tokenModal').style.display = 'none';
         initApp();
     } else {
         // Для тестирования вне Telegram - показываем модальное окно
+        // Но все равно инициализируем карту (она будет работать без initData для визуализации)
+        initApp();
         const tokenModal = document.getElementById('tokenModal');
         tokenModal.style.display = 'flex';
         document.getElementById('tokenSubmit').onclick = () => {
@@ -120,7 +124,6 @@ function getInitData() {
             if(!val) return alert('Введите initData!');
             TELEGRAM_INIT_DATA = val;
             tokenModal.style.display = 'none';
-            initApp();
         };
     }
 }
@@ -129,12 +132,17 @@ function getInitData() {
 getInitData();
 
 function initApp(){
+    // Защита от повторной инициализации
+    if (appInitialized) {
+        return;
+    }
+    appInitialized = true;
     async function fetchWithToken(url, options = {}) {
         options = options || {};
         // Отправляем initData в заголовке
         if (TELEGRAM_INIT_DATA) {
             options.headers = {
-                ...(options.headers||{}),
+                ...(options.headers||{}), 
                 "X-Telegram-Init-Data": TELEGRAM_INIT_DATA
             };
         }
@@ -216,8 +224,8 @@ function initApp(){
 
         photoList.querySelectorAll('img').forEach(img=>{
             img.onclick=()=>{
-                let src = img.dataset.src
-                    ? `${SERVER_URL}/uploads/${img.dataset.src}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}`
+                let src = img.dataset.src 
+                    ? `${SERVER_URL}/uploads/${img.dataset.src}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}` 
                     : img.src;
                 photoModal.querySelector('img').src = src;
                 photoModal.style.display='flex';
