@@ -58,9 +58,9 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 <div id="popupWindow">
   <div id="popupClose">×</div>
   <div><strong>Координаты:</strong> <span id="popupCoords">—</span></div>
-  <label>Порода *</label><input type="text" id="breedInput">
   <label>Объект</label><input type="text" id="objectInput">
-  <label>Запись *</label><textarea id="noteInput" rows="4"></textarea>
+  <label>Порода</label><input type="text" id="breedInput">
+  <label>Запись</label><textarea id="noteInput" rows="4"></textarea>
   <label>Цвет метки</label>
   <select id="markerColor">
     <option value="green">Зелёный</option>
@@ -441,7 +441,6 @@ function initApp(){
 
     saveBtn.onclick=async()=>{
         const note=noteInput.value.trim(), breed=breedInput.value.trim(), object=objectInput.value.trim();
-        if(!note || !breed) return alert('Заполните обязательные поля!');
         const color=markerColorSelect.value; spinner.style.display='block';
         const fd=new FormData();
         if(!currentEntryId){ fd.append('lat',currentCenter.lat); fd.append('lon',currentCenter.lon); }
