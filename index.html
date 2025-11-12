@@ -58,7 +58,8 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 <div id="popupWindow">
   <div id="popupClose">×</div>
   <div><strong>Координаты:</strong> <span id="popupCoords">—</span></div>
-  <label>Локация *</label><input type="text" id="locationInput">
+  <label>Порода *</label><input type="text" id="breedInput">
+  <label>Объект</label><input type="text" id="objectInput">
   <label>Запись *</label><textarea id="noteInput" rows="4"></textarea>
   <label>Цвет метки</label>
   <select id="markerColor">
@@ -66,6 +67,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
     <option value="red">Красный</option>
     <option value="blue">Синий</option>
     <option value="yellow">Жёлтый</option>
+    <option value="black">Чёрный</option>
   </select>
   <label>Фотографии</label>
   <input type="file" id="photoInput" multiple accept="image/*" capture="environment">
@@ -100,7 +102,7 @@ let telegramUsername = "";
 // Функция для получения данных пользователя из Telegram WebApp API
 function getTelegramUser() {
     let userData = { username: null, firstName: null };
-    
+
     // Сначала пытаемся получить из Telegram WebApp API
     if (window.Telegram && window.Telegram.WebApp) {
         const webApp = window.Telegram.WebApp;
@@ -110,7 +112,7 @@ function getTelegramUser() {
             userData.firstName = initDataUnsafe.user.first_name;
         }
     }
-    
+
     // Если не получилось, парсим из initData
     if (!userData.username && !userData.firstName && TELEGRAM_INIT_DATA) {
         try {
@@ -125,7 +127,7 @@ function getTelegramUser() {
             console.error('Ошибка при парсинге initData:', e);
         }
     }
-    
+
     return userData;
 }
 
@@ -150,10 +152,10 @@ function getInitData() {
     if (window.Telegram && window.Telegram.WebApp) {
         const webApp = window.Telegram.WebApp;
         webApp.ready();
-        
+
         // Получаем initData из Telegram WebApp
         const initData = webApp.initData;
-        
+
         if (initData && initData.trim() !== "") {
             TELEGRAM_INIT_DATA = initData;
             // Получаем username
@@ -165,7 +167,7 @@ function getInitData() {
             return;
         }
     }
-    
+
     // Если не в Telegram или нет initData, проверяем параметры URL (для тестирования)
     if(params.has("initData") && params.get("initData").trim() !== ""){
         TELEGRAM_INIT_DATA = params.get("initData").trim();
@@ -199,23 +201,23 @@ function getInitData() {
 function updateTelegramUsername() {
     const usernameElement = document.getElementById('telegramUsername');
     const userData = getTelegramUser();
-    
+
     // Если есть username, показываем его с @
     if (userData.username) {
         usernameElement.textContent = '@' + userData.username;
         usernameElement.style.display = 'block';
-    } 
+    }
     // Если нет username, но есть first_name, показываем first_name без @
     else if (userData.firstName) {
         usernameElement.textContent = userData.firstName;
         usernameElement.style.display = 'block';
-    } 
+    }
     // Если есть сохраненное значение telegramUsername (fallback)
     else if (telegramUsername) {
         const displayText = isUsername(telegramUsername) ? '@' + telegramUsername : telegramUsername;
         usernameElement.textContent = displayText;
         usernameElement.style.display = 'block';
-    } 
+    }
     // Если ничего нет, скрываем элемент
     else {
         usernameElement.textContent = '';
@@ -237,7 +239,7 @@ function initApp(){
         // Отправляем initData в заголовке
         if (TELEGRAM_INIT_DATA) {
             options.headers = {
-                ...(options.headers||{}), 
+                ...(options.headers||{}),
                 "X-Telegram-Init-Data": TELEGRAM_INIT_DATA
             };
         }
@@ -251,7 +253,8 @@ function initApp(){
     const popupWindow = document.getElementById('popupWindow');
     const popupClose = document.getElementById('popupClose');
     const noteInput = document.getElementById('noteInput');
-    const locationInput = document.getElementById('locationInput');
+    const breedInput = document.getElementById('breedInput');
+    const objectInput = document.getElementById('objectInput');
     const markerColorSelect = document.getElementById('markerColor');
     const photoInput = document.getElementById('photoInput');
     const photoList = document.getElementById('photoList');
@@ -321,8 +324,8 @@ function initApp(){
 
         photoList.querySelectorAll('img').forEach(img=>{
             img.onclick=()=>{
-                let src = img.dataset.src 
-                    ? `${SERVER_URL}/uploads/${img.dataset.src}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}` 
+                let src = img.dataset.src
+                    ? `${SERVER_URL}/uploads/${img.dataset.src}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}`
                     : img.src;
                 photoModal.querySelector('img').src = src;
                 photoModal.style.display='flex';
@@ -352,7 +355,8 @@ function initApp(){
         const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
                     red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
                     blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-                    yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png'};
+                    yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
+                    black:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png'};
         return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
                        iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
     }
@@ -399,7 +403,7 @@ function initApp(){
     loadMarkers(); setInterval(refreshMarkers,30000);
 
     newPointBtn.onclick=()=>{
-        currentEntryId=null; noteInput.value=''; locationInput.value=''; markerColorSelect.value='green';
+        currentEntryId=null; noteInput.value=''; breedInput.value=''; objectInput.value=''; markerColorSelect.value='green';
         selectedFiles=[]; existingPhotos=[]; renderPhotoList();
         document.getElementById('popupCoords').textContent=`${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
         deleteBtn.style.display='none'; popupWindow.style.display='block';
@@ -415,7 +419,8 @@ function initApp(){
             const e = d.entry;
             document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
             noteInput.value = e.note;
-            locationInput.value = e.location;
+            breedInput.value = e.breed || e.location || '';
+            objectInput.value = e.object || '';
             markerColorSelect.value = e.color;
             existingPhotos = Array.isArray(e.photos) ? e.photos.slice() : [];
             selectedFiles = [];
@@ -435,12 +440,12 @@ function initApp(){
     });
 
     saveBtn.onclick=async()=>{
-        const note=noteInput.value.trim(), location=locationInput.value.trim();
-        if(!note || !location) return alert('Заполните обязательные поля!');
+        const note=noteInput.value.trim(), breed=breedInput.value.trim(), object=objectInput.value.trim();
+        if(!note || !breed) return alert('Заполните обязательные поля!');
         const color=markerColorSelect.value; spinner.style.display='block';
         const fd=new FormData();
         if(!currentEntryId){ fd.append('lat',currentCenter.lat); fd.append('lon',currentCenter.lon); }
-        fd.append('note',note); fd.append('location',location); fd.append('color',color);
+        fd.append('note',note); fd.append('breed',breed); fd.append('object',object); fd.append('color',color);
         existingPhotos.forEach(p=>fd.append('existingPhotos[]',typeof p==='string'?p:p.filename));
         for(let f of selectedFiles) fd.append('photos[]',await resizeImage(f));
         const url=currentEntryId?`${SERVER_URL}/entry/${currentEntryId}`:`${SERVER_URL}/upload`;
