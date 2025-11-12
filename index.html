@@ -34,9 +34,14 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #photoModal img {max-width:90%; max-height:90%; border-radius:6px;}
 #photoModal span {position:absolute; top:20px; right:30px; font-size:30px; color:white; cursor:pointer;}
 @keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
-#loginForm {position: fixed; top:0; left:0; width:100%; height:100%; background:white; display:none; justify-content:center; align-items:center; z-index:4000; flex-direction:column;}
+#tokenModal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;z-index:4000;}
+#tokenModalContent {background:white;padding:20px;border-radius:8px;width:300px;text-align:center;max-width:90%;box-shadow:0 4px 6px rgba(0,0,0,0.3);}
+#tokenModalContent input {width:100%;padding:8px;margin-top:10px;box-sizing:border-box;}
+#tokenModalContent button {margin-top:12px;padding:8px 12px;cursor:pointer;}
+#tokenModalContent p {margin:8px 0;font-size:14px;}
+#loginForm {position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:none; z-index:5000; justify-content:center; align-items:center; flex-direction:column;}
 #loginForm input {margin:4px 0; padding:6px; width:200px;}
-#loginForm button {padding:6px 10px; margin-top:6px;}
+#loginForm button {padding:6px 12px; margin-top:8px;}
 </style>
 </head>
 <body>
@@ -77,84 +82,100 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 
 <div id="photoModal"><span id="closePhotoModal">×</span><img src=""></div>
 
+<div id="tokenModal">
+  <div id="tokenModalContent">
+    <h3>Тестовый режим</h3>
+    <p>Приложение должно запускаться через Telegram Bot</p>
+    <p>Для тестирования вставьте initData:</p>
+    <input type="text" id="manualToken" placeholder="initData">
+    <button id="tokenSubmit">Подтвердить</button>
+  </div>
+</div>
+
 <div id="loginForm">
-  <h3>Вход для администратора</h3>
+  <h3>Вход для браузерного администратора</h3>
   <input type="text" id="loginUsername" placeholder="Username">
   <input type="password" id="loginPassword" placeholder="Password">
   <button id="loginBtn">Войти</button>
-  <div id="loginError" style="color:red; margin-top:6px;"></div>
 </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 const SERVER_URL = "https://a8bddfc0cecf.ngrok-free.app";
-let TELEGRAM_INIT_DATA = "";
+let TELEGRAM_INIT_DATA = null;
+let telegramUsername = null;
 let appInitialized = false;
+const params = new URLSearchParams(window.location.search);
 
-// ----------------- Универсальный fetch -----------------
-async function fetchWithAuth(url, options = {}) {
+// --- Универсальный fetch ---
+async function fetchWithAuth(url, options={}) {
     options = options || {};
+    options.credentials = 'include'; // для браузера
     options.headers = options.headers || {};
-    if (TELEGRAM_INIT_DATA) {
-        options.headers["X-Telegram-Init-Data"] = TELEGRAM_INIT_DATA;
-    } else {
-        options.credentials = "include";
+    if(TELEGRAM_INIT_DATA){
+        options.headers['X-Telegram-Init-Data'] = TELEGRAM_INIT_DATA;
     }
     return fetch(url, options);
 }
 
-// ----------------- Telegram или браузер -----------------
-function getInitData() {
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
-        TELEGRAM_INIT_DATA = window.Telegram.WebApp.initData;
-        document.getElementById('loginForm').style.display = 'none';
+// --- Telegram / Browser Detection ---
+function getTelegramUser() {
+    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe){
+        const user = Telegram.WebApp.initDataUnsafe.user;
+        return {username: user?.username, firstName: user?.first_name};
+    }
+    return null;
+}
+function getTelegramUsername() {
+    const u = getTelegramUser();
+    return u?.username || u?.firstName || null;
+}
+
+function updateUsernameDisplay(){
+    const el = document.getElementById('telegramUsername');
+    if(telegramUsername){
+        el.textContent = telegramUsername.startsWith("@") ? telegramUsername : "@"+telegramUsername;
+        el.style.display='block';
+    } else el.style.display='none';
+}
+
+// --- Инициализация ---
+function getInitData(){
+    if(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData){
+        TELEGRAM_INIT_DATA = Telegram.WebApp.initData;
+        telegramUsername = getTelegramUsername();
+        document.getElementById('loginForm').style.display='none';
         initApp();
     } else {
-        checkBrowserSession();
+        TELEGRAM_INIT_DATA = null;
+        telegramUsername = null;
+        document.getElementById('loginForm').style.display='flex';
+        initApp();
     }
 }
 
-async function checkBrowserSession() {
-    try {
-        const res = await fetchWithAuth(`${SERVER_URL}/me`);
-        const data = await res.json();
-        if (data.status === 'success') {
-            document.getElementById('loginForm').style.display = 'none';
-            initApp();
-        } else {
-            document.getElementById('loginForm').style.display = 'flex';
-        }
-    } catch(e) {
-        document.getElementById('loginForm').style.display = 'flex';
-    }
-}
-
-// ----------------- Логин браузерного админа -----------------
-document.getElementById('loginBtn').onclick = async () => {
+// --- Форма логина браузера ---
+document.getElementById('loginBtn').onclick = async ()=>{
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value.trim();
-    if(!username || !password) return;
-
-    try {
-        const res = await fetchWithAuth(`${SERVER_URL}/login`, {
-            method: 'POST',
-            body: new URLSearchParams({username,password})
-        });
-        const data = await res.json();
-        if(data.status === 'success') {
-            document.getElementById('loginForm').style.display = 'none';
+    if(!username || !password) return alert('Введите логин и пароль!');
+    const fd = new FormData();
+    fd.append('username', username);
+    fd.append('password', password);
+    try{
+        const r = await fetch(`${SERVER_URL}/login`,{method:'POST',body:fd, credentials:'include'});
+        const d = await r.json();
+        if(d.status==='success'){
+            alert('Вход успешен!');
+            document.getElementById('loginForm').style.display='none';
             initApp();
-        } else {
-            document.getElementById('loginError').textContent = data.message || "Ошибка логина";
-        }
-    } catch(e) {
-        document.getElementById('loginError').textContent = "Ошибка сервера";
-    }
+        } else alert(d.message);
+    }catch(e){console.error(e);}
 };
 
-// ----------------- Инициализация приложения -----------------
-function initApp() {
+// --- Основная логика приложения ---
+function initApp(){
     if(appInitialized) return;
     appInitialized = true;
 
@@ -177,9 +198,7 @@ function initApp() {
 
     let selectedFiles=[], currentEntryId=null, existingPhotos=[];
     let markersMap={};
-    let currentCenter={lat:54.1032, lon:28.3186};
 
-    // ----------------- Пинг сервера -----------------
     async function pingServer(){
         try{
             const r = await fetchWithAuth(`${SERVER_URL}/ping`);
@@ -198,12 +217,11 @@ function initApp() {
     }
     setInterval(pingServer,5000); pingServer();
 
-    // ----------------- Карта -----------------
-    const params = new URLSearchParams(window.location.search);
-    currentCenter.lat = parseFloat(params.get("lat")) || 54.1032;
-    currentCenter.lon = parseFloat(params.get("lon")) || 28.3186;
-    const map = L.map('map', { center:[currentCenter.lat, currentCenter.lon], zoom:12, attributionControl:false });
+    const defaultLat = parseFloat(params.get("lat")) || 54.1032;
+    const defaultLon = parseFloat(params.get("lon")) || 28.3186;
+    const map = L.map('map', { center:[defaultLat, defaultLon], zoom:12, attributionControl:false });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    let currentCenter={lat:defaultLat, lon:defaultLon};
     map.on('move',()=>{const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng};});
 
     function getIcon(color){
@@ -215,6 +233,45 @@ function initApp() {
         return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
                        iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
     }
+
+    function renderPhotoList(){
+        photoList.innerHTML='';
+        existingPhotos.forEach((p,i)=>{
+            const div=document.createElement('div');
+            div.className='photoItem';
+            let imgUrl = `${SERVER_URL}/uploads/${p}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}`;
+            div.innerHTML=`<img src="${imgUrl}" data-src="${p}">
+                             <div class="removePhoto" data-i="${i}">×</div>`;
+            photoList.appendChild(div);
+        });
+        selectedFiles.forEach((f,i)=>{
+            const div=document.createElement('div');
+            div.className='photoItem';
+            div.innerHTML=`<img src="${URL.createObjectURL(f)}"><div class="removePhoto" data-i="s${i}">×</div>`;
+            photoList.appendChild(div);
+        });
+
+        photoList.querySelectorAll('.removePhoto').forEach(btn=>{
+            btn.onclick=()=>{
+                const id = btn.dataset.i;
+                if(id.startsWith('s')) selectedFiles.splice(parseInt(id.slice(1)),1);
+                else existingPhotos.splice(parseInt(id),1);
+                renderPhotoList();
+            };
+        });
+
+        photoList.querySelectorAll('img').forEach(img=>{
+            img.onclick=()=>{
+                let src = img.dataset.src ? `${SERVER_URL}/uploads/${img.dataset.src}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}` : img.src;
+                photoModal.querySelector('img').src = src;
+                photoModal.style.display='flex';
+            };
+        });
+    }
+
+    photoInput.addEventListener('change',()=>{selectedFiles=Array.from(photoInput.files); renderPhotoList();});
+    popupClose.onclick=()=>{popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[];};
+    closePhotoModal.onclick=()=>{photoModal.style.display='none';};
 
     function addMarkerToMap(entry){
         const idStr=String(entry.id);
@@ -230,112 +287,142 @@ function initApp() {
             const r = await fetchWithAuth(`${SERVER_URL}/markers`);
             const d = await r.json();
             if(d.status==='success') d.markers.forEach(addMarkerToMap);
-        }catch(err){ console.error(err); }
+        }catch(err){ console.error('Ошибка при загрузке маркеров',err);}
+    }
+    async function refreshMarkers(){
+        try{
+            const r = await fetchWithAuth(`${SERVER_URL}/markers`);
+            let d={status:'error', markers:[]};
+            try{ d = await r.json(); } catch(e){ return; }
+            if(d.status!=='success') return;
+            const serverIds=new Set(d.markers.map(m=>String(m.id)));
+            d.markers.forEach(m=>{
+                const idStr=String(m.id);
+                if(markersMap[idStr]){
+                    markersMap[idStr].setLatLng([m.lat,m.lon]);
+                    markersMap[idStr].setIcon(getIcon(m.color));
+                } else addMarkerToMap(m);
+            });
+            Object.keys(markersMap).forEach(id=>{
+                if(!serverIds.has(id) && id!==String(currentEntryId)){
+                    map.removeLayer(markersMap[id]);
+                    delete markersMap[id];
+                }
+            });
+        }catch(err){console.error(err);}
     }
 
-    loadMarkers(); setInterval(loadMarkers,30000);
+    loadMarkers(); setInterval(refreshMarkers,30000);
 
-    // ----------------- Новый маркер -----------------
-    newPointBtn.onclick=()=>{
-        currentEntryId=null; noteInput.value=''; breedInput.value=''; objectInput.value=''; markerColorSelect.value='green';
-        selectedFiles=[]; existingPhotos=[]; renderPhotoList();
-        document.getElementById('popupCoords').textContent=`${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
-        deleteBtn.style.display='none'; popupWindow.style.display='block';
+    newPointBtn.onclick = () => {
+        currentEntryId = null;
+        noteInput.value = '';
+        breedInput.value = '';
+        objectInput.value = '';
+        markerColorSelect.value = 'green';
+        selectedFiles = [];
+        existingPhotos = [];
+        renderPhotoList();
+        document.getElementById('popupCoords').textContent = `${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
+        popupWindow.style.display = 'block';
     };
 
-    // ----------------- Popup закрытие -----------------
-    popupClose.onclick=()=>popupWindow.style.display='none';
-
-    // ----------------- Фото -----------------
-    function renderPhotoList(){
-        photoList.innerHTML='';
-        existingPhotos.forEach((f)=>{ 
-            const div=document.createElement('div'); div.className='photoItem';
-            const img=document.createElement('img'); img.src=`${SERVER_URL}/uploads/${f}`; img.onclick=()=>openPhotoModal(img.src);
-            const remove=document.createElement('div'); remove.className='removePhoto'; remove.textContent='×';
-            remove.onclick=()=>{ existingPhotos=existingPhotos.filter(x=>x!==f); renderPhotoList(); };
-            div.appendChild(img); div.appendChild(remove); photoList.appendChild(div);
-        });
-        selectedFiles.forEach((file,index)=>{
-            const div=document.createElement('div'); div.className='photoItem';
-            const img=document.createElement('img'); img.src=URL.createObjectURL(file);
-            const remove=document.createElement('div'); remove.className='removePhoto'; remove.textContent='×';
-            remove.onclick=()=>{ selectedFiles.splice(index,1); renderPhotoList(); };
-            div.appendChild(img); div.appendChild(remove); photoList.appendChild(div);
-        });
+    async function openEditPopup(entryId) {
+        currentEntryId = entryId;
+        selectedFiles = [];
+        existingPhotos = [];
+        try {
+            const r = await fetchWithAuth(`${SERVER_URL}/entry/${entryId}`);
+            const d = await r.json();
+            if (d.status !== 'success') return alert(d.message);
+            const e = d.entry;
+            noteInput.value = e.note;
+            breedInput.value = e.breed;
+            objectInput.value = e.object;
+            markerColorSelect.value = e.color;
+            existingPhotos = e.photos || [];
+            renderPhotoList();
+            document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
+            popupWindow.style.display = 'block';
+        } catch (err) {
+            console.error(err);
+            alert('Ошибка загрузки данных метки');
+        }
     }
 
-    function openPhotoModal(src){ photoModal.style.display='flex'; photoModal.querySelector('img').src=src; }
-    closePhotoModal.onclick=()=>photoModal.style.display='none';
-    photoModal.onclick=(e)=>{ if(e.target===photoModal) photoModal.style.display='none'; }
-    photoInput.onchange=()=>{ selectedFiles.push(...photoInput.files); renderPhotoList(); photoInput.value=''; }
-
-    // ----------------- Сохранение -----------------
-    saveBtn.onclick=async ()=>{
-        spinner.style.display='block';
-        const formData=new FormData();
-        formData.append('lat', currentCenter.lat);
-        formData.append('lon', currentCenter.lon);
-        formData.append('note', noteInput.value);
-        formData.append('breed', breedInput.value);
-        formData.append('object', objectInput.value);
-        formData.append('color', markerColorSelect.value);
-        existingPhotos.forEach(p=>formData.append('existingPhotos[]', p));
-        selectedFiles.forEach(f=>formData.append('photos[]', f));
-
-        try{
-            let url=currentEntryId ? `${SERVER_URL}/entry/${currentEntryId}` : `${SERVER_URL}/upload`;
-            let method=currentEntryId ? 'POST' : 'POST';
-            const res = await fetchWithAuth(url, {method, body: formData});
-            const data = await res.json();
-            if(data.status==='success'){
-                if(!currentEntryId) addMarkerToMap(data.entry);
-                else markersMap[currentEntryId].setIcon(getIcon(markerColorSelect.value));
-                popupWindow.style.display='none';
-                currentEntryId=null; selectedFiles=[]; existingPhotos=[];
-                loadMarkers();
-            } else alert(data.message || "Ошибка сохранения");
-        }catch(err){console.error(err); alert("Ошибка сервера");}
-        spinner.style.display='none';
+    saveBtn.onclick = async () => {
+        spinner.style.display = 'block';
+        const fd = new FormData();
+        fd.append('note', noteInput.value);
+        fd.append('breed', breedInput.value);
+        fd.append('object', objectInput.value);
+        fd.append('color', markerColorSelect.value);
+        existingPhotos.forEach(p => fd.append('existingPhotos[]', p));
+        selectedFiles.forEach(f => fd.append('photos[]', f));
+        if (!currentEntryId) {
+            fd.append('lat', currentCenter.lat);
+            fd.append('lon', currentCenter.lon);
+            try {
+                const r = await fetchWithAuth(`${SERVER_URL}/upload`, { method: 'POST', body: fd });
+                const d = await r.json();
+                spinner.style.display = 'none';
+                if (d.status === 'success') {
+                    addMarkerToMap(d.entry);
+                    popupWindow.style.display = 'none';
+                    selectedFiles = [];
+                    existingPhotos = [];
+                } else alert(d.message);
+            } catch (err) { spinner.style.display = 'none'; console.error(err); alert('Ошибка при сохранении'); }
+        } else {
+            try {
+                const r = await fetchWithAuth(`${SERVER_URL}/entry/${currentEntryId}`, { method: 'POST', body: fd });
+                const d = await r.json();
+                spinner.style.display = 'none';
+                if (d.status === 'success') {
+                    refreshMarkers();
+                    popupWindow.style.display = 'none';
+                    selectedFiles = [];
+                    existingPhotos = [];
+                } else alert(d.message);
+            } catch (err) { spinner.style.display = 'none'; console.error(err); alert('Ошибка при обновлении'); }
+        }
     };
 
-    // ----------------- Удаление -----------------
-    deleteBtn.onclick=async ()=>{
-        if(!currentEntryId) return;
-        if(!confirm("Удалить запись?")) return;
-        spinner.style.display='block';
-        try{
-            const res = await fetchWithAuth(`${SERVER_URL}/entry/${currentEntryId}`, {method:'DELETE'});
-            const data = await res.json();
-            if(data.status==='success'){
-                map.removeLayer(markersMap[currentEntryId]);
-                delete markersMap[currentEntryId];
-                popupWindow.style.display='none';
-                currentEntryId=null; selectedFiles=[]; existingPhotos=[];
-            } else alert(data.message || "Ошибка удаления");
-        }catch(err){console.error(err); alert("Ошибка сервера");}
-        spinner.style.display='none';
+    deleteBtn.onclick = async () => {
+        if (!currentEntryId) return;
+        if (!confirm('Удалить метку?')) return;
+        try {
+            const r = await fetchWithAuth(`${SERVER_URL}/entry/${currentEntryId}`, { method: 'DELETE' });
+            const d = await r.json();
+            if (d.status === 'success') {
+                if (markersMap[currentEntryId]) { map.removeLayer(markersMap[currentEntryId]); delete markersMap[currentEntryId]; }
+                popupWindow.style.display = 'none';
+                selectedFiles = [];
+                existingPhotos = [];
+            } else alert(d.message);
+        } catch (err) { console.error(err); alert('Ошибка при удалении'); }
     };
 
-    // ----------------- Редактирование -----------------
-    async function openEditPopup(id){
-        currentEntryId=id; selectedFiles=[]; existingPhotos=[];
-        try{
-            const res = await fetchWithAuth(`${SERVER_URL}/entry/${id}`);
-            const data = await res.json();
-            if(data.status==='success'){
-                const e=data.entry;
-                noteInput.value=e.note||''; breedInput.value=e.breed||''; objectInput.value=e.object||''; markerColorSelect.value=e.color||'green';
-                existingPhotos=e.photos||[];
-                renderPhotoList();
-                document.getElementById('popupCoords').textContent=`${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
-                deleteBtn.style.display='block'; popupWindow.style.display='block';
-            } else alert(data.message || "Ошибка загрузки");
-        }catch(err){console.error(err); alert("Ошибка сервера");}
+    // Для тестирования в браузере: показать modal для initData
+    const tokenModal = document.getElementById('tokenModal');
+    const tokenSubmit = document.getElementById('tokenSubmit');
+    const manualTokenInput = document.getElementById('manualToken');
+
+    if (!TELEGRAM_INIT_DATA && !navigator.userAgent.includes('TelegramBot')) {
+        tokenModal.style.display = 'flex';
     }
+
+    tokenSubmit.onclick = () => {
+        TELEGRAM_INIT_DATA = manualTokenInput.value.trim();
+        if (TELEGRAM_INIT_DATA) {
+            telegramUsername = "browser_user";
+            updateUsernameDisplay();
+            tokenModal.style.display = 'none';
+        }
+    };
 }
 
-getInitData();
+window.addEventListener('load', getInitData);
 </script>
 </body>
 </html>
