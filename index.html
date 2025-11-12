@@ -96,11 +96,9 @@ let appInitialized = false;
 async function fetchWithAuth(url, options = {}) {
     options = options || {};
     options.headers = options.headers || {};
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
-        // передаем initData через заголовок
-        options.headers["X-Telegram-Init-Data"] = window.Telegram.WebApp.initData;
+    if (TELEGRAM_INIT_DATA) {
+        options.headers["X-Telegram-Init-Data"] = TELEGRAM_INIT_DATA;
     } else {
-        // для браузерной сессии
         options.credentials = "include";
     }
     return fetch(url, options);
