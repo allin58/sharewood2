@@ -34,11 +34,6 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #photoModal img {max-width:90%; max-height:90%; border-radius:6px;}
 #photoModal span {position:absolute; top:20px; right:30px; font-size:30px; color:white; cursor:pointer;}
 @keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
-#tokenModal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;z-index:4000;}
-#tokenModalContent {background:white;padding:20px;border-radius:8px;width:300px;text-align:center;max-width:90%;box-shadow:0 4px 6px rgba(0,0,0,0.3);}
-#tokenModalContent input {width:100%;padding:8px;margin-top:10px;box-sizing:border-box;}
-#tokenModalContent button {margin-top:12px;padding:8px 12px;cursor:pointer;}
-#tokenModalContent p {margin:8px 0;font-size:14px;}
 #loginForm {position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:none; z-index:5000; justify-content:center; align-items:center; flex-direction:column;}
 #loginForm input {margin:4px 0; padding:6px; width:200px;}
 #loginForm button {padding:6px 12px; margin-top:8px;}
@@ -82,15 +77,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 
 <div id="photoModal"><span id="closePhotoModal">×</span><img src=""></div>
 
-<div id="tokenModal">
-  <div id="tokenModalContent">
-    <h3>Тестовый режим</h3>
-    <p>Приложение должно запускаться через Telegram Bot</p>
-    <p>Для тестирования вставьте initData:</p>
-    <input type="text" id="manualToken" placeholder="initData">
-    <button id="tokenSubmit">Подтвердить</button>
-  </div>
-</div>
+
 
 <div id="loginForm">
   <h3>Вход для браузерного администратора</h3>
@@ -167,7 +154,7 @@ document.getElementById('loginBtn').onclick = async ()=>{
         const r = await fetch(`${SERVER_URL}/login`,{method:'POST',body:fd, credentials:'include'});
         const d = await r.json();
         if(d.status==='success'){
-            alert('Вход успешен!');
+            //alert('Вход успешен!');
             document.getElementById('loginForm').style.display='none';
             initApp();
         } else alert(d.message);
@@ -403,23 +390,9 @@ function initApp(){
         } catch (err) { console.error(err); alert('Ошибка при удалении'); }
     };
 
-    // Для тестирования в браузере: показать modal для initData
-    const tokenModal = document.getElementById('tokenModal');
-    const tokenSubmit = document.getElementById('tokenSubmit');
-    const manualTokenInput = document.getElementById('manualToken');
 
-    if (!TELEGRAM_INIT_DATA && !navigator.userAgent.includes('TelegramBot')) {
-        tokenModal.style.display = 'flex';
-    }
 
-    tokenSubmit.onclick = () => {
-        TELEGRAM_INIT_DATA = manualTokenInput.value.trim();
-        if (TELEGRAM_INIT_DATA) {
-            telegramUsername = "browser_user";
-            updateUsernameDisplay();
-            tokenModal.style.display = 'none';
-        }
-    };
+
 }
 
 window.addEventListener('load', getInitData);
