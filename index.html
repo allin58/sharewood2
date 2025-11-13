@@ -92,6 +92,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 const SERVER_URL = "https://a8bddfc0cecf.ngrok-free.app";
 let TELEGRAM_INIT_DATA = null;
 let telegramUsername = null;
+let isAdmin = false; // <-- НОВАЯ ПЕРЕМЕННАЯ
 let appInitialized = false;
 const params = new URLSearchParams(window.location.search);
 
@@ -119,28 +120,84 @@ function getTelegramUsername() {
     return u?.username || u?.firstName || null;
 }
 
+// --- ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ИМЕНИ ---
 function updateUsernameDisplay(){
     const el = document.getElementById('telegramUsername');
-    if(telegramUsername){
-        el.textContent = telegramUsername.startsWith("@") ? telegramUsername : "@"+telegramUsername;
+    
+    let displayUsername = telegramUsername;
+
+    if (isAdmin) {
+        displayUsername = (displayUsername || "Admin") + "_admin";
+    }
+
+    if(displayUsername){
+        let finalDisplay = displayUsername.startsWith("@") ? displayUsername : "@" + displayUsername;
+        el.textContent = finalDisplay;
         el.style.display='block';
-    } else el.style.display='none';
+    } else {
+        el.style.display='none';
+    }
 }
+
+// --- ФУНКЦИЯ ПРОВЕРКИ СТАТУСА ЧЕРЕЗ /me (ЗАМЕНА pingServer) ---
+async function fetchMeAndStatus(){
+    const connectionDot = document.getElementById("connectionDot");
+    const connectionText = document.getElementById("connectionText");
+    
+    try{
+        const r = await fetchWithAuth(`${SERVER_URL}/me`);
+
+        let d;
+        try {
+            d = await r.json();
+        } catch (e) {
+            // Ошибка парсинга JSON (Сервер доступен, но ответ невалиден)
+            connectionDot.style.background="#d9534f";
+            connectionText.textContent="Ошибка данных";
+            telegramUsername = null; isAdmin = false; updateUsernameDisplay();
+            return;
+        }
+        
+        if(d.status==="success" && d.user){
+            
+            // 1. Успешное соединение
+            connectionDot.style.background="#28a745";
+            connectionText.textContent="Есть соединение";
+
+            // 2. Обновление имени и роли
+            telegramUsername = d.user.username;
+            isAdmin = d.user.role === 'admin';
+            updateUsernameDisplay();
+            
+        } else {
+            // Аутентификация не пройдена (d.status !== 'success')
+            connectionDot.style.background="#d9534f";
+            connectionText.textContent="Не авторизован";
+            telegramUsername = null; isAdmin = false; updateUsernameDisplay();
+        }
+    } catch {
+        // Ошибка сети (Сервер действительно недоступен)
+        connectionDot.style.background="#d9534f";
+        connectionText.textContent="Нет соединения";
+        telegramUsername = null; isAdmin = false; updateUsernameDisplay();
+    }
+}
+
 
 // --- Инициализация ---
 function getInitData(){
     if(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData){
         TELEGRAM_INIT_DATA = Telegram.WebApp.initData;
-        telegramUsername = getTelegramUsername();
+        telegramUsername = getTelegramUsername(); // Получаем имя из initData
         document.getElementById('loginForm').style.display='none';
-        updateUsernameDisplay();
+        // updateUsernameDisplay() здесь не нужно, т.к. initApp вызовет fetchMeAndStatus
         initApp();
     } else {
         TELEGRAM_INIT_DATA = null;
         telegramUsername = null;
         document.getElementById('loginForm').style.display='flex';
-        updateUsernameDisplay();
-        initApp();
+        // В браузере initApp запустит fetchMeAndStatus, который проверит, авторизованы ли мы по Cookie
+        initApp(); 
     }
 }
 
@@ -161,12 +218,12 @@ document.getElementById('loginPassword').addEventListener('keypress', (e) => {
     }
 });
 
+// --- ОБНОВЛЕННАЯ ФУНКЦИЯ ВХОДА В БРАУЗЕРЕ ---
 async function handleBrowserLogin() {
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value.trim();
     if (!username || !password) return alert('Введите логин и пароль!');
 
-    // Блокируем кнопку на время запроса
     const loginBtn = document.getElementById('loginBtn');
     loginBtn.disabled = true;
     loginBtn.textContent = 'Вход...';
@@ -182,34 +239,34 @@ async function handleBrowserLogin() {
             credentials: 'include'
         });
 
-        // Проверяем статус ответа, если сервер ответил, но с ошибкой (например, 401)
         if (r.ok) {
             const d = await r.json();
             if (d.status === 'success') {
+                
+                // ⬇️ НОВОЕ: Запрашиваем /me, чтобы получить имя и статус админа
+                await fetchMeAndStatus(); 
+                
                 document.getElementById('loginForm').style.display = 'none';
                 initApp();
             } else {
                 alert(d.message || 'Неверные учетные данные');
             }
         } else {
-             // Обработка ошибок HTTP (4xx, 5xx), кроме тех, что вызывают сбой fetch
              const errorText = await r.text();
              alert(`Ошибка входа: Сервер ответил со статусом ${r.status}. ${errorText.substring(0, 50)}...`);
         }
 
     } catch (e) {
-        // 🚨 Здесь срабатывает, если сервер НЕДОСТУПЕН (Network Error, CORS Blocked и т.д.)
         console.error("Ошибка сети или недоступность сервера:", e);
         alert('❌ Ошибка: Сервер недоступен. Проверьте подключение или адрес.');
     } finally {
-        // Разблокируем кнопку
         loginBtn.disabled = false;
         loginBtn.textContent = 'Войти';
     }
 }
 
 // --- Функция для сжатия изображения перед загрузкой ---
-function compressImage(file, quality = 0.6, maxWidth = 800) { // ИЗМЕНЕНО: quality=0.6, maxWidth=800
+function compressImage(file, quality = 0.6, maxWidth = 800) { 
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -222,7 +279,6 @@ function compressImage(file, quality = 0.6, maxWidth = 800) { // ИЗМЕНЕН�
                 let width = img.width;
                 let height = img.height;
 
-                // Масштабирование, если ширина превышает maxWidth
                 if (width > maxWidth) {
                     height *= maxWidth / width;
                     width = maxWidth;
@@ -234,11 +290,8 @@ function compressImage(file, quality = 0.6, maxWidth = 800) { // ИЗМЕНЕН�
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Сжатие в формат JPEG (для уменьшения размера)
                 canvas.toBlob(blob => {
                     if (blob) {
-                        // Создаем новый File объект с тем же именем, но сжатым содержимым
-                        // Важно: если оригинальный файл был PNG, он теперь станет JPEG, что дает сжатие
                         const compressedFile = new File([blob], file.name.replace(/\.(png|gif)$/i, '.jpeg'), {
                             type: 'image/jpeg',
                             lastModified: Date.now()
@@ -247,7 +300,7 @@ function compressImage(file, quality = 0.6, maxWidth = 800) { // ИЗМЕНЕН�
                     } else {
                         reject(new Error('Canvas to Blob failed'));
                     }
-                }, 'image/jpeg', quality); // Качество 0.6 (60%)
+                }, 'image/jpeg', quality); 
             };
 
             img.onerror = error => reject(error);
@@ -281,23 +334,11 @@ function initApp(){
     let selectedFiles=[], currentEntryId=null, existingPhotos=[];
     let markersMap={};
 
-    async function pingServer(){
-        try{
-            const r = await fetchWithAuth(`${SERVER_URL}/ping`);
-            const d = await r.json();
-            if(d.status==="success"){
-                connectionDot.style.background="#28a745";
-                connectionText.textContent="Есть соединение";
-            } else {
-                connectionDot.style.background="#d9534f";
-                connectionText.textContent="Нет соединения";
-            }
-        } catch {
-            connectionDot.style.background="#d9534f";
-            connectionText.textContent="Нет соединения";
-        }
-    }
-    setInterval(pingServer,5000); pingServer();
+    // ⬇️ ЗАМЕНА: pingServer удален, используем fetchMeAndStatus
+    setInterval(fetchMeAndStatus, 5000); 
+    fetchMeAndStatus();
+
+    // ... (остальной код map, getIcon, renderPhotoList, loadMarkers, refreshMarkers, saveBtn.onclick, deleteBtn.onclick остается без изменений) ...
 
     const defaultLat = parseFloat(params.get("lat")) || 54.1032;
     const defaultLon = parseFloat(params.get("lon")) || 28.3186;
@@ -308,12 +349,12 @@ function initApp(){
 
     function getIcon(color){
         const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                    red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                    blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-                    yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
-                    black:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png'};
+                     red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                     blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                     yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
+                     black:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png'};
         return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                       iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+                        iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
     }
 
     function renderPhotoList(){
@@ -323,7 +364,7 @@ function initApp(){
             div.className='photoItem';
             let imgUrl = `${SERVER_URL}/uploads/${p}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}`;
             div.innerHTML=`<img src="${imgUrl}" data-src="${p}">
-                             <div class="removePhoto" data-i="${i}">×</div>`;
+                                 <div class="removePhoto" data-i="${i}">×</div>`;
             photoList.appendChild(div);
         });
         selectedFiles.forEach((f,i)=>{
@@ -410,7 +451,6 @@ newPointBtn.onclick = () => {
     renderPhotoList();
     document.getElementById('popupCoords').textContent = `${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
 
-    // ⬇️ Изменения для кнопки удаления и сохранения
     deleteBtn.style.display = 'none';
     saveBtn.textContent = 'Создать';
 
@@ -438,7 +478,6 @@ async function openEditPopup(entryId) {
         renderPhotoList();
         document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
 
-        // ⬇️ Изменения для кнопки удаления и сохранения
         deleteBtn.style.display = 'block';
         saveBtn.textContent = 'Сохранить изменения';
 
@@ -472,7 +511,6 @@ saveBtn.onclick = async () => {
     existingPhotos.forEach(p => fd.append('existingPhotos[]', p));
 
     // 3. Добавление ТОЛЬКО сжатых фото в FormData
-    // Исключаем добавление оригинальных файлов.
     compressedFiles.forEach(f => fd.append('photos[]', f));
 
     // ... (Остальная логика отправки данных остается прежней)
