@@ -12,7 +12,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 #connectionStatusRow {display:flex; align-items:center;}
 #connectionDot {width:12px; height:12px; border-radius:50%; margin-right:6px; background:#d9534f;}
 #telegramUsername {font-size:12px; color:#666; margin-top:4px; font-weight:normal;}
-#popupWindow {position: fixed; top:80px; left:0; width:100%; height:calc(100%-80px); z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
+#popupWindow {position: fixed; top:80px; left:0; width:100%; height:calc(100% - 80px); z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
 .crosshair {position:absolute; top:50%; left:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:999;}
 .crosshair::before, .crosshair::after {content:''; position:absolute; background:black;}
 .crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
@@ -56,9 +56,9 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 <div id="popupWindow">
   <div id="popupClose">×</div>
   <div>
-      <strong>Координаты:</strong>
-      <span id="popupCoords">—</span>
-      <button id="copyCoordsBtn" style="margin-left: 8px; padding: 3px 6px; font-size: 12px; border: 1px solid #ccc; background: #f0f0f0; border-radius: 4px; cursor: pointer;">Копировать</button>
+    <strong>Координаты:</strong>
+    <span id="popupCoords">—</span>
+    <button id="copyCoordsBtn" style="margin-left: 8px; padding: 3px 6px; font-size: 12px; border: 1px solid #ccc; background: #f0f0f0; border-radius: 4px; cursor: pointer;">📋</button>
   </div>
   <label>Объект</label><input type="text" id="objectInput">
   <label>Порода</label><input type="text" id="breedInput">
@@ -336,7 +336,9 @@ function initApp(){
     const newPointBtn = document.getElementById('newPointBtn');
     const popupCoords = document.getElementById('popupCoords');
     const copyCoordsBtn = document.getElementById('copyCoordsBtn');
-
+    // --- КОНСТАНТЫ СИМВОЛОВ ---
+    const COPY_SYMBOL = '📋';
+    const COPIED_SYMBOL = '✔️'; // Или '✅'
     let selectedFiles=[], currentEntryId=null, existingPhotos=[];
     let markersMap={};
 
@@ -353,16 +355,17 @@ function initApp(){
     let currentCenter={lat:defaultLat, lon:defaultLon};
     map.on('move',()=>{const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng};});
 
-copyCoordsBtn.onclick = async () => {
+// --- ЛОГИКА КОПИРОВАНИЯ ---
+    copyCoordsBtn.onclick = async () => {
         const coordsText = popupCoords.textContent;
         if (coordsText && coordsText !== '—') {
             try {
                 await navigator.clipboard.writeText(coordsText);
 
-                const originalText = copyCoordsBtn.textContent;
-                copyCoordsBtn.textContent = 'Скопировано!';
+                // ⬇️ ИЗМЕНЕНИЕ: Используем символ подтверждения
+                copyCoordsBtn.textContent = COPIED_SYMBOL;
                 setTimeout(() => {
-                    copyCoordsBtn.textContent = originalText;
+                    copyCoordsBtn.textContent = COPY_SYMBOL; // Сброс
                 }, 1500);
 
             } catch (err) {
@@ -476,7 +479,7 @@ newPointBtn.onclick = () => {
     renderPhotoList();
     document.getElementById('popupCoords').textContent = `${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
 
-    copyCoordsBtn.textContent = 'Копировать';
+    copyCoordsBtn.textContent = COPY_SYMBOL;
     deleteBtn.style.display = 'none';
     saveBtn.textContent = 'Создать';
 
@@ -503,7 +506,7 @@ async function openEditPopup(entryId) {
         existingPhotos = e.photos || [];
         renderPhotoList();
         document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
-        copyCoordsBtn.textContent = 'Копировать';
+        copyCoordsBtn.textContent = COPY_SYMBOL;
         deleteBtn.style.display = 'block';
         saveBtn.textContent = 'Сохранить изменения';
 
