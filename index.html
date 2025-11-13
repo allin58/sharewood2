@@ -624,65 +624,124 @@
 
             // --- PHOTO & POPUP UTILITIES ---
 
-            function renderPhotoList() {
-                photoList.innerHTML = '';
+// В вашем <script>
+async function fetchProtectedImage(filename) {
+    const url = `${SERVER_URL}/photo/${filename}`;
+    const initData = TELEGRAM_INIT_DATA || ''; // Получаем initData, если доступно
 
-                // Комбинируем существующие фото (с сервера) и выбранные новые (локальные файлы)
-                const allPhotos = [
-                    ...existingPhotos.map((p, i) => ({filename: p.filename || p, isExisting: true, index: i})),
-                    ...selectedFiles.map((f, i) => ({file: f, isExisting: false, index: i}))
-                ];
+    const options = {
+        method: 'GET',
+        headers: {},
+        credentials: 'include' // 🔥 ВАЖНО: Это гарантирует отправку куки сессии в браузере
+    };
 
-                allPhotos.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = 'photoItem';
+    if (initData) {
+        // 🔥 Для Telegram Mini App: вручную добавляем заголовок авторизации
+        options.headers['X-Telegram-Init-Data'] = initData;
+    }
 
-                    let imgUrl;
-                    let dataSrc = '';
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            console.error(`Ошибка загрузки ${filename}: ${response.status} ${response.statusText}`);
+            return null;
+        }
 
-                    if (p.isExisting) {
-                        imgUrl = `${SERVER_URL}/photo/${p.filename}`;
-                        dataSrc = p.filename;
+        // Получаем изображение и создаем локальный URL
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+    } catch (e) {
+        console.error("Ошибка сети при загрузке фото:", e);
+        return null;
+    }
+}
+
+
+function renderPhotoList() {
+    photoList.innerHTML = '';
+    
+    // Комбинируем существующие фото (с сервера) и выбранные новые (локальные файлы)
+    const allPhotos = [
+        ...existingPhotos.map((p, i) => ({filename: p.filename || p, isExisting: true, index: i})), 
+        ...selectedFiles.map((f, i) => ({file: f, isExisting: false, index: i}))
+    ];
+
+    allPhotos.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'photoItem';
+        
+        let imgUrl;
+        let dataSrc = ''; 
+        let isProtected = p.isExisting; // Все существующие фото с сервера защищены
+
+        if (p.isExisting) {
+            // Устанавливаем пустой SRC или заглушку, пока не завершится асинхронная загрузка
+            imgUrl = ''; 
+            dataSrc = p.filename;
+        } else {
+            // Локальные файлы (новые) отображаются сразу через Blob URL
+            imgUrl = URL.createObjectURL(p.file);
+        }
+
+        const removeBtnId = p.isExisting ? p.index : `s${p.index}`;
+        
+        // data-full-src изначально равен imgUrl. Будет обновлен асинхронно для защищенных фото.
+        div.innerHTML = `<img src="${imgUrl}" data-filename="${dataSrc}" data-is-protected="${isProtected}" data-full-src="${imgUrl}">
+                         <div class="removePhoto" data-i="${removeBtnId}">×</div>`;
+        photoList.appendChild(div);
+
+        // 🔥 Запуск универсальной загрузки только для защищенных (существующих) фото
+        if (isProtected) {
+            const imgElement = div.querySelector('img');
+            fetchProtectedImage(p.filename)
+                .then(localUrl => {
+                    if (localUrl) {
+                        imgElement.src = localUrl;
+                        imgElement.setAttribute('data-full-src', localUrl); // Обновляем ссылку для модального окна
                     } else {
-                        imgUrl = URL.createObjectURL(p.file);
+                        // Визуальная индикация ошибки загрузки
+                        console.error(`Не удалось загрузить защищенное фото: ${p.filename}`);
+                        // Используем Base64 для отображения иконки "ошибка"
+                        imgElement.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x-octagon"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
                     }
-
-                    const removeBtnId = p.isExisting ? p.index : `s${p.index}`;
-                    div.innerHTML = `<img src="${imgUrl}" data-filename="${dataSrc}">
-                                     <div class="removePhoto" data-i="${removeBtnId}">×</div>`;
-                    photoList.appendChild(div);
-                });
-
-                photoList.querySelectorAll('.removePhoto').forEach(btn => {
-                    btn.onclick = (e) => {
-                        e.stopPropagation();
-                        const id = btn.dataset.i;
-                        if (String(id).startsWith('s')) {
-                            selectedFiles.splice(parseInt(id.slice(1)), 1);
-                        } else {
-                            existingPhotos.splice(parseInt(id), 1);
-                        }
-                        renderPhotoList();
-                    };
-                });
-
-                photoList.querySelectorAll('img').forEach(img => {
-                    img.onclick = (e) => {
-                        e.stopPropagation();
-                        let src;
-                        const filename = img.getAttribute('data-filename');
-
-                        if (filename) {
-                            src = `${SERVER_URL}/photo/${filename}`;
-                        } else {
-                            src = img.src;
-                        }
-
-                        photoModal.querySelector('img').src = src;
-                        photoModal.style.display = 'flex';
-                    };
-                });
+                })
+                .catch(error => console.error("Ошибка при fetchProtectedImage:", error));
+        }
+    });
+    
+    // Обработчики удаления
+    photoList.querySelectorAll('.removePhoto').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.i;
+            if (String(id).startsWith('s')) {
+                selectedFiles.splice(parseInt(id.slice(1)), 1);
+            } else {
+                existingPhotos.splice(parseInt(id), 1);
             }
+            renderPhotoList();
+        };
+    });
+
+    // Обработчики для модального окна просмотра
+    photoList.querySelectorAll('img').forEach(img => {
+        img.onclick = (e) => {
+            e.stopPropagation();
+            
+            // Используем data-full-src, который содержит либо локальный URL для Blob, 
+            // либо локальный URL для нового файла.
+            const src = img.getAttribute('data-full-src') || img.src; 
+
+            if (!src || src.startsWith('data:image/svg')) {
+                 // Не показывать модалку, если изображение еще не загружено или это иконка ошибки
+                 return;
+            }
+            
+            photoModal.querySelector('img').src = src;
+            photoModal.style.display = 'flex';
+        };
+    });
+}
 
 
             // =========================================================
@@ -718,7 +777,7 @@
                 try {
                     const response = await fetchWithAuth(`${SERVER_URL}/marker/${pointId}`);
                     const data = await response.json();
-                    console.log('Данные от сервера:', data);
+
                     if (data.status === 'success' && data.marker) {
                         const marker = data.marker;
                         popupCoords.textContent = `${marker.lat.toFixed(6)}, ${marker.lon.toFixed(6)}`;
