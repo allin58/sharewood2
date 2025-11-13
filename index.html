@@ -718,7 +718,7 @@
                 try {
                     const response = await fetchWithAuth(`${SERVER_URL}/marker/${pointId}`);
                     const data = await response.json();
-
+                    console.log('Данные от сервера:', data);
                     if (data.status === 'success' && data.marker) {
                         const marker = data.marker;
                         popupCoords.textContent = `${marker.lat.toFixed(6)}, ${marker.lon.toFixed(6)}`;
