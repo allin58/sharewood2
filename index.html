@@ -208,6 +208,54 @@ async function handleBrowserLogin() {
     }
 }
 
+// --- Функция для сжатия изображения перед загрузкой ---
+function compressImage(file, quality = 0.6, maxWidth = 800) { // ИЗМЕНЕНО: quality=0.6, maxWidth=800
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Масштабирование, если ширина превышает maxWidth
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Сжатие в формат JPEG (для уменьшения размера)
+                canvas.toBlob(blob => {
+                    if (blob) {
+                        // Создаем новый File объект с тем же именем, но сжатым содержимым
+                        // Важно: если оригинальный файл был PNG, он теперь станет JPEG, что дает сжатие
+                        const compressedFile = new File([blob], file.name.replace(/\.(png|gif)$/i, '.jpeg'), {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    } else {
+                        reject(new Error('Canvas to Blob failed'));
+                    }
+                }, 'image/jpeg', quality); // Качество 0.6 (60%)
+            };
+
+            img.onerror = error => reject(error);
+        };
+        reader.onerror = error => reject(error);
+    });
+}
+
 // --- Основная логика приложения ---
 function initApp(){
     if(appInitialized) return;
@@ -361,9 +409,9 @@ newPointBtn.onclick = () => {
     existingPhotos = [];
     renderPhotoList();
     document.getElementById('popupCoords').textContent = `${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
-    
+
     // ⬇️ Изменения для кнопки удаления и сохранения
-    deleteBtn.style.display = 'none'; 
+    deleteBtn.style.display = 'none';
     saveBtn.textContent = 'Создать';
 
     popupWindow.style.display = 'block';
@@ -381,7 +429,7 @@ async function openEditPopup(entryId) {
         const d = await r.json();
         if (d.status !== 'success') return alert(d.message);
         const e = d.entry;
-        
+
         noteInput.value = e.note;
         breedInput.value = e.breed;
         objectInput.value = e.object;
@@ -391,9 +439,9 @@ async function openEditPopup(entryId) {
         document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
 
         // ⬇️ Изменения для кнопки удаления и сохранения
-        deleteBtn.style.display = 'block'; 
+        deleteBtn.style.display = 'block';
         saveBtn.textContent = 'Сохранить изменения';
-        
+
         popupWindow.style.display = 'block';
     } catch (err) {
         console.error(err);
@@ -401,43 +449,61 @@ async function openEditPopup(entryId) {
     }
 }
 
-    saveBtn.onclick = async () => {
-        spinner.style.display = 'block';
-        const fd = new FormData();
-        fd.append('note', noteInput.value);
-        fd.append('breed', breedInput.value);
-        fd.append('object', objectInput.value);
-        fd.append('color', markerColorSelect.value);
-        existingPhotos.forEach(p => fd.append('existingPhotos[]', p));
-        selectedFiles.forEach(f => fd.append('photos[]', f));
-        if (!currentEntryId) {
-            fd.append('lat', currentCenter.lat);
-            fd.append('lon', currentCenter.lon);
-            try {
-                const r = await fetchWithAuth(`${SERVER_URL}/upload`, { method: 'POST', body: fd });
-                const d = await r.json();
-                spinner.style.display = 'none';
-                if (d.status === 'success') {
-                    addMarkerToMap(d.entry);
-                    popupWindow.style.display = 'none';
-                    selectedFiles = [];
-                    existingPhotos = [];
-                } else alert(d.message);
-            } catch (err) { spinner.style.display = 'none'; console.error(err); alert('Ошибка при сохранении'); }
-        } else {
-            try {
-                const r = await fetchWithAuth(`${SERVER_URL}/entry/${currentEntryId}`, { method: 'POST', body: fd });
-                const d = await r.json();
-                spinner.style.display = 'none';
-                if (d.status === 'success') {
-                    refreshMarkers();
-                    popupWindow.style.display = 'none';
-                    selectedFiles = [];
-                    existingPhotos = [];
-                } else alert(d.message);
-            } catch (err) { spinner.style.display = 'none'; console.error(err); alert('Ошибка при обновлении'); }
-        }
-    };
+saveBtn.onclick = async () => {
+    spinner.style.display = 'block';
+
+    // 1. Сжатие новых фото
+    const compressedFilesPromises = selectedFiles.map(file => compressImage(file));
+    let compressedFiles = [];
+    try {
+        compressedFiles = await Promise.all(compressedFilesPromises);
+    } catch (err) {
+        spinner.style.display = 'none';
+        console.error('Ошибка при сжатии фото:', err);
+        return alert('Ошибка при обработке фотографий.');
+    }
+
+    // 2. Сбор остальных данных
+    const fd = new FormData();
+    fd.append('note', noteInput.value);
+    fd.append('breed', breedInput.value);
+    fd.append('object', objectInput.value);
+    fd.append('color', markerColorSelect.value);
+    existingPhotos.forEach(p => fd.append('existingPhotos[]', p));
+
+    // 3. Добавление ТОЛЬКО сжатых фото в FormData
+    // Исключаем добавление оригинальных файлов.
+    compressedFiles.forEach(f => fd.append('photos[]', f));
+
+    // ... (Остальная логика отправки данных остается прежней)
+    if (!currentEntryId) {
+        fd.append('lat', currentCenter.lat);
+        fd.append('lon', currentCenter.lon);
+        try {
+            const r = await fetchWithAuth(`${SERVER_URL}/upload`, { method: 'POST', body: fd });
+            const d = await r.json();
+            spinner.style.display = 'none';
+            if (d.status === 'success') {
+                addMarkerToMap(d.entry);
+                popupWindow.style.display = 'none';
+                selectedFiles = [];
+                existingPhotos = [];
+            } else alert(d.message);
+        } catch (err) { spinner.style.display = 'none'; console.error(err); alert('Ошибка при сохранении'); }
+    } else {
+        try {
+            const r = await fetchWithAuth(`${SERVER_URL}/entry/${currentEntryId}`, { method: 'POST', body: fd });
+            const d = await r.json();
+            spinner.style.display = 'none';
+            if (d.status === 'success') {
+                refreshMarkers();
+                popupWindow.style.display = 'none';
+                selectedFiles = [];
+                existingPhotos = [];
+            } else alert(d.message);
+        } catch (err) { spinner.style.display = 'none'; console.error(err); alert('Ошибка при обновлении'); }
+    }
+};
 
     deleteBtn.onclick = async () => {
         if (!currentEntryId) return;
