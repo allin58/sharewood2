@@ -15,10 +15,10 @@
         #telegramUsername {font-size:12px; color:#666; margin-top:4px; font-weight:normal;}
         /* Основной Popup использует фиксированное позиционирование, заполняя экран */
         #popupWindow {position: fixed; top:80px; left:0; width:100%; height:calc(100% - 80px); z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
-        
-        /* ИСПРАВЛЕНО: Стиль крестика - всегда видимый */
-        #crosshair { 
-            position:absolute; top:50%; left:50%; width:20px; height:20px; 
+
+        /* Стиль крестика - всегда видимый */
+        #crosshair {
+            position:absolute; top:50%; left:50%; width:20px; height:20px;
             margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:999;
             display: block; /* Всегда видим */
         }
@@ -48,7 +48,7 @@
         #loginForm button {padding:6px 12px; margin-top:8px;}
 
         /* АДАПТАЦИЯ и ИСПРАВЛЕНИЯ для Административной панели и связанных модальных окон */
-        .admin-modal-window { 
+        .admin-modal-window {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.7); z-index: 4000; justify-content: center; align-items: center;
         }
@@ -59,24 +59,24 @@
         #adminPanelWindow .admin-modal-content { width: 700px; min-height: 400px; }
         #userEditModal .admin-modal-content, #objectEditModal .admin-modal-content { width: 350px; }
         .modal-close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #333; }
-        
+
         /* ИСПРАВЛЕНО: Унифицированные стили для полей в админ-окнах */
         .admin-modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
-        .admin-modal-content input[type="text"], 
-        .admin-modal-content input[type="password"], 
-        .admin-modal-content textarea, 
+        .admin-modal-content input[type="text"],
+        .admin-modal-content input[type="password"],
+        .admin-modal-content textarea,
         .admin-modal-content select {
             width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-size: 14px;
         }
         .admin-modal-content textarea { resize: vertical; }
 
         /* Кнопки в админке */
-        .admin-action-button { 
-            padding: 6px 10px; border: none; border-radius: 4px; background-color: #007bff; color: white; 
+        .admin-action-button {
+            padding: 6px 10px; border: none; border-radius: 4px; background-color: #007bff; color: white;
             cursor: pointer; margin-bottom: 10px; font-size: 14px;
         }
         .admin-action-button:hover { background-color: #0056b3; }
-        
+
         /* Вкладки в админке */
         .admin-tabs { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 10px; }
         .adminTabButton {
@@ -96,7 +96,7 @@
 <body>
 
     <div id="map"></div>
-    
+
     <div id="crosshair"></div>
 
     <div id="spinner"><div class="loader"></div></div>
@@ -108,7 +108,7 @@
         </div>
         <div id="telegramUsername"></div>
     </div>
-    
+
     <button id="newPointBtn">➕ Новая точка</button>
     <button id="adminPanelBtn" class="admin-action-button" style="display:none; background-color: #6c757d; position:absolute; bottom:55px; left:50%; transform:translateX(-50%); z-index:1000;">Админ-панель</button>
 
@@ -213,7 +213,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <div id="tab-assignments" class="adminTabContentPane">
                 <h4>Список назначений:</h4>
                 <p>Здесь будет логика для назначений.</p>
@@ -237,7 +237,7 @@
 
             <label for="editFullName">ФИО (*):</label>
             <input type="text" id="editFullName" required>
-            
+
             <label for="editRole">Роль:</label>
             <select id="editRole">
                 <option value="user">user</option>
@@ -273,7 +273,7 @@
 
             <label for="editObjectName">Название объекта (*):</label>
             <input type="text" id="editObjectName" required>
-            
+
             <label for="editObjectInfo">Доп. информация:</label>
             <textarea id="editObjectInfo" rows="3"></textarea>
 
@@ -286,26 +286,26 @@
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    
+
     <script>
         // =========================================================
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // =========================================================
-        const SERVER_URL = "https://a8bddfc0cecf.ngrok-free.app"; 
+        const SERVER_URL = "https://a8bddfc0cecf.ngrok-free.app";
         let TELEGRAM_INIT_DATA = null;
         let telegramUsername = null;
-        let isAdmin = false; 
+        let isAdmin = false;
         let appInitialized = false;
         const params = new URLSearchParams(window.location.search);
-        let currentEntryId = null; 
-        let selectedFiles = []; 
+        let currentEntryId = null;
+        let selectedFiles = [];
         let existingPhotos = [];
         let markersMap = {};
-        let currentCenter = {lat: 54.1032, lon: 28.3186}; 
+        let currentCenter = {lat: 54.1032, lon: 28.3186};
 
         const COPY_SYMBOL = '📋';
         const COPIED_SYMBOL = '✔️';
-        
+
         // =========================================================
         // АУТЕНТИФИКАЦИЯ И УТИЛИТЫ (без изменений)
         // =========================================================
@@ -386,7 +386,7 @@
                 telegramUsername = null; isAdmin = false; updateUsernameDisplay(); updateAdminPanelVisibility();
             }
         }
-        
+
         async function handleBrowserLogin() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
@@ -429,7 +429,7 @@
                 loginBtn.textContent = 'Войти';
             }
         }
-        
+
         function getInitData(){
             if(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData){
                 TELEGRAM_INIT_DATA = Telegram.WebApp.initData;
@@ -443,7 +443,7 @@
                 initApp();
             }
         }
-        
+
         function compressImage(file, quality = 0.6, maxWidth = 800) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -486,7 +486,7 @@
                 reader.onerror = error => reject(error);
             });
         }
-        
+
         // =========================================================
         // ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
         // =========================================================
@@ -511,7 +511,7 @@
             const newPointBtn = document.getElementById('newPointBtn');
             const popupCoords = document.getElementById('popupCoords');
             const copyCoordsBtn = document.getElementById('copyCoordsBtn');
-            const crosshair = document.getElementById('crosshair'); 
+            const crosshair = document.getElementById('crosshair');
             const adminPanelBtn = document.getElementById('adminPanelBtn');
             const adminPanelWindow = document.getElementById('adminPanelWindow');
             const adminPanelClose = document.getElementById('adminPanelClose');
@@ -543,31 +543,31 @@
             const editObjectId = document.getElementById('editObjectId');
             const editObjectName = document.getElementById('editObjectName');
             const editObjectInfo = document.getElementById('editObjectInfo');
-            
+
             // --- MAP INIT ---
             const defaultLat = parseFloat(params.get("lat")) || 54.1032;
             const defaultLon = parseFloat(params.get("lon")) || 28.3186;
             currentCenter={lat:defaultLat, lon:defaultLon};
             const map = L.map('map', { center:[defaultLat, defaultLon], zoom:12, attributionControl:false });
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            
+
             // ОБНОВЛЕНИЕ ЦЕНТРА: Обновляем currentCenter при движении карты
             map.on('move',()=>{
-                const c=map.getCenter(); 
+                const c=map.getCenter();
                 currentCenter={lat:c.lat, lon:c.lng};
             });
-            
+
             // СКРЫТИЕ POPUP при клике на карту
             map.on('click', () => {
                 popupWindow.style.display = 'none';
-            }); 
+            });
 
             // --- PERIODIC CHECK ---
             setInterval(fetchMeAndStatus, 5000);
             fetchMeAndStatus();
 
             // =========================================================
-            // MAP & MARKER LOGIC (без изменений)
+            // MAP & MARKER LOGIC
             // =========================================================
 
             function getIcon(color) {
@@ -585,7 +585,7 @@
                 if(markersMap[idStr]) return;
                 const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
                 marker.entryId=idStr;
-                marker.on('click',()=>handleOpenMarkerPopup(idStr)); 
+                marker.on('click',()=>handleOpenMarkerPopup(idStr));
                 markersMap[idStr]=marker;
             }
 
@@ -604,7 +604,7 @@
                     try{ d = await r.json(); } catch(e){ return; }
                     if(d.status!=='success') return;
                     const serverIds=new Set(d.markers.map(m=>String(m.id)));
-                    
+
                     d.markers.forEach(m=>{
                         const idStr=String(m.id);
                         if(markersMap[idStr]){
@@ -612,29 +612,31 @@
                             markersMap[idStr].setIcon(getIcon(m.color));
                         } else addMarkerToMap(m);
                     });
-                    
+
                     Object.keys(markersMap).forEach(id=>{
-                        if(!serverIds.has(id) && id!==String(currentEntryId)){ 
+                        if(!serverIds.has(id) && id!==String(currentEntryId)){
                             map.removeLayer(markersMap[id]);
                             delete markersMap[id];
                         }
                     });
                 }catch(err){console.error(err);}
             }
-            
-            // --- PHOTO & POPUP UTILITIES (без изменений) ---
+
+            // --- PHOTO & POPUP UTILITIES ---
 
             function renderPhotoList() {
                 photoList.innerHTML = '';
+
+                // Комбинируем существующие фото (с сервера) и выбранные новые (локальные файлы)
                 const allPhotos = [
-                    ...existingPhotos.map((p, i) => ({...p, isExisting: true, index: i})), 
+                    ...existingPhotos.map((p, i) => ({filename: p.filename || p, isExisting: true, index: i})),
                     ...selectedFiles.map((f, i) => ({file: f, isExisting: false, index: i}))
                 ];
 
                 allPhotos.forEach(p => {
                     const div = document.createElement('div');
                     div.className = 'photoItem';
-                    
+
                     let imgUrl;
                     let dataSrc = '';
 
@@ -646,11 +648,11 @@
                     }
 
                     const removeBtnId = p.isExisting ? p.index : `s${p.index}`;
-                    div.innerHTML = `<img src="${imgUrl}" data-src="${dataSrc}">
+                    div.innerHTML = `<img src="${imgUrl}" data-filename="${dataSrc}">
                                      <div class="removePhoto" data-i="${removeBtnId}">×</div>`;
                     photoList.appendChild(div);
                 });
-                
+
                 photoList.querySelectorAll('.removePhoto').forEach(btn => {
                     btn.onclick = (e) => {
                         e.stopPropagation();
@@ -667,7 +669,15 @@
                 photoList.querySelectorAll('img').forEach(img => {
                     img.onclick = (e) => {
                         e.stopPropagation();
-                        let src = img.dataset.src ? `${SERVER_URL}/photo/${img.dataset.src}` : img.src;
+                        let src;
+                        const filename = img.getAttribute('data-filename');
+
+                        if (filename) {
+                            src = `${SERVER_URL}/photo/${filename}`;
+                        } else {
+                            src = img.src;
+                        }
+
                         photoModal.querySelector('img').src = src;
                         photoModal.style.display = 'flex';
                     };
@@ -676,18 +686,18 @@
 
 
             // =========================================================
-            // MARKER POPUP HANDLERS (с исправлениями)
+            // MARKER POPUP HANDLERS
             // =========================================================
 
             async function loadObjectOptions() {
                 pointObjectSelect.innerHTML = '<option value="">-- Загрузка объектов... --</option>';
 
                 try {
-                    const r = await fetchWithAuth(`${SERVER_URL}/admin/objects`); 
+                    const r = await fetchWithAuth(`${SERVER_URL}/admin/objects`);
                     const d = await r.json();
 
                     pointObjectSelect.innerHTML = '<option value="">-- Выберите объект --</option>';
-                    
+
                     if (d.status === 'success' && d.objects) {
                         d.objects.forEach(obj => {
                             const option = document.createElement('option');
@@ -714,15 +724,23 @@
                         popupCoords.textContent = `${marker.lat.toFixed(6)}, ${marker.lon.toFixed(6)}`;
                         noteInput.value = marker.note || '';
                         breedInput.value = marker.breed || '';
-                        
-                        pointObjectSelect.value = marker.object_id || ''; 
-                        
+
+                        pointObjectSelect.value = marker.object_id || '';
+
                         markerColorSelect.value = marker.color || 'green';
-                        existingPhotos = marker.photos || []; 
-                        renderPhotoList(); 
-                        
+
+                        // Убеждаемся, что photos - это массив объектов с ключом 'filename'
+                        existingPhotos = (marker.photos || []).map(p => {
+                            if (typeof p === 'string') {
+                                return { filename: p };
+                            }
+                            return p;
+                        });
+
+                        renderPhotoList();
+
                         map.setView([marker.lat, marker.lon], map.getZoom());
-                        
+
                         return true;
                     } else {
                         alert(data.message || 'Не удалось загрузить данные метки.');
@@ -738,10 +756,10 @@
             }
 
             async function handleOpenMarkerPopup(pointId = null) {
-                currentEntryId = pointId; 
-                selectedFiles = []; 
-                existingPhotos = []; 
-                
+                currentEntryId = pointId;
+                selectedFiles = [];
+                existingPhotos = [];
+
                 noteInput.value = '';
                 breedInput.value = '';
                 markerColorSelect.value = 'green';
@@ -750,9 +768,9 @@
                 document.getElementById('copyCoordsBtn').textContent = COPY_SYMBOL;
 
                 spinner.style.display = 'block';
-                await loadObjectOptions(); 
+                await loadObjectOptions();
                 spinner.style.display = 'none';
-                
+
                 if (pointId) {
                     // РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕЙ ТОЧКИ
                     const success = await loadMarkerData(pointId);
@@ -761,18 +779,17 @@
                         return;
                     }
 
-                    pointObjectSelect.disabled = true; 
+                    pointObjectSelect.disabled = true;
                     saveBtn.textContent = 'Обновить метку';
                     deleteBtn.style.display = 'block';
-                    
+
                 } else {
                     // СОЗДАНИЕ НОВОЙ ТОЧКИ
-                    const {lat, lon} = currentCenter; 
-                    // Используем текущий центр карты (под крестиком)
+                    const {lat, lon} = currentCenter;
                     popupCoords.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-                    
-                    pointObjectSelect.disabled = false; 
-                    pointObjectSelect.value = ''; 
+
+                    pointObjectSelect.disabled = false;
+                    pointObjectSelect.value = '';
                     saveBtn.textContent = 'Сохранить';
                     deleteBtn.style.display = 'none';
                 }
@@ -782,19 +799,19 @@
 
 
             // =========================================================
-            // POPUP BUTTON HANDLERS (УПРОЩЕНО)
+            // POPUP BUTTON HANDLERS (УБРАНЫ АЛЕРТЫ УСПЕХА И CONFIRM)
             // =========================================================
 
             // Кнопка "Новая точка" сразу открывает форму с координатами центра карты
             newPointBtn.onclick = () => handleOpenMarkerPopup(null);
-            
+
             saveBtn.onclick = async () => {
                 spinner.style.display = 'block';
                 saveBtn.disabled = true;
 
                 const isNew = currentEntryId === null;
                 const selectedObjectId = pointObjectSelect.value;
-                
+
                 if (isNew && !selectedObjectId) {
                     alert('Пожалуйста, выберите Объект для новой метки.');
                     saveBtn.disabled = false;
@@ -816,20 +833,20 @@
                 const fd = new FormData();
                 fd.append('note', noteInput.value);
                 fd.append('breed', breedInput.value);
-                
+
                 if (selectedObjectId) {
                     fd.append('object_id', selectedObjectId);
                 }
-                
-                fd.append('color', markerColorSelect.value);
-                fd.append('existing_photos', JSON.stringify(existingPhotos.map(p => p.filename))); 
 
-                compressedFiles.forEach(f => fd.append('photos', f)); 
-                
-                // Если это новая точка, используем координаты из поля
+                fd.append('color', markerColorSelect.value);
+                // Передаем только имена существующих файлов, которые не были удалены
+                fd.append('existing_photos', JSON.stringify(existingPhotos.map(p => p.filename)));
+
+                // *** ИСПРАВЛЕНИЕ: Вернули 'photos' (без []) и убедились, что цикл отрабатывает ***
+                compressedFiles.forEach(f => fd.append('photos[]', f));
+
                 if (isNew) {
                     const [lat, lon] = popupCoords.textContent.split(',').map(s => s.trim());
-                    // Проверка на случай, если вдруг координаты не заполнились (хотя не должны)
                     if (!lat || !lon || lat === '—') {
                         alert('Координаты не определены. Переместите карту и попробуйте снова.');
                         saveBtn.disabled = false;
@@ -845,19 +862,18 @@
 
                 try {
                     const r = await fetchWithAuth(url, { method: method, body: fd });
-                    
+
                     if (!r.ok) {
                         const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
                         alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
                         return;
                     }
-                    
+
                     const d = await r.json();
 
                     if (d.status === 'success') {
                         popupWindow.style.display = 'none';
-                        alert(d.message);
-                        loadMarkers(); 
+                        loadMarkers();
                     } else {
                         alert(d.message || 'Ошибка сохранения.');
                     }
@@ -872,7 +888,7 @@
 
             deleteBtn.onclick = async () => {
                 if (!currentEntryId) return;
-                if (!confirm('Удалить метку?')) return;
+
                 try {
                     const r = await fetchWithAuth(`${SERVER_URL}/marker/${currentEntryId}`, { method: 'DELETE' });
                     const d = await r.json();
@@ -881,7 +897,6 @@
                         popupWindow.style.display = 'none';
                         selectedFiles = [];
                         existingPhotos = [];
-                        alert(d.message || 'Метка удалена.');
                     } else alert(d.message);
                 } catch (err) { console.error(err); alert('Ошибка при удалении'); }
             };
@@ -889,12 +904,12 @@
             // --- GENERAL EVENT HANDLERS (без изменений) ---
 
             photoInput.addEventListener('change', () => {
-                selectedFiles = Array.from(photoInput.files); 
+                selectedFiles = Array.from(photoInput.files);
                 renderPhotoList();
             });
 
             popupClose.onclick = () => {
-                popupWindow.style.display = 'none'; 
+                popupWindow.style.display = 'none';
                 currentEntryId = null;
             };
 
@@ -916,7 +931,7 @@
                     }
                 }
             };
-            
+
             // --- LOGIN HANDLERS (без изменений) ---
             document.getElementById('loginBtn').onclick = async () => { await handleBrowserLogin(); };
             document.getElementById('loginUsername').addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleBrowserLogin(); } });
@@ -924,9 +939,9 @@
 
 
             // =========================================================
-            // ADMIN PANEL LOGIC (без изменений)
+            // ADMIN PANEL LOGIC (УБРАНЫ АЛЕРТЫ УСПЕХА И CONFIRM)
             // =========================================================
-            
+
             // --- USER LOGIC ---
             async function loadUsersTable() {
                 if (!isAdmin) return;
@@ -940,7 +955,7 @@
                     if (d.status === 'success' && d.users) {
                         d.users.forEach(user => {
                             const row = usersTableBody.insertRow();
-                            row.onclick = () => openUserEditModal(user.id); 
+                            row.onclick = () => openUserEditModal(user.id);
                             row.style.cursor = 'pointer';
                             row.innerHTML = `
                                 <td>${user.full_name}</td>
@@ -955,7 +970,7 @@
                     console.error('Ошибка при загрузке пользователей:', e);
                 }
             }
-            
+
             async function openUserEditModal(userId = null) {
                 editUserId.value = userId || '';
                 editFullName.value = '';
@@ -964,13 +979,13 @@
                 editUsername.value = '';
                 editPassword.value = '';
                 editPhone.value = '';
-                editAdditionalInfo.value = ''; 
+                editAdditionalInfo.value = '';
 
                 if (userId) {
                     userEditTitle.textContent = 'Редактирование пользователя';
-                    newAccountFields.style.display = 'none'; 
-                    optionalInfoFields.style.display = 'block'; 
-                    deleteUserBtn.style.display = 'block'; 
+                    newAccountFields.style.display = 'none';
+                    optionalInfoFields.style.display = 'block';
+                    deleteUserBtn.style.display = 'block';
                     try {
                         const r = await fetchWithAuth(`${SERVER_URL}/admin/user/${userId}`);
                         const d = await r.json();
@@ -992,14 +1007,14 @@
                     }
                 } else {
                     userEditTitle.textContent = 'Создание нового пользователя';
-                    newAccountFields.style.display = 'block'; 
-                    optionalInfoFields.style.display = 'block'; 
-                    deleteUserBtn.style.display = 'none'; 
+                    newAccountFields.style.display = 'block';
+                    optionalInfoFields.style.display = 'block';
+                    deleteUserBtn.style.display = 'none';
                 }
 
                 userEditModal.style.display = 'flex';
             }
-            
+
             saveUserBtn.onclick = async () => {
                 const userId = editUserId.value;
                 const url = userId ? `${SERVER_URL}/admin/user/${userId}` : `${SERVER_URL}/admin/user`;
@@ -1043,9 +1058,8 @@
                     const d = await r.json();
 
                     if (d.status === 'success') {
-                        alert(d.message);
                         userEditModal.style.display = 'none';
-                        loadUsersTable(); 
+                        loadUsersTable();
                     } else {
                         alert(d.message || 'Ошибка сохранения.');
                     }
@@ -1054,36 +1068,33 @@
                     console.error("Save User Error:", e);
                 }
             };
-            
+
             deleteUserBtn.onclick = async () => {
                 const userId = editUserId.value;
 
                 if (!userId) return;
 
-                if (confirm(`Вы уверены, что хотите удалить этого пользователя? Это действие необратимо.`)) {
-                    try {
-                        const url = `${SERVER_URL}/admin/user/${userId}`;
-                        const r = await fetchWithAuth(url, { method: 'DELETE' });
+                try {
+                    const url = `${SERVER_URL}/admin/user/${userId}`;
+                    const r = await fetchWithAuth(url, { method: 'DELETE' });
 
-                        if (!r.ok) {
-                            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
-                            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
-                            return;
-                        }
-
-                        const d = await r.json();
-
-                        if (d.status === 'success') {
-                            alert(d.message);
-                            userEditModal.style.display = 'none';
-                            loadUsersTable(); 
-                        } else {
-                            alert(d.message || 'Ошибка удаления.');
-                        }
-                    } catch (e) {
-                        alert('Ошибка соединения при удалении пользователя.');
-                        console.error("Delete User Error:", e);
+                    if (!r.ok) {
+                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+                        return;
                     }
+
+                    const d = await r.json();
+
+                    if (d.status === 'success') {
+                        userEditModal.style.display = 'none';
+                        loadUsersTable();
+                    } else {
+                        alert(d.message || 'Ошибка удаления.');
+                    }
+                } catch (e) {
+                    alert('Ошибка соединения при удалении пользователя.');
+                    console.error("Delete User Error:", e);
                 }
             };
 
@@ -1107,8 +1118,8 @@
                             row.style.cursor = 'pointer';
                             row.innerHTML = `<td>${obj.name}</td>`;
                         });
-                        
-                        loadObjectOptions(); 
+
+                        loadObjectOptions();
 
                     } else {
                         objectsTableBody.innerHTML = `<tr><td>${d.message || 'Ошибка загрузки объектов'}</td></tr>`;
@@ -1118,7 +1129,7 @@
                     console.error('Ошибка при загрузке объектов:', e);
                 }
             }
-            
+
             async function openObjectEditModal(objectId = null) {
                 editObjectId.value = objectId || '';
                 editObjectName.value = '';
@@ -1152,7 +1163,7 @@
 
                 objectEditModal.style.display = 'flex';
             }
-            
+
             saveObjectBtn.onclick = async () => {
                 const objectId = editObjectId.value;
                 const url = objectId ? `${SERVER_URL}/admin/object/${objectId}` : `${SERVER_URL}/admin/object`;
@@ -1183,9 +1194,8 @@
                     const d = await r.json();
 
                     if (d.status === 'success') {
-                        alert(d.message);
                         objectEditModal.style.display = 'none';
-                        await loadObjectsTable(); 
+                        await loadObjectsTable();
                     } else {
                         alert(d.message || 'Ошибка сохранения.');
                     }
@@ -1194,42 +1204,39 @@
                     console.error("Save Object Error:", e);
                 }
             };
-            
+
             deleteObjectBtn.onclick = async () => {
                 const objectId = editObjectId.value;
 
                 if (!objectId) return;
 
-                if (confirm(`Вы уверены, что хотите удалить объект ID: ${objectId}? Это действие необратимо и отвяжет все связанные метки.`)) {
-                    try {
-                        const url = `${SERVER_URL}/admin/object/${objectId}`;
-                        const r = await fetchWithAuth(url, { method: 'DELETE' });
+                try {
+                    const url = `${SERVER_URL}/admin/object/${objectId}`;
+                    const r = await fetchWithAuth(url, { method: 'DELETE' });
 
-                        if (!r.ok) {
-                            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
-                            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
-                            return;
-                        }
-
-                        const d = await r.json();
-
-                        if (d.status === 'success') {
-                            alert(d.message);
-                            objectEditModal.style.display = 'none';
-                            loadObjectsTable(); 
-                        } else {
-                            alert(d.message || 'Ошибка удаления.');
-                        }
-                    } catch (e) {
-                        alert('Ошибка соединения при удалении объекта.');
-                        console.error("Delete Object Error:", e);
+                    if (!r.ok) {
+                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+                        return;
                     }
+
+                    const d = await r.json();
+
+                    if (d.status === 'success') {
+                        objectEditModal.style.display = 'none';
+                        loadObjectsTable();
+                    } else {
+                        alert(d.message || 'Ошибка удаления.');
+                    }
+                } catch (e) {
+                    alert('Ошибка соединения при удалении объекта.');
+                    console.error("Delete Object Error:", e);
                 }
             };
 
             createObjectBtn.onclick = () => openObjectEditModal();
             objectEditModalClose.onclick = () => objectEditModal.style.display = 'none';
-            
+
             // --- ASSIGNMENTS LOGIC (Заглушка) ---
             async function loadAssignmentsTable() {
                 const assignmentsTableBody = document.querySelector('#assignmentsTable tbody');
@@ -1240,7 +1247,7 @@
             // --- ADMIN PANEL GENERAL LOGIC (без изменений) ---
             function switchAdminTab(tabName) {
                 const adminTabContentPanes = document.querySelectorAll('.adminTabContentPane');
-                
+
                 adminTabButtons.forEach(btn => {
                     btn.classList.remove('active');
                     btn.style.background = '#f4f4f4';
@@ -1257,21 +1264,21 @@
                 if (selectedButton && selectedContent) {
                     selectedButton.classList.add('active');
                     selectedButton.style.background = 'white';
-                    
+
                     selectedContent.style.display = 'block';
                 }
             }
-            
+
             adminTabButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
                     const tabName = btn.getAttribute('data-tab');
                     switchAdminTab(tabName);
 
                     if (tabName === 'users') {
-                        loadUsersTable(); 
+                        loadUsersTable();
                     } else if (tabName === 'objects') {
                         loadObjectsTable();
-                    } else if (tabName === 'assignments') { 
+                    } else if (tabName === 'assignments') {
                         loadAssignmentsTable();
                     }
                 });
@@ -1279,9 +1286,9 @@
 
             adminPanelBtn.onclick = () => {
                 if (isAdmin) {
-                    adminPanelWindow.style.display = 'flex'; 
+                    adminPanelWindow.style.display = 'flex';
                     switchAdminTab('users');
-                    loadUsersTable(); 
+                    loadUsersTable();
                 } else {
                     alert('У вас нет прав администратора.');
                 }
@@ -1293,7 +1300,7 @@
 
             // --- FINAL CALLS ---
             loadMarkers();
-            setInterval(refreshMarkers, 30000); 
+            setInterval(refreshMarkers, 30000);
         }
 
 
