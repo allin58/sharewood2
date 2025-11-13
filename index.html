@@ -48,7 +48,7 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
     </div>
     <div id="telegramUsername"></div>
 </div>
-
+<div id="adminPanelBtn" style="position:absolute; bottom:55px; left:50%; transform:translateX(-50%); z-index:1000; padding:8px 16px; border:none; border-radius:6px; background-color:#ffc107; color:black; cursor:pointer; display:none;">Панель администратора</div>
 <div id="map"></div>
 <div class="crosshair"></div>
 <div id="newPointBtn">Новая точка</div>
@@ -143,6 +143,23 @@ function updateUsernameDisplay(){
     }
 }
 
+// --- Управление видимостью кнопки админа ---
+function updateAdminPanelVisibility() {
+    const adminPanelBtn = document.getElementById('adminPanelBtn');
+    if (adminPanelBtn) {
+        // Кнопка видна, только если isAdmin === true
+        adminPanelBtn.style.display = isAdmin ? 'block' : 'none';
+
+        // Опционально: можно сдвинуть кнопку "Новая точка" вниз,
+        // чтобы не накладывалась, если она выше.
+        const newPointBtn = document.getElementById('newPointBtn');
+        if (newPointBtn) {
+            newPointBtn.style.bottom = isAdmin ? '10px' : '10px'; // Если не сдвигали, можно оставить 10px
+        }
+    }
+}
+
+
 // --- ФУНКЦИЯ ПРОВЕРКИ СТАТУСА ЧЕРЕЗ /me (ЗАМЕНА pingServer) ---
 async function fetchMeAndStatus(){
     const connectionDot = document.getElementById("connectionDot");
@@ -172,12 +189,15 @@ async function fetchMeAndStatus(){
             telegramUsername = d.user.username;
             isAdmin = d.user.role === 'admin';
             updateUsernameDisplay();
+            updateAdminPanelVisibility();
 
         } else {
             // Аутентификация не пройдена (d.status !== 'success')
             connectionDot.style.background="#d9534f";
             connectionText.textContent="Не авторизован";
-            telegramUsername = null; isAdmin = false; updateUsernameDisplay();
+            telegramUsername = null; isAdmin = false;
+            updateUsernameDisplay();
+            updateAdminPanelVisibility();
         }
     } catch {
         // Ошибка сети (Сервер действительно недоступен)
