@@ -91,10 +91,56 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
     </div>
 
     <div id="adminTabContent">
-        <div id="tab-users" class="adminTabContentPane active" style="display: block;">
-            <h3>Управление пользователями</h3>
-            <p>Контент вкладки "Пользователи"</p>
+<div id="tab-users" class="adminTabContentPane active" style="display: block;">
+    <h3>Управление пользователями</h3>
+    <button id="createUserBtn" style="padding: 6px 12px; margin-bottom: 10px; border: none; border-radius: 4px; background: #28a745; color: white; cursor: pointer;">Создать нового пользователя</button>
+
+    <div style="max-height: calc(100vh - 300px); overflow-y: auto;">
+        <table id="usersTable" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">ФИО</th>
+                    <th style="border: 1px solid #ccc; padding: 8px; text-align: left; width: 80px;">Роль</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="userEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:4000;">
+    <div style="background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; position:relative;">
+        <div id="userEditModalClose" style="position:absolute; top:10px; right:10px; font-size:24px; cursor:pointer;">×</div>
+        <h3 id="userEditTitle">Создание пользователя</h3>
+
+        <input type="hidden" id="editUserId">
+
+        <label>ФИО **(Обязательно)**</label><input type="text" id="editFullName">
+
+        <label>Роль</label>
+        <select id="editRole">
+            <option value="user">user</option>
+            <option value="admin">admin</option>
+        </select>
+
+        <div id="newAccountFields" style="border: 1px dashed #ccc; padding: 10px; margin: 10px 0;">
+            <h4>Данные для входа:</h4>
+            <label>Telegram ID (Опционально)</label><input type="text" id="editTelegramId">
+            <label>Username (Для браузера, если нет Telegram ID)</label><input type="text" id="editUsername">
+            <label>Password (Для браузера, если нет Telegram ID)</label><input type="password" id="editPassword">
+            <p style="font-size: 12px; color: #666; margin: 5px 0;">*Нужно заполнить либо Telegram ID, либо связку Username/Password.</p>
         </div>
+
+        <div id="optionalInfoFields">
+            <h4>Дополнительная информация:</h4>
+            <label>Телефон</label><input type="text" id="editPhone">
+            <label>Дополнительная информация</label><textarea id="editAdditionalInfo" rows="3"></textarea>
+        </div>
+        <button id="deleteUserBtn" style="margin-top:15px; padding:8px 12px; border:none; border-radius:4px; background:#dc3545; color:white; cursor:pointer; width:100%; display: none;">Удалить пользователя</button>
+        <button id="saveUserBtn" style="margin-top:15px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer; width:100%;">Сохранить</button>
+    </div>
+</div>
         <div id="tab-objects" class="adminTabContentPane" style="display: none;">
             <h3>Управление объектами</h3>
             <p>Контент вкладки "Объекты"</p>
@@ -385,6 +431,27 @@ function initApp(){
     const adminPanelClose = document.getElementById('adminPanelClose');
     const adminTabButtons = document.querySelectorAll('.adminTabButton');
     const adminTabContentPanes = document.querySelectorAll('.adminTabContentPane')
+// ⬇️ НОВЫЕ ЭЛЕМЕНТЫ ДЛЯ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ
+    const usersTableBody = document.querySelector('#usersTable tbody');
+    const createUserBtn = document.getElementById('createUserBtn');
+
+    const userEditModal = document.getElementById('userEditModal');
+    const userEditModalClose = document.getElementById('userEditModalClose');
+    const userEditTitle = document.getElementById('userEditTitle');
+    const saveUserBtn = document.getElementById('saveUserBtn');
+
+    const editUserId = document.getElementById('editUserId');
+    const editFullName = document.getElementById('editFullName');
+    const editRole = document.getElementById('editRole');
+    const editTelegramId = document.getElementById('editTelegramId');
+    const editUsername = document.getElementById('editUsername');
+    const editPassword = document.getElementById('editPassword');
+    const editPhone = document.getElementById('editPhone');
+    const editAdditionalInfo = document.getElementById('editAdditionalInfo');
+    const newAccountFields = document.getElementById('newAccountFields');
+    const editFields = document.getElementById('editFields')
+    const optionalInfoFields = document.getElementById('optionalInfoFields');
+    const deleteUserBtn = document.getElementById('deleteUserBtn');
 
     // --- КОНСТАНТЫ СИМВОЛОВ ---
     const COPY_SYMBOL = '📋';
@@ -405,10 +472,47 @@ function initApp(){
     let currentCenter={lat:defaultLat, lon:defaultLon};
     map.on('move',()=>{const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng};});
 
+// ----------------------------------------------------
+// 4. УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ
+// ----------------------------------------------------
+deleteUserBtn.onclick = async () => {
+    const userId = editUserId.value;
+    
+    if (!userId) return; 
+
+    if (confirm(`Вы уверены, что хотите удалить этого пользователя? Это действие необратимо.`)) {
+        try {
+            const url = `${SERVER_URL}/admin/user/${userId}`;
+            const r = await fetchWithAuth(url, { method: 'DELETE' });
+            
+            if (!r.ok) {
+                const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+                alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+                return;
+            }
+
+            const d = await r.json();
+            
+            if (d.status === 'success') {
+                alert(d.message);
+                userEditModal.style.display = 'none';
+                loadUsersTable(); // Обновляем таблицу
+            } else {
+                alert(d.message || 'Ошибка удаления.');
+            }
+        } catch (e) {
+            alert('Ошибка соединения при удалении пользователя.');
+            console.error("Delete User Error:", e);
+        }
+    }
+};
+
+
 // 1. Открытие панели админа
     adminPanelBtn.onclick = () => {
         if (isAdmin) {
             adminPanelWindow.style.display = 'block';
+            loadUsersTable();
         } else {
             alert('У вас нет прав администратора.');
         }
@@ -452,7 +556,7 @@ function initApp(){
             switchAdminTab(tabName);
         });
     });
-    
+
 // --- ЛОГИКА КОПИРОВАНИЯ ---
     copyCoordsBtn.onclick = async () => {
         const coordsText = popupCoords.textContent;
@@ -472,6 +576,176 @@ function initApp(){
             }
         }
     };
+
+async function loadUsersTable() {
+        if (!isAdmin) return;
+        usersTableBody.innerHTML = '<tr><td colspan="2">Загрузка...</td></tr>';
+
+        try {
+            const r = await fetchWithAuth(`${SERVER_URL}/admin/users`);
+            const d = await r.json();
+
+            usersTableBody.innerHTML = '';
+            if (d.status === 'success' && d.users) {
+                d.users.forEach(user => {
+                    const row = usersTableBody.insertRow();
+                    row.onclick = () => openUserEditModal(user.id); // Клик по строке открывает редактирование
+                    row.style.cursor = 'pointer';
+                    row.innerHTML = `
+                        <td style="border: 1px solid #ccc; padding: 8px;">${user.full_name}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${user.role}</td>
+                    `;
+                });
+            } else {
+                usersTableBody.innerHTML = `<tr><td colspan="2">${d.message || 'Ошибка загрузки пользователей'}</td></tr>`;
+            }
+        } catch (e) {
+            usersTableBody.innerHTML = '<tr><td colspan="2">Ошибка соединения с сервером</td></tr>';
+            console.error('Ошибка при загрузке пользователей:', e);
+        }
+    }
+
+    // ----------------------------------------------------
+    // 2. ОТКРЫТИЕ МОДАЛЬНОГО ОКНА (СОЗДАНИЕ/РЕДАКТИРОВАНИЕ)
+    // ----------------------------------------------------
+async function openUserEditModal(userId = null) {
+    // Сброс полей
+    editUserId.value = userId || '';
+    editFullName.value = '';
+    editRole.value = 'user';
+    editTelegramId.value = '';
+    editUsername.value = '';
+    editPassword.value = '';
+    editPhone.value = '';
+    editAdditionalInfo.value = ''; // Теперь доступно для создания
+
+    if (userId) {
+        // РЕДАКТИРОВАНИЕ
+        userEditTitle.textContent = 'Редактирование пользователя';
+        newAccountFields.style.display = 'none'; // Скрываем поля создания аккаунта
+        optionalInfoFields.style.display = 'block'; // Показываем доп. поля (телефон, инфо)
+        deleteUserBtn.style.display = 'block'; // ✅ ПОКАЗАТЬ КНОПКУ
+        try {
+            const r = await fetchWithAuth(`${SERVER_URL}/admin/user/${userId}`);
+            const d = await r.json();
+
+            if (d.status === 'success' && d.user) {
+                editFullName.value = d.user.full_name || '';
+                editRole.value = d.user.role;
+                editPhone.value = d.user.phone || '';
+                editAdditionalInfo.value = d.user.additional_info || '';
+            } else {
+                alert(d.message || 'Не удалось загрузить данные пользователя.');
+                userEditModal.style.display = 'none';
+                return;
+            }
+        } catch (e) {
+            alert('Ошибка соединения при загрузке данных пользователя.');
+            userEditModal.style.display = 'none';
+            return;
+        }
+    } else {
+        // СОЗДАНИЕ
+        userEditTitle.textContent = 'Создание нового пользователя';
+        newAccountFields.style.display = 'block'; // Показываем поля создания аккаунта
+        optionalInfoFields.style.display = 'block'; // Показываем доп. поля (они теперь необязательные)
+        deleteUserBtn.style.display = 'none'; // ✅ СКРЫТЬ КНОПКУ
+    }
+
+    userEditModal.style.display = 'flex';
+}
+
+    // Обработчики открытия и закрытия модального окна
+    createUserBtn.onclick = () => openUserEditModal();
+    userEditModalClose.onclick = () => userEditModal.style.display = 'none';
+
+// ----------------------------------------------------
+// 3. СОХРАНЕНИЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ
+// ----------------------------------------------------
+saveUserBtn.onclick = async () => {
+    const userId = editUserId.value;
+    const url = userId ? `${SERVER_URL}/admin/user/${userId}` : `${SERVER_URL}/admin/user`;
+
+    // 1. Собираем общие и обязательные поля
+    const data = {
+        full_name: editFullName.value.trim(),
+        role: editRole.value,
+        // Дополнительные поля, которые теперь общие и опциональные
+        phone: editPhone.value.trim(),
+        additional_info: editAdditionalInfo.value.trim()
+    };
+
+    // Проверка обязательного поля ФИО
+    if (!data.full_name) {
+        alert('Поле ФИО обязательно.');
+        return;
+    }
+
+    if (!userId) {
+        // 2. Логика для СОЗДАНИЯ НОВОГО пользователя
+        data.telegram_id = editTelegramId.value.trim();
+        data.username = editUsername.value.trim();
+        data.password = editPassword.value.trim();
+
+        // Проверка, что указан Telegram ID ИЛИ связка Username/Password
+        if (!(data.telegram_id || (data.username && data.password))) {
+            alert('Для создания необходимо указать Telegram ID ИЛИ Username и Password.');
+            return;
+        }
+
+        // Очищаем пароль, если есть Telegram ID, и он не нужен для аутентификации
+        // if (data.telegram_id && !data.username) {
+        //     data.password = '';
+        // }
+    }
+    // Для РЕДАКТИРОВАНИЯ (userId присутствует), дополнительных проверок полей входа не требуется
+
+    try {
+        const r = await fetchWithAuth(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        // Обработка случая, если сервер ответил, но статус не 200 OK (например, 400 Bad Request)
+        if (!r.ok) {
+            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+            return;
+        }
+
+        const d = await r.json();
+
+        if (d.status === 'success') {
+            alert(d.message);
+            userEditModal.style.display = 'none';
+            loadUsersTable(); // Обновляем таблицу
+        } else {
+            alert(d.message || 'Ошибка сохранения.');
+        }
+    } catch (e) {
+        alert('Ошибка соединения при сохранении данных.');
+        console.error("Save User Error:", e);
+    }
+};
+
+    // ----------------------------------------------------
+    // 4. ДОПОЛНИТЕЛЬНО: ЗАПУСК ЗАГРУЗКИ ПРИ ПЕРЕКЛЮЧЕНИИ НА ВКЛАДКУ "ПОЛЬЗОВАТЕЛИ"
+    // ----------------------------------------------------
+
+    // Найдите обработчик клика для кнопок вкладок:
+    adminTabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.getAttribute('data-tab');
+            switchAdminTab(tabName);
+
+            if (tabName === 'users') {
+                loadUsersTable(); // Загружаем данные при активации вкладки
+            }
+        });
+    });
+
+
 
     function getIcon(color){
         const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
