@@ -1,996 +1,1304 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mini App Map Markers</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
-<style>
-html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
-#map {height:100vh; width:100%;}
-#connectionStatus {position: fixed; top: 10px; right: 40px; z-index: 3000; display:flex; flex-direction:column; align-items:flex-end; font-size:14px; font-weight:bold; pointer-events:none; background:rgba(255,255,255,0.9); padding:8px 12px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.2);}
-#connectionStatusRow {display:flex; align-items:center;}
-#connectionDot {width:12px; height:12px; border-radius:50%; margin-right:6px; background:#d9534f;}
-#telegramUsername {font-size:12px; color:#666; margin-top:4px; font-weight:normal;}
-#popupWindow {position: fixed; top:80px; left:0; width:100%; height:calc(100% - 80px); z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
-.crosshair {position:absolute; top:50%; left:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:999;}
-.crosshair::before, .crosshair::after {content:''; position:absolute; background:black;}
-.crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
-.crosshair::after {top:50%; left:0; width:100%; height:2px; margin-top:-1px;}
-#newPointBtn {position:absolute; bottom:10px; left:50%; transform:translateX(-50%); z-index:1000; padding:8px 16px; border:none; border-radius:6px; background-color:#28a745; color:white; cursor:pointer;}
-#popupWindow label {display:block; margin-top:10px; font-weight:bold;}
-#popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {width:100%; padding:6px; margin-top:4px; box-sizing:border-box; border-radius:4px; border:1px solid #ccc; font-size:14px;}
-#popupWindow textarea {resize:vertical;}
-#photoList {margin-top:8px; max-height:150px; overflow-y:auto; display:flex; flex-wrap:wrap;}
-.photoItem {position:relative; margin:4px;}
-.photoItem img {width:70px; height:70px; object-fit:cover; border-radius:4px; cursor:pointer;}
-.removePhoto {position:absolute; top:-5px; right:-5px; background:red; color:white; border-radius:50%; width:18px; height:18px; text-align:center; line-height:18px; font-weight:bold; cursor:pointer;}
-#popupClose {position:absolute; top:10px; right:10px; font-size:24px; cursor:pointer;}
-#saveBtn, #deleteBtn {margin-top:12px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer; width:100%;}
-#deleteBtn {background:red; margin-top:6px;}
-#spinner {display:none; text-align:center; margin-top:10px;}
-.loader {border:4px solid #f3f3f3; border-top:4px solid #007bff; border-radius:50%; width:30px; height:30px; animation:spin 1s linear infinite; display:inline-block;}
-#photoModal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:3000;}
-#photoModal img {max-width:90%; max-height:90%; border-radius:6px;}
-#photoModal span {position:absolute; top:20px; right:30px; font-size:30px; color:white; cursor:pointer;}
-@keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
-#loginForm {position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:none; z-index:5000; justify-content:center; align-items:center; flex-direction:column;}
-#loginForm input {margin:4px 0; padding:6px; width:200px;}
-#loginForm button {padding:6px 12px; margin-top:8px;}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geo-Point App</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        /* ВАШИ ИЗНАЧАЛЬНЫЕ СТИЛЫ + ИСПРАВЛЕНИЯ */
+        html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
+        #map {height:100vh; width:100%;}
+        #connectionStatus {position: fixed; top: 10px; right: 40px; z-index: 3000; display:flex; flex-direction:column; align-items:flex-end; font-size:14px; font-weight:bold; pointer-events:none; background:rgba(255,255,255,0.9); padding:8px 12px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.2);}
+        #connectionStatusRow {display:flex; align-items:center;}
+        #connectionDot {width:12px; height:12px; border-radius:50%; margin-right:6px; background:#d9534f;}
+        #telegramUsername {font-size:12px; color:#666; margin-top:4px; font-weight:normal;}
+        /* Основной Popup использует фиксированное позиционирование, заполняя экран */
+        #popupWindow {position: fixed; top:80px; left:0; width:100%; height:calc(100% - 80px); z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
+        
+        /* ИСПРАВЛЕНО: Стиль крестика - всегда видимый */
+        #crosshair { 
+            position:absolute; top:50%; left:50%; width:20px; height:20px; 
+            margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:999;
+            display: block; /* Всегда видим */
+        }
+        #crosshair::before, #crosshair::after {content:''; position:absolute; background:black;}
+        #crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
+        #crosshair::after {top:50%; left:0; width:100%; height:2px; margin-top:-1px;}
+
+        #newPointBtn {position:absolute; bottom:10px; left:50%; transform:translateX(-50%); z-index:1000; padding:8px 16px; border:none; border-radius:6px; background-color:#28a745; color:white; cursor:pointer;}
+        #popupWindow label {display:block; margin-top:10px; font-weight:bold;}
+        #popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {width:100%; padding:6px; margin-top:4px; box-sizing:border-box; border-radius:4px; border:1px solid #ccc; font-size:14px;}
+        #popupWindow textarea {resize:vertical;}
+        #photoList {margin-top:8px; max-height:150px; overflow-y:auto; display:flex; flex-wrap:wrap;}
+        .photoItem {position:relative; margin:4px;}
+        .photoItem img {width:70px; height:70px; object-fit:cover; border-radius:4px; cursor:pointer;}
+        .removePhoto {position:absolute; top:-5px; right:-5px; background:red; color:white; border-radius:50%; width:18px; height:18px; text-align:center; line-height:18px; font-weight:bold; cursor:pointer;}
+        #popupClose {position:absolute; top:10px; right:10px; font-size:24px; cursor:pointer;}
+        #saveBtn, #deleteBtn {margin-top:12px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer; width:100%;}
+        #deleteBtn {background:red; margin-top:6px;}
+        #spinner {display:none; text-align:center; margin-top:10px;}
+        .loader {border:4px solid #f3f3f3; border-top:4px solid #007bff; border-radius:50%; width:30px; height:30px; animation:spin 1s linear infinite; display:inline-block;}
+        #photoModal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:3000;}
+        #photoModal img {max-width:90%; max-height:90%; border-radius:6px;}
+        #photoModal span {position:absolute; top:20px; right:30px; font-size:30px; color:white; cursor:pointer;}
+        @keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
+        #loginForm {position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:none; z-index:5000; justify-content:center; align-items:center; flex-direction:column;}
+        #loginForm input {margin:4px 0; padding:6px; width:200px;}
+        #loginForm button {padding:6px 12px; margin-top:8px;}
+
+        /* АДАПТАЦИЯ и ИСПРАВЛЕНИЯ для Административной панели и связанных модальных окон */
+        .admin-modal-window { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); z-index: 4000; justify-content: center; align-items: center;
+        }
+        .admin-modal-content {
+            background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            max-width: 90%; max-height: 90%; overflow-y: auto; position: relative;
+        }
+        #adminPanelWindow .admin-modal-content { width: 700px; min-height: 400px; }
+        #userEditModal .admin-modal-content, #objectEditModal .admin-modal-content { width: 350px; }
+        .modal-close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #333; }
+        
+        /* ИСПРАВЛЕНО: Унифицированные стили для полей в админ-окнах */
+        .admin-modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
+        .admin-modal-content input[type="text"], 
+        .admin-modal-content input[type="password"], 
+        .admin-modal-content textarea, 
+        .admin-modal-content select {
+            width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-size: 14px;
+        }
+        .admin-modal-content textarea { resize: vertical; }
+
+        /* Кнопки в админке */
+        .admin-action-button { 
+            padding: 6px 10px; border: none; border-radius: 4px; background-color: #007bff; color: white; 
+            cursor: pointer; margin-bottom: 10px; font-size: 14px;
+        }
+        .admin-action-button:hover { background-color: #0056b3; }
+        
+        /* Вкладки в админке */
+        .admin-tabs { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 10px; }
+        .adminTabButton {
+            padding: 8px 12px; cursor: pointer; background: #f4f4f4; border-radius: 4px 4px 0 0;
+            border: 1px solid #ccc; border-bottom: none; margin-bottom: -1px; margin-right: 5px; font-size: 14px;
+        }
+        .adminTabButton.active { background: white; border-bottom: 2px solid white; }
+        .adminTabContentPane { display: none; padding-top: 5px; }
+        .adminTabContentPane table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        .adminTabContentPane th, .adminTabContentPane td { padding: 6px; border: 1px solid #ccc; text-align: left; }
+        .adminTabContentPane th { background-color: #f9f9f9; }
+
+        /* Админ-кнопки удаления */
+        #deleteUserBtn, #deleteObjectBtn { background: red; margin-left: 10px; }
+    </style>
 </head>
 <body>
 
-<div id="connectionStatus">
-    <div id="connectionStatusRow">
-        <div id="connectionDot"></div>
-        <span id="connectionText">Нет соединения</span>
+    <div id="map"></div>
+    
+    <div id="crosshair"></div>
+
+    <div id="spinner"><div class="loader"></div></div>
+
+    <div id="connectionStatus">
+        <div id="connectionStatusRow">
+            <div id="connectionDot"></div>
+            <div id="connectionText">Загрузка...</div>
+        </div>
+        <div id="telegramUsername"></div>
     </div>
-    <div id="telegramUsername"></div>
-</div>
-<div id="adminPanelBtn" style="position:absolute; bottom:55px; left:50%; transform:translateX(-50%); z-index:1000; padding:8px 16px; border:none; border-radius:6px; background-color:#ffc107; color:black; cursor:pointer; display:none;">Панель администратора</div>
-<div id="map"></div>
-<div class="crosshair"></div>
-<div id="newPointBtn">Новая точка</div>
+    
+    <button id="newPointBtn">➕ Новая точка</button>
+    <button id="adminPanelBtn" class="admin-action-button" style="display:none; background-color: #6c757d; position:absolute; bottom:55px; left:50%; transform:translateX(-50%); z-index:1000;">Админ-панель</button>
 
-<div id="popupWindow">
-  <div id="popupClose">×</div>
-  <div>
-    <strong>Координаты:</strong>
-    <span id="popupCoords">—</span>
-    <button id="copyCoordsBtn" style="margin-left: 8px; padding: 3px 6px; font-size: 12px; border: 1px solid #ccc; background: #f0f0f0; border-radius: 4px; cursor: pointer;">📋</button>
-  </div>
-  <label>Объект</label><input type="text" id="objectInput">
-  <label>Порода</label><input type="text" id="breedInput">
-  <label>Запись</label><textarea id="noteInput" rows="4"></textarea>
-  <label>Цвет метки</label>
-  <select id="markerColor">
-    <option value="green">Зелёный</option>
-    <option value="red">Красный</option>
-    <option value="blue">Синий</option>
-    <option value="yellow">Жёлтый</option>
-    <option value="black">Чёрный</option>
-  </select>
-  <label>Фотографии</label>
-  <input type="file" id="photoInput" multiple accept="image/*" capture="environment">
-  <div id="photoList"></div>
-  <button id="saveBtn">Сохранить</button>
-  <button id="deleteBtn" style="display:none;">Удалить метку</button>
-  <div id="spinner"><div class="loader"></div><div>Отправка...</div></div>
-</div>
 
-<div id="photoModal"><span id="closePhotoModal">×</span><img src=""></div>
-
-<div id="adminPanelWindow" style="position: fixed; top: 80px; left: 0; width: 100%; height: calc(100% - 80px); z-index: 2100; background: white; display: none; overflow-y: auto; padding: 16px; box-sizing: border-box;">
-    <div id="adminPanelClose" style="position:absolute; top:10px; right:10px; font-size:24px; cursor:pointer;">×</div>
-
-    <div id="adminTabs" style="display: flex; border-bottom: 2px solid #ccc; margin-bottom: 15px;">
-        <button class="adminTabButton active" data-tab="users" style="flex-grow: 1; padding: 10px; border: none; background: #eee; border-bottom: 2px solid #007bff; cursor: pointer; font-weight: bold;">Пользователи</button>
-        <button class="adminTabButton" data-tab="objects" style="flex-grow: 1; padding: 10px; border: none; background: #f9f9f9; border-bottom: 2px solid transparent; cursor: pointer;">Объекты</button>
-        <button class="adminTabButton" data-tab="assignments" style="flex-grow: 1; padding: 10px; border: none; background: #f9f9f9; border-bottom: 2px solid transparent; cursor: pointer;">Назначения</button>
+    <div id="loginForm">
+        <h3>Вход</h3>
+        <input type="text" id="loginUsername" placeholder="Логин (Username)" required>
+        <input type="password" id="loginPassword" placeholder="Пароль" required>
+        <button id="loginBtn">Войти</button>
     </div>
 
-    <div id="adminTabContent">
-<div id="tab-users" class="adminTabContentPane active" style="display: block;">
-    <h3>Управление пользователями</h3>
-    <button id="createUserBtn" style="padding: 6px 12px; margin-bottom: 10px; border: none; border-radius: 4px; background: #28a745; color: white; cursor: pointer;">Создать нового пользователя</button>
+    <div id="popupWindow">
+        <span id="popupClose">&times;</span>
+        <h3>Детали метки</h3>
 
-    <div style="max-height: calc(100vh - 300px); overflow-y: auto;">
-        <table id="usersTable" style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr>
-                    <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">ФИО</th>
-                    <th style="border: 1px solid #ccc; padding: 8px; text-align: left; width: 80px;">Роль</th>
-                </tr>
-            </thead>
-            <tbody>
-                </tbody>
-        </table>
-    </div>
-</div>
-
-<div id="userEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:flex-start; z-index:4000; overflow-y: auto;">
-
-    <div style="background:white; padding:25px; border-radius:8px;
-                width: calc(100% - 40px); /* Гарантирует отступ 20px с каждой стороны */
-                max-width: 500px; /* Немного уменьшил для безопасности */
-                margin: 10px auto; /* Центрирует и добавляет отступы сверху/снизу */
-                position:relative; box-shadow: 0 8px 20px rgba(0,0,0,0.3);">
-
-        <div id="userEditModalClose" style="position:absolute; top:15px; right:15px; font-size:28px; color: #333; cursor:pointer; line-height: 1;">×</div>
-        <h3 id="userEditTitle" style="margin-top:0; border-bottom: 1px solid #eee; padding-bottom: 15px; color: #333;">Создание пользователя</h3>
-
-        <input type="hidden" id="editUserId">
-
-        <div style="margin-bottom: 10px;">
-            <label style="display: block; font-weight: 600; margin: 10px 0 4px 0; color: #555;">ФИО <span style="color: #dc3545;">*</span></label>
-            <input type="text" id="editFullName" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px;">
+        <div class="form-group">
+            <label>Координаты:</label>
+            <div style="display: flex; align-items: center; border: 1px solid #ccc; padding: 6px; border-radius: 4px;">
+                <span id="popupCoords" style="flex-grow: 1;">—</span>
+                <button id="copyCoordsBtn" title="Копировать" style="background: none; color: #007bff; border: none; cursor: pointer; padding: 0 5px; font-size: 14px;">📋</button>
+            </div>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <label style="display: block; font-weight: 600; margin: 10px 0 4px 0; color: #555;">Роль</label>
-            <select id="editRole" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
-                <option value="user">user</option>
-                <option value="admin">admin</option>
+        <div class="form-group">
+            <label for="pointObjectSelect">Объект (*):</label>
+            <select id="pointObjectSelect" required>
+                <option value="">-- Выберите объект --</option>
             </select>
         </div>
 
-        <div id="newAccountFields" style="border: 1px dashed #007bff; padding: 15px; margin: 20px 0; border-radius: 6px; background: #f9fcff;">
-            <h4 style="margin-top: 0; color: #007bff; font-size: 16px; border-bottom: 1px solid #e0f0ff; padding-bottom: 8px;">Данные для входа:</h4>
-
-            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Telegram ID (Опционально)</label>
-            <input type="text" id="editTelegramId" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
-
-            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Username (для браузера)</label>
-            <input type="text" id="editUsername" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
-
-            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Password (для браузера)</label>
-            <input type="password" id="editPassword" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
-
-            <p style="font-size: 12px; color: #888; margin: 5px 0;">*Нужно заполнить либо **Telegram ID**, либо связку **Username/Password**.</p>
+        <div class="form-group">
+            <label for="noteInput">Заметка:</label>
+            <textarea id="noteInput" rows="3"></textarea>
         </div>
 
-        <div id="optionalInfoFields" style="border: 1px solid #eee; padding: 15px; margin: 20px 0; border-radius: 6px; background: #fcfcfc;">
-            <h4 style="margin-top: 0; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">Контактная информация:</h4>
-
-            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Телефон</label>
-            <input type="text" id="editPhone" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
-
-            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Дополнительная информация</label>
-            <textarea id="editAdditionalInfo" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical;"></textarea>
+        <div class="form-group">
+            <label for="breedInput">Порода / Тип:</label>
+            <input type="text" id="breedInput">
         </div>
 
-        <div style="display: flex; gap: 10px; margin-top: 25px;">
-            <button id="deleteUserBtn" style="padding:10px 15px; border:none; border-radius:4px; background:#dc3545; color:white; cursor:pointer; flex-grow: 1; display: none; font-size: 15px; font-weight: 600; transition: background 0.2s;">Удалить</button>
-            <button id="saveUserBtn" style="padding:10px 15px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer; flex-grow: 1; font-size: 15px; font-weight: 600; transition: background 0.2s;">Сохранить</button>
+        <div class="form-group">
+            <label for="markerColor">Цвет метки:</label>
+            <select id="markerColor">
+                <option value="green">Зеленый</option>
+                <option value="blue">Синий</option>
+                <option value="red">Красный</option>
+                <option value="yellow">Желтый</option>
+                <option value="black">Черный</option>
+            </select>
         </div>
 
-    </div>
-</div>
-        <div id="tab-objects" class="adminTabContentPane" style="display: none;">
-            <h3>Управление объектами</h3>
-            <p>Контент вкладки "Объекты"</p>
+        <div class="form-group">
+            <label for="photoInput">Фотографии:</label>
+            <input type="file" id="photoInput" accept="image/*" multiple>
+            <div id="photoList"></div>
         </div>
-        <div id="tab-assignments" class="adminTabContentPane" style="display: none;">
-            <h3>Управление назначениями</h3>
-            <p>Контент вкладки "Назначения"</p>
+
+        <div style="display: flex; gap: 10px;">
+            <button id="saveBtn" style="flex-grow: 1;">Сохранить</button>
+            <button id="deleteBtn" style="width: auto; flex-grow: 1; margin-top: 12px; display:none;">Удалить</button>
         </div>
     </div>
-</div>
 
-<div id="loginForm">
-  <h3>Вход для браузерного администратора</h3>
-  <input type="text" id="loginUsername" placeholder="Username">
-  <input type="password" id="loginPassword" placeholder="Password">
-  <button id="loginBtn">Войти</button>
-</div>
+    <div id="photoModal">
+        <span id="closePhotoModal">&times;</span>
+        <img src="" alt="Full Photo">
+    </div>
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-const SERVER_URL = "https://a8bddfc0cecf.ngrok-free.app";
-let TELEGRAM_INIT_DATA = null;
-let telegramUsername = null;
-let isAdmin = false; // <-- НОВАЯ ПЕРЕМЕННАЯ
-let appInitialized = false;
-const params = new URLSearchParams(window.location.search);
+    <div id="adminPanelWindow" class="admin-modal-window">
+        <div class="admin-modal-content">
+            <span id="adminPanelClose" class="modal-close-btn">&times;</span>
+            <h3>Админ-панель</h3>
 
-// --- Универсальный fetch ---
-async function fetchWithAuth(url, options={}) {
-    options = options || {};
-    options.credentials = 'include'; // для браузера
-    options.headers = options.headers || {};
-    if(TELEGRAM_INIT_DATA){
-        options.headers['X-Telegram-Init-Data'] = TELEGRAM_INIT_DATA;
-    }
-    return fetch(url, options);
-}
+            <div class="admin-tabs">
+                <div class="adminTabButton active" data-tab="users">Пользователи</div>
+                <div class="adminTabButton" data-tab="objects">Объекты</div>
+                <div class="adminTabButton" data-tab="assignments">Назначение</div>
+            </div>
 
-// --- Telegram / Browser Detection ---
-function getTelegramUser() {
-    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe){
-        const user = Telegram.WebApp.initDataUnsafe.user;
-        return {username: user?.username, firstName: user?.first_name};
-    }
-    return null;
-}
-function getTelegramUsername() {
-    const u = getTelegramUser();
-    return u?.username || u?.firstName || null;
-}
+            <div id="tab-users" class="adminTabContentPane" style="display: block;">
+                <button id="createUserBtn" class="admin-action-button" style="background-color: #28a745;">➕ Создать пользователя</button>
+                <h4>Список пользователей:</h4>
+                <table id="usersTable">
+                    <thead>
+                        <tr><th>ФИО</th><th>Роль</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="2">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
 
-// --- ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ИМЕНИ ---
-function updateUsernameDisplay(){
-    const el = document.getElementById('telegramUsername');
+            <div id="tab-objects" class="adminTabContentPane">
+                <button id="createObjectBtn" class="admin-action-button" style="background-color: #28a745;">➕ Создать объект</button>
+                <h4>Список объектов:</h4>
+                <table id="objectsTable">
+                    <thead>
+                        <tr><th>Название</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="tab-assignments" class="adminTabContentPane">
+                <h4>Список назначений:</h4>
+                <p>Здесь будет логика для назначений.</p>
+                <table id="assignmentsTable">
+                    <thead>
+                        <tr><th>Объект</th><th>Пользователь</th><th>Действие</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="3">Назначения не загружены.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-    let displayUsername = telegramUsername;
+    <div id="userEditModal" class="admin-modal-window">
+        <div class="admin-modal-content">
+            <span id="userEditModalClose" class="modal-close-btn">&times;</span>
+            <h3 id="userEditTitle">Редактирование пользователя</h3>
+            <input type="hidden" id="editUserId">
 
-    if (isAdmin) {
-        displayUsername = (displayUsername || "Admin") + "_admin";
-    }
+            <label for="editFullName">ФИО (*):</label>
+            <input type="text" id="editFullName" required>
+            
+            <label for="editRole">Роль:</label>
+            <select id="editRole">
+                <option value="user">user</option>
+                <option value="admin">admin</option>
+            </select>
 
-    if(displayUsername){
-        let finalDisplay = displayUsername.startsWith("@") ? displayUsername : "@" + displayUsername;
-        el.textContent = finalDisplay;
-        el.style.display='block';
-    } else {
-        el.style.display='none';
-    }
-}
+            <div id="newAccountFields" style="border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 10px;">
+                <label style="font-size: 12px; font-weight: normal;">Данные для входа (заполнить ИЛИ Telegram ID):</label>
+                <input type="text" id="editUsername" placeholder="Username">
+                <input type="password" id="editPassword" placeholder="Пароль">
+                <input type="text" id="editTelegramId" placeholder="Telegram ID">
+            </div>
 
-// --- Управление видимостью кнопки админа ---
-function updateAdminPanelVisibility() {
-    const adminPanelBtn = document.getElementById('adminPanelBtn');
-    if (adminPanelBtn) {
-        // Кнопка видна, только если isAdmin === true
-        adminPanelBtn.style.display = isAdmin ? 'block' : 'none';
+            <div id="optionalInfoFields">
+                <label for="editPhone">Телефон:</label>
+                <input type="text" id="editPhone">
+                <label for="editAdditionalInfo">Доп. информация:</label>
+                <textarea id="editAdditionalInfo" rows="2"></textarea>
+            </div>
 
-        // Опционально: можно сдвинуть кнопку "Новая точка" вниз,
-        // чтобы не накладывалась, если она выше.
-        const newPointBtn = document.getElementById('newPointBtn');
-        if (newPointBtn) {
-            newPointBtn.style.bottom = isAdmin ? '10px' : '10px'; // Если не сдвигали, можно оставить 10px
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <button id="saveUserBtn" class="admin-action-button" style="flex-grow: 1;">Сохранить</button>
+                <button id="deleteUserBtn" class="admin-action-button" style="display: none;">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="objectEditModal" class="admin-modal-window">
+        <div class="admin-modal-content">
+            <span id="objectEditModalClose" class="modal-close-btn">&times;</span>
+            <h3 id="objectEditTitle">Редактирование объекта</h3>
+            <input type="hidden" id="editObjectId">
+
+            <label for="editObjectName">Название объекта (*):</label>
+            <input type="text" id="editObjectName" required>
+            
+            <label for="editObjectInfo">Доп. информация:</label>
+            <textarea id="editObjectInfo" rows="3"></textarea>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <button id="saveObjectBtn" class="admin-action-button" style="flex-grow: 1;">Сохранить</button>
+                <button id="deleteObjectBtn" class="admin-action-button" style="display: none;">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    
+    <script>
+        // =========================================================
+        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+        // =========================================================
+        const SERVER_URL = "https://a8bddfc0cecf.ngrok-free.app"; 
+        let TELEGRAM_INIT_DATA = null;
+        let telegramUsername = null;
+        let isAdmin = false; 
+        let appInitialized = false;
+        const params = new URLSearchParams(window.location.search);
+        let currentEntryId = null; 
+        let selectedFiles = []; 
+        let existingPhotos = [];
+        let markersMap = {};
+        let currentCenter = {lat: 54.1032, lon: 28.3186}; 
+
+        const COPY_SYMBOL = '📋';
+        const COPIED_SYMBOL = '✔️';
+        
+        // =========================================================
+        // АУТЕНТИФИКАЦИЯ И УТИЛИТЫ (без изменений)
+        // =========================================================
+        async function fetchWithAuth(url, options={}) {
+            options = options || {};
+            options.credentials = 'include';
+            options.headers = options.headers || {};
+            if(TELEGRAM_INIT_DATA){
+                options.headers['X-Telegram-Init-Data'] = TELEGRAM_INIT_DATA;
+            }
+            return fetch(url, options);
         }
-    }
-}
-
-
-// --- ФУНКЦИЯ ПРОВЕРКИ СТАТУСА ЧЕРЕЗ /me (ЗАМЕНА pingServer) ---
-async function fetchMeAndStatus(){
-    const connectionDot = document.getElementById("connectionDot");
-    const connectionText = document.getElementById("connectionText");
-
-    try{
-        const r = await fetchWithAuth(`${SERVER_URL}/me`);
-
-        let d;
-        try {
-            d = await r.json();
-        } catch (e) {
-            // Ошибка парсинга JSON (Сервер доступен, но ответ невалиден)
-            connectionDot.style.background="#d9534f";
-            connectionText.textContent="Ошибка данных";
-            telegramUsername = null; isAdmin = false; updateUsernameDisplay();
-            return;
+        function getTelegramUser() {
+            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe){
+                const user = Telegram.WebApp.initDataUnsafe.user;
+                return {username: user?.username, firstName: user?.first_name};
+            }
+            return null;
         }
-
-        if(d.status==="success" && d.user){
-
-            // 1. Успешное соединение
-            connectionDot.style.background="#28a745";
-            connectionText.textContent="Есть соединение";
-
-            // 2. Обновление имени и роли
-            telegramUsername = d.user.username;
-            isAdmin = d.user.role === 'admin';
-            updateUsernameDisplay();
-            updateAdminPanelVisibility();
-
-        } else {
-            // Аутентификация не пройдена (d.status !== 'success')
-            connectionDot.style.background="#d9534f";
-            connectionText.textContent="Не авторизован";
-            telegramUsername = null; isAdmin = false;
-            updateUsernameDisplay();
-            updateAdminPanelVisibility();
+        function getTelegramUsername() {
+            const u = getTelegramUser();
+            return u?.username || u?.firstName || null;
         }
-    } catch {
-        // Ошибка сети (Сервер действительно недоступен)
-        connectionDot.style.background="#d9534f";
-        connectionText.textContent="Нет соединения";
-        telegramUsername = null; isAdmin = false; updateUsernameDisplay();
-    }
-}
+        function updateUsernameDisplay(){
+            const el = document.getElementById('telegramUsername');
+            let displayUsername = telegramUsername;
+            if (isAdmin) {
+                displayUsername = (displayUsername || "Admin") + "_admin";
+            }
+            if(displayUsername){
+                let finalDisplay = displayUsername.startsWith("@") ? displayUsername : "@" + displayUsername;
+                el.textContent = finalDisplay;
+                el.style.display='block';
+            } else {
+                el.style.display='none';
+            }
+        }
+        function updateAdminPanelVisibility() {
+            const adminPanelBtn = document.getElementById('adminPanelBtn');
+            if (adminPanelBtn) {
+                adminPanelBtn.style.display = isAdmin ? 'block' : 'none';
+            }
+        }
+        async function fetchMeAndStatus(){
+            const connectionDot = document.getElementById("connectionDot");
+            const connectionText = document.getElementById("connectionText");
 
+            try{
+                const r = await fetchWithAuth(`${SERVER_URL}/me`);
 
-// --- Инициализация ---
-function getInitData(){
-    if(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData){
-        TELEGRAM_INIT_DATA = Telegram.WebApp.initData;
-        telegramUsername = getTelegramUsername(); // Получаем имя из initData
-        document.getElementById('loginForm').style.display='none';
-        // updateUsernameDisplay() здесь не нужно, т.к. initApp вызовет fetchMeAndStatus
-        initApp();
-    } else {
-        TELEGRAM_INIT_DATA = null;
-        telegramUsername = null;
-        document.getElementById('loginForm').style.display='flex';
-        // В браузере initApp запустит fetchMeAndStatus, который проверит, авторизованы ли мы по Cookie
-        initApp();
-    }
-}
+                let d;
+                try {
+                    d = await r.json();
+                } catch (e) {
+                    connectionDot.style.background="#d9534f";
+                    connectionText.textContent="Ошибка данных";
+                    telegramUsername = null; isAdmin = false; updateUsernameDisplay(); updateAdminPanelVisibility();
+                    return;
+                }
 
-// --- Форма логина браузера ---
-document.getElementById('loginBtn').onclick = async () => {
-    await handleBrowserLogin();
-};
+                if(d.status==="success" && d.user){
+                    connectionDot.style.background="#28a745";
+                    connectionText.textContent="Подключено";
+                    telegramUsername = d.user.username;
+                    isAdmin = d.user.role === 'admin';
+                    updateUsernameDisplay();
+                    updateAdminPanelVisibility();
+                } else {
+                    connectionDot.style.background="#d9534f";
+                    connectionText.textContent="Не авторизован";
+                    telegramUsername = null; isAdmin = false;
+                    updateUsernameDisplay();
+                    updateAdminPanelVisibility();
+                }
+            } catch {
+                connectionDot.style.background="#d9534f";
+                connectionText.textContent="Нет соединения";
+                telegramUsername = null; isAdmin = false; updateUsernameDisplay(); updateAdminPanelVisibility();
+            }
+        }
+        
+        async function handleBrowserLogin() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            if (!username || !password) return alert('Введите логин и пароль!');
 
-// Добавление обработки нажатия Enter в поля ввода логина
-document.getElementById('loginUsername').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        handleBrowserLogin();
-    }
-});
-document.getElementById('loginPassword').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        handleBrowserLogin();
-    }
-});
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Вход...';
 
-// --- ОБНОВЛЕННАЯ ФУНКЦИЯ ВХОДА В БРАУЗЕРЕ ---
-async function handleBrowserLogin() {
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
-    if (!username || !password) return alert('Введите логин и пароль!');
+            const fd = new FormData();
+            fd.append('username', username);
+            fd.append('password', password);
 
-    const loginBtn = document.getElementById('loginBtn');
-    loginBtn.disabled = true;
-    loginBtn.textContent = 'Вход...';
+            try {
+                const r = await fetch(`${SERVER_URL}/login`, {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'include'
+                });
 
-    const fd = new FormData();
-    fd.append('username', username);
-    fd.append('password', password);
+                if (r.ok) {
+                    const d = await r.json();
+                    if (d.status === 'success') {
+                        await fetchMeAndStatus();
+                        document.getElementById('loginForm').style.display='none';
+                        initApp();
+                    } else {
+                        alert(d.message || 'Неверные учетные данные');
+                    }
+                } else {
+                    const errorText = await r.text();
+                    alert(`Ошибка входа: Сервер ответил со статусом ${r.status}. ${errorText.substring(0, 50)}...`);
+                }
 
-    try {
-        const r = await fetch(`${SERVER_URL}/login`, {
-            method: 'POST',
-            body: fd,
-            credentials: 'include'
-        });
-
-        if (r.ok) {
-            const d = await r.json();
-            if (d.status === 'success') {
-
-                // ⬇️ НОВОЕ: Запрашиваем /me, чтобы получить имя и статус админа
-                await fetchMeAndStatus();
-
-                document.getElementById('loginForm').style.display = 'none';
+            } catch (e) {
+                console.error("Ошибка сети или недоступность сервера:", e);
+                alert('❌ Ошибка: Сервер недоступен. Проверьте подключение или адрес.');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Войти';
+            }
+        }
+        
+        function getInitData(){
+            if(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData){
+                TELEGRAM_INIT_DATA = Telegram.WebApp.initData;
+                telegramUsername = getTelegramUsername();
+                document.getElementById('loginForm').style.display='none';
                 initApp();
             } else {
-                alert(d.message || 'Неверные учетные данные');
+                TELEGRAM_INIT_DATA = null;
+                telegramUsername = null;
+                document.getElementById('loginForm').style.display='flex';
+                initApp();
             }
-        } else {
-             const errorText = await r.text();
-             alert(`Ошибка входа: Сервер ответил со статусом ${r.status}. ${errorText.substring(0, 50)}...`);
         }
+        
+        function compressImage(file, quality = 0.6, maxWidth = 800) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
 
-    } catch (e) {
-        console.error("Ошибка сети или недоступность сервера:", e);
-        alert('❌ Ошибка: Сервер недоступен. Проверьте подключение или адрес.');
-    } finally {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Войти';
-    }
-}
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
 
-// --- Функция для сжатия изображения перед загрузкой ---
-function compressImage(file, quality = 0.6, maxWidth = 800) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = event => {
-            const img = new Image();
-            img.src = event.target.result;
+                        if (width > maxWidth) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        }
 
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
+                        canvas.width = width;
+                        canvas.height = height;
 
-                if (width > maxWidth) {
-                    height *= maxWidth / width;
-                    width = maxWidth;
-                }
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
 
-                canvas.width = width;
-                canvas.height = height;
+                        canvas.toBlob(blob => {
+                            if (blob) {
+                                const compressedFile = new File([blob], file.name.replace(/\.(png|gif)$/i, '.jpeg'), {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                resolve(compressedFile);
+                            } else {
+                                reject(new Error('Canvas to Blob failed'));
+                            }
+                        }, 'image/jpeg', quality);
+                    };
 
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
+                    img.onerror = error => reject(error);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+        
+        // =========================================================
+        // ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
+        // =========================================================
+        function initApp(){
+            if(appInitialized) return;
+            appInitialized = true;
 
-                canvas.toBlob(blob => {
-                    if (blob) {
-                        const compressedFile = new File([blob], file.name.replace(/\.(png|gif)$/i, '.jpeg'), {
-                            type: 'image/jpeg',
-                            lastModified: Date.now()
-                        });
-                        resolve(compressedFile);
+            // --- HTML ЭЛЕМЕНТЫ ---
+            const popupWindow = document.getElementById('popupWindow');
+            const popupClose = document.getElementById('popupClose');
+            const noteInput = document.getElementById('noteInput');
+            const breedInput = document.getElementById('breedInput');
+            const pointObjectSelect = document.getElementById('pointObjectSelect');
+            const markerColorSelect = document.getElementById('markerColor');
+            const photoInput = document.getElementById('photoInput');
+            const photoList = document.getElementById('photoList');
+            const saveBtn = document.getElementById('saveBtn');
+            const deleteBtn = document.getElementById('deleteBtn');
+            const spinner = document.getElementById('spinner');
+            const photoModal = document.getElementById('photoModal');
+            const closePhotoModal = document.getElementById('closePhotoModal');
+            const newPointBtn = document.getElementById('newPointBtn');
+            const popupCoords = document.getElementById('popupCoords');
+            const copyCoordsBtn = document.getElementById('copyCoordsBtn');
+            const crosshair = document.getElementById('crosshair'); 
+            const adminPanelBtn = document.getElementById('adminPanelBtn');
+            const adminPanelWindow = document.getElementById('adminPanelWindow');
+            const adminPanelClose = document.getElementById('adminPanelClose');
+            const adminTabButtons = document.querySelectorAll('.adminTabButton');
+            const usersTableBody = document.querySelector('#usersTable tbody');
+            const createUserBtn = document.getElementById('createUserBtn');
+            const userEditModal = document.getElementById('userEditModal');
+            const userEditModalClose = document.getElementById('userEditModalClose');
+            const userEditTitle = document.getElementById('userEditTitle');
+            const saveUserBtn = document.getElementById('saveUserBtn');
+            const editUserId = document.getElementById('editUserId');
+            const editFullName = document.getElementById('editFullName');
+            const editRole = document.getElementById('editRole');
+            const editTelegramId = document.getElementById('editTelegramId');
+            const editUsername = document.getElementById('editUsername');
+            const editPassword = document.getElementById('editPassword');
+            const editPhone = document.getElementById('editPhone');
+            const editAdditionalInfo = document.getElementById('editAdditionalInfo');
+            const newAccountFields = document.getElementById('newAccountFields');
+            const optionalInfoFields = document.getElementById('optionalInfoFields');
+            const deleteUserBtn = document.getElementById('deleteUserBtn');
+            const objectsTableBody = document.querySelector('#objectsTable tbody');
+            const createObjectBtn = document.getElementById('createObjectBtn');
+            const objectEditModal = document.getElementById('objectEditModal');
+            const objectEditModalClose = document.getElementById('objectEditModalClose');
+            const objectEditTitle = document.getElementById('objectEditTitle');
+            const saveObjectBtn = document.getElementById('saveObjectBtn');
+            const deleteObjectBtn = document.getElementById('deleteObjectBtn');
+            const editObjectId = document.getElementById('editObjectId');
+            const editObjectName = document.getElementById('editObjectName');
+            const editObjectInfo = document.getElementById('editObjectInfo');
+            
+            // --- MAP INIT ---
+            const defaultLat = parseFloat(params.get("lat")) || 54.1032;
+            const defaultLon = parseFloat(params.get("lon")) || 28.3186;
+            currentCenter={lat:defaultLat, lon:defaultLon};
+            const map = L.map('map', { center:[defaultLat, defaultLon], zoom:12, attributionControl:false });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            
+            // ОБНОВЛЕНИЕ ЦЕНТРА: Обновляем currentCenter при движении карты
+            map.on('move',()=>{
+                const c=map.getCenter(); 
+                currentCenter={lat:c.lat, lon:c.lng};
+            });
+            
+            // СКРЫТИЕ POPUP при клике на карту
+            map.on('click', () => {
+                popupWindow.style.display = 'none';
+            }); 
+
+            // --- PERIODIC CHECK ---
+            setInterval(fetchMeAndStatus, 5000);
+            fetchMeAndStatus();
+
+            // =========================================================
+            // MAP & MARKER LOGIC (без изменений)
+            // =========================================================
+
+            function getIcon(color) {
+                const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                             red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                             blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                             yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
+                             black:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png'};
+                return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                                iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+            }
+
+            function addMarkerToMap(entry){
+                const idStr=String(entry.id);
+                if(markersMap[idStr]) return;
+                const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
+                marker.entryId=idStr;
+                marker.on('click',()=>handleOpenMarkerPopup(idStr)); 
+                markersMap[idStr]=marker;
+            }
+
+            async function loadMarkers(){
+                try{
+                    const r = await fetchWithAuth(`${SERVER_URL}/markers`);
+                    const d = await r.json();
+                    if(d.status==='success') d.markers.forEach(addMarkerToMap);
+                }catch(err){ console.error('Ошибка при загрузке маркеров',err);}
+            }
+
+            async function refreshMarkers(){
+                try{
+                    const r = await fetchWithAuth(`${SERVER_URL}/markers`);
+                    let d={status:'error', markers:[]};
+                    try{ d = await r.json(); } catch(e){ return; }
+                    if(d.status!=='success') return;
+                    const serverIds=new Set(d.markers.map(m=>String(m.id)));
+                    
+                    d.markers.forEach(m=>{
+                        const idStr=String(m.id);
+                        if(markersMap[idStr]){
+                            markersMap[idStr].setLatLng([m.lat,m.lon]);
+                            markersMap[idStr].setIcon(getIcon(m.color));
+                        } else addMarkerToMap(m);
+                    });
+                    
+                    Object.keys(markersMap).forEach(id=>{
+                        if(!serverIds.has(id) && id!==String(currentEntryId)){ 
+                            map.removeLayer(markersMap[id]);
+                            delete markersMap[id];
+                        }
+                    });
+                }catch(err){console.error(err);}
+            }
+            
+            // --- PHOTO & POPUP UTILITIES (без изменений) ---
+
+            function renderPhotoList() {
+                photoList.innerHTML = '';
+                const allPhotos = [
+                    ...existingPhotos.map((p, i) => ({...p, isExisting: true, index: i})), 
+                    ...selectedFiles.map((f, i) => ({file: f, isExisting: false, index: i}))
+                ];
+
+                allPhotos.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'photoItem';
+                    
+                    let imgUrl;
+                    let dataSrc = '';
+
+                    if (p.isExisting) {
+                        imgUrl = `${SERVER_URL}/photo/${p.filename}`;
+                        dataSrc = p.filename;
                     } else {
-                        reject(new Error('Canvas to Blob failed'));
+                        imgUrl = URL.createObjectURL(p.file);
                     }
-                }, 'image/jpeg', quality);
-            };
 
-            img.onerror = error => reject(error);
-        };
-        reader.onerror = error => reject(error);
-    });
-}
-
-// --- Основная логика приложения ---
-function initApp(){
-    if(appInitialized) return;
-    appInitialized = true;
-
-    const connectionDot = document.getElementById("connectionDot");
-    const connectionText = document.getElementById("connectionText");
-    const popupWindow = document.getElementById('popupWindow');
-    const popupClose = document.getElementById('popupClose');
-    const noteInput = document.getElementById('noteInput');
-    const breedInput = document.getElementById('breedInput');
-    const objectInput = document.getElementById('objectInput');
-    const markerColorSelect = document.getElementById('markerColor');
-    const photoInput = document.getElementById('photoInput');
-    const photoList = document.getElementById('photoList');
-    const saveBtn = document.getElementById('saveBtn');
-    const deleteBtn = document.getElementById('deleteBtn');
-    const spinner = document.getElementById('spinner');
-    const photoModal = document.getElementById('photoModal');
-    const closePhotoModal = document.getElementById('closePhotoModal');
-    const newPointBtn = document.getElementById('newPointBtn');
-    const popupCoords = document.getElementById('popupCoords');
-    const copyCoordsBtn = document.getElementById('copyCoordsBtn');
-// ⬇️ НОВЫЕ ЭЛЕМЕНТЫ ДЛЯ АДМИН-ПАНЕЛИ
-    const adminPanelBtn = document.getElementById('adminPanelBtn');
-    const adminPanelWindow = document.getElementById('adminPanelWindow');
-    const adminPanelClose = document.getElementById('adminPanelClose');
-    const adminTabButtons = document.querySelectorAll('.adminTabButton');
-    const adminTabContentPanes = document.querySelectorAll('.adminTabContentPane')
-// ⬇️ НОВЫЕ ЭЛЕМЕНТЫ ДЛЯ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ
-    const usersTableBody = document.querySelector('#usersTable tbody');
-    const createUserBtn = document.getElementById('createUserBtn');
-
-    const userEditModal = document.getElementById('userEditModal');
-    const userEditModalClose = document.getElementById('userEditModalClose');
-    const userEditTitle = document.getElementById('userEditTitle');
-    const saveUserBtn = document.getElementById('saveUserBtn');
-
-    const editUserId = document.getElementById('editUserId');
-    const editFullName = document.getElementById('editFullName');
-    const editRole = document.getElementById('editRole');
-    const editTelegramId = document.getElementById('editTelegramId');
-    const editUsername = document.getElementById('editUsername');
-    const editPassword = document.getElementById('editPassword');
-    const editPhone = document.getElementById('editPhone');
-    const editAdditionalInfo = document.getElementById('editAdditionalInfo');
-    const newAccountFields = document.getElementById('newAccountFields');
-    const editFields = document.getElementById('editFields')
-    const optionalInfoFields = document.getElementById('optionalInfoFields');
-    const deleteUserBtn = document.getElementById('deleteUserBtn');
-
-    // --- КОНСТАНТЫ СИМВОЛОВ ---
-    const COPY_SYMBOL = '📋';
-    const COPIED_SYMBOL = '✔️'; // Или '✅'
-    let selectedFiles=[], currentEntryId=null, existingPhotos=[];
-    let markersMap={};
-
-    // ⬇️ ЗАМЕНА: pingServer удален, используем fetchMeAndStatus
-    setInterval(fetchMeAndStatus, 5000);
-    fetchMeAndStatus();
-
-    // ... (остальной код map, getIcon, renderPhotoList, loadMarkers, refreshMarkers, saveBtn.onclick, deleteBtn.onclick остается без изменений) ...
-
-    const defaultLat = parseFloat(params.get("lat")) || 54.1032;
-    const defaultLon = parseFloat(params.get("lon")) || 28.3186;
-    const map = L.map('map', { center:[defaultLat, defaultLon], zoom:12, attributionControl:false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    let currentCenter={lat:defaultLat, lon:defaultLon};
-    map.on('move',()=>{const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng};});
-
-// ----------------------------------------------------
-// 4. УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ
-// ----------------------------------------------------
-deleteUserBtn.onclick = async () => {
-    const userId = editUserId.value;
-
-    if (!userId) return;
-
-    if (confirm(`Вы уверены, что хотите удалить этого пользователя? Это действие необратимо.`)) {
-        try {
-            const url = `${SERVER_URL}/admin/user/${userId}`;
-            const r = await fetchWithAuth(url, { method: 'DELETE' });
-
-            if (!r.ok) {
-                const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
-                alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
-                return;
-            }
-
-            const d = await r.json();
-
-            if (d.status === 'success') {
-                alert(d.message);
-                userEditModal.style.display = 'none';
-                loadUsersTable(); // Обновляем таблицу
-            } else {
-                alert(d.message || 'Ошибка удаления.');
-            }
-        } catch (e) {
-            alert('Ошибка соединения при удалении пользователя.');
-            console.error("Delete User Error:", e);
-        }
-    }
-};
-
-
-// 1. Открытие панели админа
-    adminPanelBtn.onclick = () => {
-        if (isAdmin) {
-            adminPanelWindow.style.display = 'block';
-            loadUsersTable();
-        } else {
-            alert('У вас нет прав администратора.');
-        }
-    };
-// 2. Закрытие панели админа
-    adminPanelClose.onclick = () => {
-        adminPanelWindow.style.display = 'none';
-    };
-// 3. Переключение вкладок
-    function switchAdminTab(tabName) {
-        // Сброс всех кнопок и контента
-        adminTabButtons.forEach(btn => {
-            btn.classList.remove('active');
-            btn.style.background = '#f9f9f9';
-            btn.style.borderBottom = '2px solid transparent';
-        });
-
-        adminTabContentPanes.forEach(pane => {
-            pane.style.display = 'none';
-            pane.classList.remove('active');
-        });
-
-        // Активация выбранной вкладки
-        const selectedButton = document.querySelector(`.adminTabButton[data-tab="${tabName}"]`);
-        const selectedContent = document.getElementById(`tab-${tabName}`);
-
-        if (selectedButton && selectedContent) {
-            selectedButton.classList.add('active');
-            selectedButton.style.background = '#eee';
-            selectedButton.style.borderBottom = '2px solid #007bff';
-
-            selectedContent.style.display = 'block';
-            selectedContent.classList.add('active');
-        }
-    }
-
-    // Обработчик клика для всех кнопок вкладок
-    adminTabButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabName = btn.getAttribute('data-tab');
-            switchAdminTab(tabName);
-        });
-    });
-
-// --- ЛОГИКА КОПИРОВАНИЯ ---
-    copyCoordsBtn.onclick = async () => {
-        const coordsText = popupCoords.textContent;
-        if (coordsText && coordsText !== '—') {
-            try {
-                await navigator.clipboard.writeText(coordsText);
-
-                // ⬇️ ИЗМЕНЕНИЕ: Используем символ подтверждения
-                copyCoordsBtn.textContent = COPIED_SYMBOL;
-                setTimeout(() => {
-                    copyCoordsBtn.textContent = COPY_SYMBOL; // Сброс
-                }, 1500);
-
-            } catch (err) {
-                console.error('Ошибка копирования:', err);
-                alert(`Не удалось скопировать. Координаты: ${coordsText}`);
-            }
-        }
-    };
-
-async function loadUsersTable() {
-        if (!isAdmin) return;
-        usersTableBody.innerHTML = '<tr><td colspan="2">Загрузка...</td></tr>';
-
-        try {
-            const r = await fetchWithAuth(`${SERVER_URL}/admin/users`);
-            const d = await r.json();
-
-            usersTableBody.innerHTML = '';
-            if (d.status === 'success' && d.users) {
-                d.users.forEach(user => {
-                    const row = usersTableBody.insertRow();
-                    row.onclick = () => openUserEditModal(user.id); // Клик по строке открывает редактирование
-                    row.style.cursor = 'pointer';
-                    row.innerHTML = `
-                        <td style="border: 1px solid #ccc; padding: 8px;">${user.full_name}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${user.role}</td>
-                    `;
+                    const removeBtnId = p.isExisting ? p.index : `s${p.index}`;
+                    div.innerHTML = `<img src="${imgUrl}" data-src="${dataSrc}">
+                                     <div class="removePhoto" data-i="${removeBtnId}">×</div>`;
+                    photoList.appendChild(div);
                 });
-            } else {
-                usersTableBody.innerHTML = `<tr><td colspan="2">${d.message || 'Ошибка загрузки пользователей'}</td></tr>`;
+                
+                photoList.querySelectorAll('.removePhoto').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        const id = btn.dataset.i;
+                        if (String(id).startsWith('s')) {
+                            selectedFiles.splice(parseInt(id.slice(1)), 1);
+                        } else {
+                            existingPhotos.splice(parseInt(id), 1);
+                        }
+                        renderPhotoList();
+                    };
+                });
+
+                photoList.querySelectorAll('img').forEach(img => {
+                    img.onclick = (e) => {
+                        e.stopPropagation();
+                        let src = img.dataset.src ? `${SERVER_URL}/photo/${img.dataset.src}` : img.src;
+                        photoModal.querySelector('img').src = src;
+                        photoModal.style.display = 'flex';
+                    };
+                });
             }
-        } catch (e) {
-            usersTableBody.innerHTML = '<tr><td colspan="2">Ошибка соединения с сервером</td></tr>';
-            console.error('Ошибка при загрузке пользователей:', e);
-        }
-    }
-
-    // ----------------------------------------------------
-    // 2. ОТКРЫТИЕ МОДАЛЬНОГО ОКНА (СОЗДАНИЕ/РЕДАКТИРОВАНИЕ)
-    // ----------------------------------------------------
-async function openUserEditModal(userId = null) {
-    // Сброс полей
-    editUserId.value = userId || '';
-    editFullName.value = '';
-    editRole.value = 'user';
-    editTelegramId.value = '';
-    editUsername.value = '';
-    editPassword.value = '';
-    editPhone.value = '';
-    editAdditionalInfo.value = ''; // Теперь доступно для создания
-
-    if (userId) {
-        // РЕДАКТИРОВАНИЕ
-        userEditTitle.textContent = 'Редактирование пользователя';
-        newAccountFields.style.display = 'none'; // Скрываем поля создания аккаунта
-        optionalInfoFields.style.display = 'block'; // Показываем доп. поля (телефон, инфо)
-        deleteUserBtn.style.display = 'block'; // ✅ ПОКАЗАТЬ КНОПКУ
-        try {
-            const r = await fetchWithAuth(`${SERVER_URL}/admin/user/${userId}`);
-            const d = await r.json();
-
-            if (d.status === 'success' && d.user) {
-                editFullName.value = d.user.full_name || '';
-                editRole.value = d.user.role;
-                editPhone.value = d.user.phone || '';
-                editAdditionalInfo.value = d.user.additional_info || '';
-            } else {
-                alert(d.message || 'Не удалось загрузить данные пользователя.');
-                userEditModal.style.display = 'none';
-                return;
-            }
-        } catch (e) {
-            alert('Ошибка соединения при загрузке данных пользователя.');
-            userEditModal.style.display = 'none';
-            return;
-        }
-    } else {
-        // СОЗДАНИЕ
-        userEditTitle.textContent = 'Создание нового пользователя';
-        newAccountFields.style.display = 'block'; // Показываем поля создания аккаунта
-        optionalInfoFields.style.display = 'block'; // Показываем доп. поля (они теперь необязательные)
-        deleteUserBtn.style.display = 'none'; // ✅ СКРЫТЬ КНОПКУ
-    }
-
-    userEditModal.style.display = 'flex';
-}
-
-    // Обработчики открытия и закрытия модального окна
-    createUserBtn.onclick = () => openUserEditModal();
-    userEditModalClose.onclick = () => userEditModal.style.display = 'none';
-
-// ----------------------------------------------------
-// 3. СОХРАНЕНИЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ
-// ----------------------------------------------------
-saveUserBtn.onclick = async () => {
-    const userId = editUserId.value;
-    const url = userId ? `${SERVER_URL}/admin/user/${userId}` : `${SERVER_URL}/admin/user`;
-
-    // 1. Собираем общие и обязательные поля
-    const data = {
-        full_name: editFullName.value.trim(),
-        role: editRole.value,
-        // Дополнительные поля, которые теперь общие и опциональные
-        phone: editPhone.value.trim(),
-        additional_info: editAdditionalInfo.value.trim()
-    };
-
-    // Проверка обязательного поля ФИО
-    if (!data.full_name) {
-        alert('Поле ФИО обязательно.');
-        return;
-    }
-
-    if (!userId) {
-        // 2. Логика для СОЗДАНИЯ НОВОГО пользователя
-        data.telegram_id = editTelegramId.value.trim();
-        data.username = editUsername.value.trim();
-        data.password = editPassword.value.trim();
-
-        // Проверка, что указан Telegram ID ИЛИ связка Username/Password
-        if (!(data.telegram_id || (data.username && data.password))) {
-            alert('Для создания необходимо указать Telegram ID ИЛИ Username и Password.');
-            return;
-        }
-
-        // Очищаем пароль, если есть Telegram ID, и он не нужен для аутентификации
-        // if (data.telegram_id && !data.username) {
-        //     data.password = '';
-        // }
-    }
-    // Для РЕДАКТИРОВАНИЯ (userId присутствует), дополнительных проверок полей входа не требуется
-
-    try {
-        const r = await fetchWithAuth(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
-
-        // Обработка случая, если сервер ответил, но статус не 200 OK (например, 400 Bad Request)
-        if (!r.ok) {
-            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
-            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
-            return;
-        }
-
-        const d = await r.json();
-
-        if (d.status === 'success') {
-            alert(d.message);
-            userEditModal.style.display = 'none';
-            loadUsersTable(); // Обновляем таблицу
-        } else {
-            alert(d.message || 'Ошибка сохранения.');
-        }
-    } catch (e) {
-        alert('Ошибка соединения при сохранении данных.');
-        console.error("Save User Error:", e);
-    }
-};
-
-    // ----------------------------------------------------
-    // 4. ДОПОЛНИТЕЛЬНО: ЗАПУСК ЗАГРУЗКИ ПРИ ПЕРЕКЛЮЧЕНИИ НА ВКЛАДКУ "ПОЛЬЗОВАТЕЛИ"
-    // ----------------------------------------------------
-
-    // Найдите обработчик клика для кнопок вкладок:
-    adminTabButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabName = btn.getAttribute('data-tab');
-            switchAdminTab(tabName);
-
-            if (tabName === 'users') {
-                loadUsersTable(); // Загружаем данные при активации вкладки
-            }
-        });
-    });
 
 
+            // =========================================================
+            // MARKER POPUP HANDLERS (с исправлениями)
+            // =========================================================
 
-    function getIcon(color){
-        const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                     red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                     blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-                     yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
-                     black:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png'};
-        return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                        iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
-    }
+            async function loadObjectOptions() {
+                pointObjectSelect.innerHTML = '<option value="">-- Загрузка объектов... --</option>';
 
-    function renderPhotoList(){
-        photoList.innerHTML='';
-        existingPhotos.forEach((p,i)=>{
-            const div=document.createElement('div');
-            div.className='photoItem';
-            let imgUrl = `${SERVER_URL}/uploads/${p}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}`;
-            div.innerHTML=`<img src="${imgUrl}" data-src="${p}">
-                                 <div class="removePhoto" data-i="${i}">×</div>`;
-            photoList.appendChild(div);
-        });
-        selectedFiles.forEach((f,i)=>{
-            const div=document.createElement('div');
-            div.className='photoItem';
-            div.innerHTML=`<img src="${URL.createObjectURL(f)}"><div class="removePhoto" data-i="s${i}">×</div>`;
-            photoList.appendChild(div);
-        });
+                try {
+                    const r = await fetchWithAuth(`${SERVER_URL}/admin/objects`); 
+                    const d = await r.json();
 
-        photoList.querySelectorAll('.removePhoto').forEach(btn=>{
-            btn.onclick=()=>{
-                const id = btn.dataset.i;
-                if(id.startsWith('s')) selectedFiles.splice(parseInt(id.slice(1)),1);
-                else existingPhotos.splice(parseInt(id),1);
-                renderPhotoList();
-            };
-        });
-
-        photoList.querySelectorAll('img').forEach(img=>{
-            img.onclick=()=>{
-                let src = img.dataset.src ? `${SERVER_URL}/uploads/${img.dataset.src}${TELEGRAM_INIT_DATA ? '?initData=' + encodeURIComponent(TELEGRAM_INIT_DATA) : ''}` : img.src;
-                photoModal.querySelector('img').src = src;
-                photoModal.style.display='flex';
-            };
-        });
-    }
-
-    photoInput.addEventListener('change',()=>{selectedFiles=Array.from(photoInput.files); renderPhotoList();});
-    popupClose.onclick=()=>{popupWindow.style.display='none'; selectedFiles=[]; existingPhotos=[];};
-    closePhotoModal.onclick=()=>{photoModal.style.display='none';};
-
-    function addMarkerToMap(entry){
-        const idStr=String(entry.id);
-        if(markersMap[idStr]) return;
-        const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
-        marker.entryId=idStr;
-        marker.on('click',()=>openEditPopup(idStr));
-        markersMap[idStr]=marker;
-    }
-
-    async function loadMarkers(){
-        try{
-            const r = await fetchWithAuth(`${SERVER_URL}/markers`);
-            const d = await r.json();
-            if(d.status==='success') d.markers.forEach(addMarkerToMap);
-        }catch(err){ console.error('Ошибка при загрузке маркеров',err);}
-    }
-    async function refreshMarkers(){
-        try{
-            const r = await fetchWithAuth(`${SERVER_URL}/markers`);
-            let d={status:'error', markers:[]};
-            try{ d = await r.json(); } catch(e){ return; }
-            if(d.status!=='success') return;
-            const serverIds=new Set(d.markers.map(m=>String(m.id)));
-            d.markers.forEach(m=>{
-                const idStr=String(m.id);
-                if(markersMap[idStr]){
-                    markersMap[idStr].setLatLng([m.lat,m.lon]);
-                    markersMap[idStr].setIcon(getIcon(m.color));
-                } else addMarkerToMap(m);
-            });
-            Object.keys(markersMap).forEach(id=>{
-                if(!serverIds.has(id) && id!==String(currentEntryId)){
-                    map.removeLayer(markersMap[id]);
-                    delete markersMap[id];
+                    pointObjectSelect.innerHTML = '<option value="">-- Выберите объект --</option>';
+                    
+                    if (d.status === 'success' && d.objects) {
+                        d.objects.forEach(obj => {
+                            const option = document.createElement('option');
+                            option.value = obj.id;
+                            option.textContent = obj.name;
+                            pointObjectSelect.appendChild(option);
+                        });
+                    }
+                } catch (e) {
+                    console.error('Ошибка при загрузке объектов:', e);
+                    pointObjectSelect.innerHTML = '<option value="">-- Ошибка загрузки --</option>';
                 }
+            }
+
+            async function loadMarkerData(pointId) {
+                spinner.style.display = 'block';
+
+                try {
+                    const response = await fetchWithAuth(`${SERVER_URL}/marker/${pointId}`);
+                    const data = await response.json();
+
+                    if (data.status === 'success' && data.marker) {
+                        const marker = data.marker;
+                        popupCoords.textContent = `${marker.lat.toFixed(6)}, ${marker.lon.toFixed(6)}`;
+                        noteInput.value = marker.note || '';
+                        breedInput.value = marker.breed || '';
+                        
+                        pointObjectSelect.value = marker.object_id || ''; 
+                        
+                        markerColorSelect.value = marker.color || 'green';
+                        existingPhotos = marker.photos || []; 
+                        renderPhotoList(); 
+                        
+                        map.setView([marker.lat, marker.lon], map.getZoom());
+                        
+                        return true;
+                    } else {
+                        alert(data.message || 'Не удалось загрузить данные метки.');
+                        return false;
+                    }
+                } catch(e) {
+                    alert('Ошибка соединения при загрузке данных метки.');
+                    console.error("Load Marker Data Error:", e);
+                    return false;
+                } finally {
+                    spinner.style.display = 'none';
+                }
+            }
+
+            async function handleOpenMarkerPopup(pointId = null) {
+                currentEntryId = pointId; 
+                selectedFiles = []; 
+                existingPhotos = []; 
+                
+                noteInput.value = '';
+                breedInput.value = '';
+                markerColorSelect.value = 'green';
+                photoInput.value = '';
+                photoList.innerHTML = '';
+                document.getElementById('copyCoordsBtn').textContent = COPY_SYMBOL;
+
+                spinner.style.display = 'block';
+                await loadObjectOptions(); 
+                spinner.style.display = 'none';
+                
+                if (pointId) {
+                    // РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕЙ ТОЧКИ
+                    const success = await loadMarkerData(pointId);
+                    if (!success) {
+                        popupWindow.style.display = 'none';
+                        return;
+                    }
+
+                    pointObjectSelect.disabled = true; 
+                    saveBtn.textContent = 'Обновить метку';
+                    deleteBtn.style.display = 'block';
+                    
+                } else {
+                    // СОЗДАНИЕ НОВОЙ ТОЧКИ
+                    const {lat, lon} = currentCenter; 
+                    // Используем текущий центр карты (под крестиком)
+                    popupCoords.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                    
+                    pointObjectSelect.disabled = false; 
+                    pointObjectSelect.value = ''; 
+                    saveBtn.textContent = 'Сохранить';
+                    deleteBtn.style.display = 'none';
+                }
+
+                popupWindow.style.display = 'block';
+            }
+
+
+            // =========================================================
+            // POPUP BUTTON HANDLERS (УПРОЩЕНО)
+            // =========================================================
+
+            // Кнопка "Новая точка" сразу открывает форму с координатами центра карты
+            newPointBtn.onclick = () => handleOpenMarkerPopup(null);
+            
+            saveBtn.onclick = async () => {
+                spinner.style.display = 'block';
+                saveBtn.disabled = true;
+
+                const isNew = currentEntryId === null;
+                const selectedObjectId = pointObjectSelect.value;
+                
+                if (isNew && !selectedObjectId) {
+                    alert('Пожалуйста, выберите Объект для новой метки.');
+                    saveBtn.disabled = false;
+                    spinner.style.display = 'none';
+                    return;
+                }
+
+                const compressedFilesPromises = selectedFiles.map(file => compressImage(file));
+                let compressedFiles = [];
+                try {
+                    compressedFiles = await Promise.all(compressedFilesPromises);
+                } catch (err) {
+                    spinner.style.display = 'none';
+                    saveBtn.disabled = false;
+                    console.error('Ошибка при сжатии фото:', err);
+                    return alert('Ошибка при обработке фотографий.');
+                }
+
+                const fd = new FormData();
+                fd.append('note', noteInput.value);
+                fd.append('breed', breedInput.value);
+                
+                if (selectedObjectId) {
+                    fd.append('object_id', selectedObjectId);
+                }
+                
+                fd.append('color', markerColorSelect.value);
+                fd.append('existing_photos', JSON.stringify(existingPhotos.map(p => p.filename))); 
+
+                compressedFiles.forEach(f => fd.append('photos', f)); 
+                
+                // Если это новая точка, используем координаты из поля
+                if (isNew) {
+                    const [lat, lon] = popupCoords.textContent.split(',').map(s => s.trim());
+                    // Проверка на случай, если вдруг координаты не заполнились (хотя не должны)
+                    if (!lat || !lon || lat === '—') {
+                        alert('Координаты не определены. Переместите карту и попробуйте снова.');
+                        saveBtn.disabled = false;
+                        spinner.style.display = 'none';
+                        return;
+                    }
+                    fd.append('lat', lat);
+                    fd.append('lon', lon);
+                }
+
+                const url = isNew ? `${SERVER_URL}/upload` : `${SERVER_URL}/marker/${currentEntryId}`;
+                const method = 'POST';
+
+                try {
+                    const r = await fetchWithAuth(url, { method: method, body: fd });
+                    
+                    if (!r.ok) {
+                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+                        return;
+                    }
+                    
+                    const d = await r.json();
+
+                    if (d.status === 'success') {
+                        popupWindow.style.display = 'none';
+                        alert(d.message);
+                        loadMarkers(); 
+                    } else {
+                        alert(d.message || 'Ошибка сохранения.');
+                    }
+                } catch (e) {
+                    alert('Ошибка соединения при сохранении метки.');
+                    console.error("Save Point Error:", e);
+                } finally {
+                    spinner.style.display = 'none';
+                    saveBtn.disabled = false;
+                }
+            };
+
+            deleteBtn.onclick = async () => {
+                if (!currentEntryId) return;
+                if (!confirm('Удалить метку?')) return;
+                try {
+                    const r = await fetchWithAuth(`${SERVER_URL}/marker/${currentEntryId}`, { method: 'DELETE' });
+                    const d = await r.json();
+                    if (d.status === 'success') {
+                        if (markersMap[currentEntryId]) { map.removeLayer(markersMap[currentEntryId]); delete markersMap[currentEntryId]; }
+                        popupWindow.style.display = 'none';
+                        selectedFiles = [];
+                        existingPhotos = [];
+                        alert(d.message || 'Метка удалена.');
+                    } else alert(d.message);
+                } catch (err) { console.error(err); alert('Ошибка при удалении'); }
+            };
+
+            // --- GENERAL EVENT HANDLERS (без изменений) ---
+
+            photoInput.addEventListener('change', () => {
+                selectedFiles = Array.from(photoInput.files); 
+                renderPhotoList();
             });
-        }catch(err){console.error(err);}
-    }
 
-    loadMarkers(); setInterval(refreshMarkers,30000);
+            popupClose.onclick = () => {
+                popupWindow.style.display = 'none'; 
+                currentEntryId = null;
+            };
 
-// ===================================
-// 1. Создание новой точки (newPointBtn.onclick)
-// ===================================
-newPointBtn.onclick = () => {
-    currentEntryId = null;
-    noteInput.value = '';
-    breedInput.value = '';
-    objectInput.value = '';
-    markerColorSelect.value = 'green';
-    selectedFiles = [];
-    existingPhotos = [];
-    renderPhotoList();
-    document.getElementById('popupCoords').textContent = `${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
+            closePhotoModal.onclick = () => photoModal.style.display = 'none';
 
-    copyCoordsBtn.textContent = COPY_SYMBOL;
-    deleteBtn.style.display = 'none';
-    saveBtn.textContent = 'Создать';
+            copyCoordsBtn.onclick = async () => {
+                const coordsText = popupCoords.textContent;
+                if (coordsText && coordsText !== '—') {
+                    try {
+                        await navigator.clipboard.writeText(coordsText);
+                        copyCoordsBtn.textContent = COPIED_SYMBOL;
+                        setTimeout(() => {
+                            copyCoordsBtn.textContent = COPY_SYMBOL;
+                        }, 1500);
 
-    popupWindow.style.display = 'block';
-};
-
-// ===================================
-// 2. Редактирование существующей метки (openEditPopup)
-// ===================================
-async function openEditPopup(entryId) {
-    currentEntryId = entryId;
-    selectedFiles = [];
-    existingPhotos = [];
-    try {
-        const r = await fetchWithAuth(`${SERVER_URL}/entry/${entryId}`);
-        const d = await r.json();
-        if (d.status !== 'success') return alert(d.message);
-        const e = d.entry;
-
-        noteInput.value = e.note;
-        breedInput.value = e.breed;
-        objectInput.value = e.object;
-        markerColorSelect.value = e.color;
-        existingPhotos = e.photos || [];
-        renderPhotoList();
-        document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
-        copyCoordsBtn.textContent = COPY_SYMBOL;
-        deleteBtn.style.display = 'block';
-        saveBtn.textContent = 'Сохранить изменения';
-
-        popupWindow.style.display = 'block';
-    } catch (err) {
-        console.error(err);
-        alert('Ошибка загрузки данных метки');
-    }
-}
-
-saveBtn.onclick = async () => {
-    spinner.style.display = 'block';
-
-    // 1. Сжатие новых фото
-    const compressedFilesPromises = selectedFiles.map(file => compressImage(file));
-    let compressedFiles = [];
-    try {
-        compressedFiles = await Promise.all(compressedFilesPromises);
-    } catch (err) {
-        spinner.style.display = 'none';
-        console.error('Ошибка при сжатии фото:', err);
-        return alert('Ошибка при обработке фотографий.');
-    }
-
-    // 2. Сбор остальных данных
-    const fd = new FormData();
-    fd.append('note', noteInput.value);
-    fd.append('breed', breedInput.value);
-    fd.append('object', objectInput.value);
-    fd.append('color', markerColorSelect.value);
-    existingPhotos.forEach(p => fd.append('existingPhotos[]', p));
-
-    // 3. Добавление ТОЛЬКО сжатых фото в FormData
-    compressedFiles.forEach(f => fd.append('photos[]', f));
-
-    // ... (Остальная логика отправки данных остается прежней)
-    if (!currentEntryId) {
-        fd.append('lat', currentCenter.lat);
-        fd.append('lon', currentCenter.lon);
-        try {
-            const r = await fetchWithAuth(`${SERVER_URL}/upload`, { method: 'POST', body: fd });
-            const d = await r.json();
-            spinner.style.display = 'none';
-            if (d.status === 'success') {
-                addMarkerToMap(d.entry);
-                popupWindow.style.display = 'none';
-                selectedFiles = [];
-                existingPhotos = [];
-            } else alert(d.message);
-        } catch (err) { spinner.style.display = 'none'; console.error(err); alert('Ошибка при сохранении'); }
-    } else {
-        try {
-            const r = await fetchWithAuth(`${SERVER_URL}/entry/${currentEntryId}`, { method: 'POST', body: fd });
-            const d = await r.json();
-            spinner.style.display = 'none';
-            if (d.status === 'success') {
-                refreshMarkers();
-                popupWindow.style.display = 'none';
-                selectedFiles = [];
-                existingPhotos = [];
-            } else alert(d.message);
-        } catch (err) { spinner.style.display = 'none'; console.error(err); alert('Ошибка при обновлении'); }
-    }
-};
-
-    deleteBtn.onclick = async () => {
-        if (!currentEntryId) return;
-        if (!confirm('Удалить метку?')) return;
-        try {
-            const r = await fetchWithAuth(`${SERVER_URL}/entry/${currentEntryId}`, { method: 'DELETE' });
-            const d = await r.json();
-            if (d.status === 'success') {
-                if (markersMap[currentEntryId]) { map.removeLayer(markersMap[currentEntryId]); delete markersMap[currentEntryId]; }
-                popupWindow.style.display = 'none';
-                selectedFiles = [];
-                existingPhotos = [];
-            } else alert(d.message);
-        } catch (err) { console.error(err); alert('Ошибка при удалении'); }
-    };
+                    } catch (err) {
+                        console.error('Ошибка копирования:', err);
+                        alert(`Не удалось скопировать. Координаты: ${coordsText}`);
+                    }
+                }
+            };
+            
+            // --- LOGIN HANDLERS (без изменений) ---
+            document.getElementById('loginBtn').onclick = async () => { await handleBrowserLogin(); };
+            document.getElementById('loginUsername').addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleBrowserLogin(); } });
+            document.getElementById('loginPassword').addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleBrowserLogin(); } });
 
 
+            // =========================================================
+            // ADMIN PANEL LOGIC (без изменений)
+            // =========================================================
+            
+            // --- USER LOGIC ---
+            async function loadUsersTable() {
+                if (!isAdmin) return;
+                usersTableBody.innerHTML = '<tr><td colspan="2">Загрузка...</td></tr>';
+
+                try {
+                    const r = await fetchWithAuth(`${SERVER_URL}/admin/users`);
+                    const d = await r.json();
+
+                    usersTableBody.innerHTML = '';
+                    if (d.status === 'success' && d.users) {
+                        d.users.forEach(user => {
+                            const row = usersTableBody.insertRow();
+                            row.onclick = () => openUserEditModal(user.id); 
+                            row.style.cursor = 'pointer';
+                            row.innerHTML = `
+                                <td>${user.full_name}</td>
+                                <td>${user.role}</td>
+                            `;
+                        });
+                    } else {
+                        usersTableBody.innerHTML = `<tr><td colspan="2">${d.message || 'Ошибка загрузки пользователей'}</td></tr>`;
+                    }
+                } catch (e) {
+                    usersTableBody.innerHTML = '<tr><td colspan="2">Ошибка соединения с сервером</td></tr>';
+                    console.error('Ошибка при загрузке пользователей:', e);
+                }
+            }
+            
+            async function openUserEditModal(userId = null) {
+                editUserId.value = userId || '';
+                editFullName.value = '';
+                editRole.value = 'user';
+                editTelegramId.value = '';
+                editUsername.value = '';
+                editPassword.value = '';
+                editPhone.value = '';
+                editAdditionalInfo.value = ''; 
+
+                if (userId) {
+                    userEditTitle.textContent = 'Редактирование пользователя';
+                    newAccountFields.style.display = 'none'; 
+                    optionalInfoFields.style.display = 'block'; 
+                    deleteUserBtn.style.display = 'block'; 
+                    try {
+                        const r = await fetchWithAuth(`${SERVER_URL}/admin/user/${userId}`);
+                        const d = await r.json();
+
+                        if (d.status === 'success' && d.user) {
+                            editFullName.value = d.user.full_name || '';
+                            editRole.value = d.user.role;
+                            editPhone.value = d.user.phone || '';
+                            editAdditionalInfo.value = d.user.additional_info || '';
+                        } else {
+                            alert(d.message || 'Не удалось загрузить данные пользователя.');
+                            userEditModal.style.display = 'none';
+                            return;
+                        }
+                    } catch (e) {
+                        alert('Ошибка соединения при загрузке данных пользователя.');
+                        userEditModal.style.display = 'none';
+                        return;
+                    }
+                } else {
+                    userEditTitle.textContent = 'Создание нового пользователя';
+                    newAccountFields.style.display = 'block'; 
+                    optionalInfoFields.style.display = 'block'; 
+                    deleteUserBtn.style.display = 'none'; 
+                }
+
+                userEditModal.style.display = 'flex';
+            }
+            
+            saveUserBtn.onclick = async () => {
+                const userId = editUserId.value;
+                const url = userId ? `${SERVER_URL}/admin/user/${userId}` : `${SERVER_URL}/admin/user`;
+
+                const data = {
+                    full_name: editFullName.value.trim(),
+                    role: editRole.value,
+                    phone: editPhone.value.trim(),
+                    additional_info: editAdditionalInfo.value.trim()
+                };
+
+                if (!data.full_name) {
+                    alert('Поле ФИО обязательно.');
+                    return;
+                }
+
+                if (!userId) {
+                    data.telegram_id = editTelegramId.value.trim();
+                    data.username = editUsername.value.trim();
+                    data.password = editPassword.value.trim();
+
+                    if (!(data.telegram_id || (data.username && data.password))) {
+                        alert('Для создания необходимо указать Telegram ID ИЛИ Username и Password.');
+                        return;
+                    }
+                }
+
+                try {
+                    const r = await fetchWithAuth(url, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+
+                    if (!r.ok) {
+                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+                        return;
+                    }
+
+                    const d = await r.json();
+
+                    if (d.status === 'success') {
+                        alert(d.message);
+                        userEditModal.style.display = 'none';
+                        loadUsersTable(); 
+                    } else {
+                        alert(d.message || 'Ошибка сохранения.');
+                    }
+                } catch (e) {
+                    alert('Ошибка соединения при сохранении данных.');
+                    console.error("Save User Error:", e);
+                }
+            };
+            
+            deleteUserBtn.onclick = async () => {
+                const userId = editUserId.value;
+
+                if (!userId) return;
+
+                if (confirm(`Вы уверены, что хотите удалить этого пользователя? Это действие необратимо.`)) {
+                    try {
+                        const url = `${SERVER_URL}/admin/user/${userId}`;
+                        const r = await fetchWithAuth(url, { method: 'DELETE' });
+
+                        if (!r.ok) {
+                            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+                            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+                            return;
+                        }
+
+                        const d = await r.json();
+
+                        if (d.status === 'success') {
+                            alert(d.message);
+                            userEditModal.style.display = 'none';
+                            loadUsersTable(); 
+                        } else {
+                            alert(d.message || 'Ошибка удаления.');
+                        }
+                    } catch (e) {
+                        alert('Ошибка соединения при удалении пользователя.');
+                        console.error("Delete User Error:", e);
+                    }
+                }
+            };
+
+            createUserBtn.onclick = () => openUserEditModal();
+            userEditModalClose.onclick = () => userEditModal.style.display = 'none';
+
+            // --- OBJECT LOGIC ---
+            async function loadObjectsTable() {
+                if (!isAdmin) return;
+                objectsTableBody.innerHTML = '<tr><td>Загрузка...</td></tr>';
+
+                try {
+                    const r = await fetchWithAuth(`${SERVER_URL}/admin/objects`);
+                    const d = await r.json();
+
+                    objectsTableBody.innerHTML = '';
+                    if (d.status === 'success' && d.objects) {
+                        d.objects.forEach(obj => {
+                            const row = objectsTableBody.insertRow();
+                            row.onclick = () => openObjectEditModal(obj.id);
+                            row.style.cursor = 'pointer';
+                            row.innerHTML = `<td>${obj.name}</td>`;
+                        });
+                        
+                        loadObjectOptions(); 
+
+                    } else {
+                        objectsTableBody.innerHTML = `<tr><td>${d.message || 'Ошибка загрузки объектов'}</td></tr>`;
+                    }
+                } catch (e) {
+                    objectsTableBody.innerHTML = '<tr><td>Ошибка соединения с сервером</td></tr>';
+                    console.error('Ошибка при загрузке объектов:', e);
+                }
+            }
+            
+            async function openObjectEditModal(objectId = null) {
+                editObjectId.value = objectId || '';
+                editObjectName.value = '';
+                editObjectInfo.value = '';
+
+                if (objectId) {
+                    objectEditTitle.textContent = 'Редактирование объекта';
+                    deleteObjectBtn.style.display = 'block';
+
+                    try {
+                        const r = await fetchWithAuth(`${SERVER_URL}/admin/object/${objectId}`);
+                        const d = await r.json();
+
+                        if (d.status === 'success' && d.object) {
+                            editObjectName.value = d.object.name;
+                            editObjectInfo.value = d.object.additional_info || '';
+                        } else {
+                            alert(d.message || 'Не удалось загрузить данные объекта.');
+                            objectEditModal.style.display = 'none';
+                            return;
+                        }
+                    } catch (e) {
+                        alert('Ошибка соединения при загрузке данных объекта.');
+                        objectEditModal.style.display = 'none';
+                        return;
+                    }
+                } else {
+                    objectEditTitle.textContent = 'Создание нового объекта';
+                    deleteObjectBtn.style.display = 'none';
+                }
+
+                objectEditModal.style.display = 'flex';
+            }
+            
+            saveObjectBtn.onclick = async () => {
+                const objectId = editObjectId.value;
+                const url = objectId ? `${SERVER_URL}/admin/object/${objectId}` : `${SERVER_URL}/admin/object`;
+
+                const data = {
+                    name: editObjectName.value.trim(),
+                    additional_info: editObjectInfo.value.trim()
+                };
+
+                if (!data.name) {
+                    alert('Поле "Название объекта" обязательно.');
+                    return;
+                }
+
+                try {
+                    const r = await fetchWithAuth(url, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+
+                    if (!r.ok) {
+                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+                        return;
+                    }
+
+                    const d = await r.json();
+
+                    if (d.status === 'success') {
+                        alert(d.message);
+                        objectEditModal.style.display = 'none';
+                        await loadObjectsTable(); 
+                    } else {
+                        alert(d.message || 'Ошибка сохранения.');
+                    }
+                } catch (e) {
+                    alert('Ошибка соединения при сохранении данных объекта.');
+                    console.error("Save Object Error:", e);
+                }
+            };
+            
+            deleteObjectBtn.onclick = async () => {
+                const objectId = editObjectId.value;
+
+                if (!objectId) return;
+
+                if (confirm(`Вы уверены, что хотите удалить объект ID: ${objectId}? Это действие необратимо и отвяжет все связанные метки.`)) {
+                    try {
+                        const url = `${SERVER_URL}/admin/object/${objectId}`;
+                        const r = await fetchWithAuth(url, { method: 'DELETE' });
+
+                        if (!r.ok) {
+                            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+                            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+                            return;
+                        }
+
+                        const d = await r.json();
+
+                        if (d.status === 'success') {
+                            alert(d.message);
+                            objectEditModal.style.display = 'none';
+                            loadObjectsTable(); 
+                        } else {
+                            alert(d.message || 'Ошибка удаления.');
+                        }
+                    } catch (e) {
+                        alert('Ошибка соединения при удалении объекта.');
+                        console.error("Delete Object Error:", e);
+                    }
+                }
+            };
+
+            createObjectBtn.onclick = () => openObjectEditModal();
+            objectEditModalClose.onclick = () => objectEditModal.style.display = 'none';
+            
+            // --- ASSIGNMENTS LOGIC (Заглушка) ---
+            async function loadAssignmentsTable() {
+                const assignmentsTableBody = document.querySelector('#assignmentsTable tbody');
+                assignmentsTableBody.innerHTML = '<tr><td colspan="3">Назначения загружаются... (логика на стороне сервера не реализована)</td></tr>';
+            }
 
 
-}
+            // --- ADMIN PANEL GENERAL LOGIC (без изменений) ---
+            function switchAdminTab(tabName) {
+                const adminTabContentPanes = document.querySelectorAll('.adminTabContentPane');
+                
+                adminTabButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.style.background = '#f4f4f4';
+                    btn.style.borderBottom = 'none';
+                });
 
-window.addEventListener('load', getInitData);
-</script>
+                adminTabContentPanes.forEach(pane => {
+                    pane.style.display = 'none';
+                });
+
+                const selectedButton = document.querySelector(`.adminTabButton[data-tab="${tabName}"]`);
+                const selectedContent = document.getElementById(`tab-${tabName}`);
+
+                if (selectedButton && selectedContent) {
+                    selectedButton.classList.add('active');
+                    selectedButton.style.background = 'white';
+                    
+                    selectedContent.style.display = 'block';
+                }
+            }
+            
+            adminTabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.getAttribute('data-tab');
+                    switchAdminTab(tabName);
+
+                    if (tabName === 'users') {
+                        loadUsersTable(); 
+                    } else if (tabName === 'objects') {
+                        loadObjectsTable();
+                    } else if (tabName === 'assignments') { 
+                        loadAssignmentsTable();
+                    }
+                });
+            });
+
+            adminPanelBtn.onclick = () => {
+                if (isAdmin) {
+                    adminPanelWindow.style.display = 'flex'; 
+                    switchAdminTab('users');
+                    loadUsersTable(); 
+                } else {
+                    alert('У вас нет прав администратора.');
+                }
+            };
+            adminPanelClose.onclick = () => {
+                adminPanelWindow.style.display = 'none';
+            };
+
+
+            // --- FINAL CALLS ---
+            loadMarkers();
+            setInterval(refreshMarkers, 30000); 
+        }
+
+
+        // --- Инициализация при загрузке DOM ---
+        document.addEventListener('DOMContentLoaded', getInitData);
+    </script>
 </body>
 </html>
