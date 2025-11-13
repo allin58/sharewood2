@@ -55,7 +55,11 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
 
 <div id="popupWindow">
   <div id="popupClose">×</div>
-  <div><strong>Координаты:</strong> <span id="popupCoords">—</span></div>
+  <div>
+      <strong>Координаты:</strong>
+      <span id="popupCoords">—</span>
+      <button id="copyCoordsBtn" style="margin-left: 8px; padding: 3px 6px; font-size: 12px; border: 1px solid #ccc; background: #f0f0f0; border-radius: 4px; cursor: pointer;">Копировать</button>
+  </div>
   <label>Объект</label><input type="text" id="objectInput">
   <label>Порода</label><input type="text" id="breedInput">
   <label>Запись</label><textarea id="noteInput" rows="4"></textarea>
@@ -123,7 +127,7 @@ function getTelegramUsername() {
 // --- ОБНОВЛЕННАЯ ФУНКЦИЯ ОТОБРАЖЕНИЯ ИМЕНИ ---
 function updateUsernameDisplay(){
     const el = document.getElementById('telegramUsername');
-    
+
     let displayUsername = telegramUsername;
 
     if (isAdmin) {
@@ -143,7 +147,7 @@ function updateUsernameDisplay(){
 async function fetchMeAndStatus(){
     const connectionDot = document.getElementById("connectionDot");
     const connectionText = document.getElementById("connectionText");
-    
+
     try{
         const r = await fetchWithAuth(`${SERVER_URL}/me`);
 
@@ -157,9 +161,9 @@ async function fetchMeAndStatus(){
             telegramUsername = null; isAdmin = false; updateUsernameDisplay();
             return;
         }
-        
+
         if(d.status==="success" && d.user){
-            
+
             // 1. Успешное соединение
             connectionDot.style.background="#28a745";
             connectionText.textContent="Есть соединение";
@@ -168,7 +172,7 @@ async function fetchMeAndStatus(){
             telegramUsername = d.user.username;
             isAdmin = d.user.role === 'admin';
             updateUsernameDisplay();
-            
+
         } else {
             // Аутентификация не пройдена (d.status !== 'success')
             connectionDot.style.background="#d9534f";
@@ -197,7 +201,7 @@ function getInitData(){
         telegramUsername = null;
         document.getElementById('loginForm').style.display='flex';
         // В браузере initApp запустит fetchMeAndStatus, который проверит, авторизованы ли мы по Cookie
-        initApp(); 
+        initApp();
     }
 }
 
@@ -242,10 +246,10 @@ async function handleBrowserLogin() {
         if (r.ok) {
             const d = await r.json();
             if (d.status === 'success') {
-                
+
                 // ⬇️ НОВОЕ: Запрашиваем /me, чтобы получить имя и статус админа
-                await fetchMeAndStatus(); 
-                
+                await fetchMeAndStatus();
+
                 document.getElementById('loginForm').style.display = 'none';
                 initApp();
             } else {
@@ -266,7 +270,7 @@ async function handleBrowserLogin() {
 }
 
 // --- Функция для сжатия изображения перед загрузкой ---
-function compressImage(file, quality = 0.6, maxWidth = 800) { 
+function compressImage(file, quality = 0.6, maxWidth = 800) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -300,7 +304,7 @@ function compressImage(file, quality = 0.6, maxWidth = 800) {
                     } else {
                         reject(new Error('Canvas to Blob failed'));
                     }
-                }, 'image/jpeg', quality); 
+                }, 'image/jpeg', quality);
             };
 
             img.onerror = error => reject(error);
@@ -330,12 +334,14 @@ function initApp(){
     const photoModal = document.getElementById('photoModal');
     const closePhotoModal = document.getElementById('closePhotoModal');
     const newPointBtn = document.getElementById('newPointBtn');
+    const popupCoords = document.getElementById('popupCoords');
+    const copyCoordsBtn = document.getElementById('copyCoordsBtn');
 
     let selectedFiles=[], currentEntryId=null, existingPhotos=[];
     let markersMap={};
 
     // ⬇️ ЗАМЕНА: pingServer удален, используем fetchMeAndStatus
-    setInterval(fetchMeAndStatus, 5000); 
+    setInterval(fetchMeAndStatus, 5000);
     fetchMeAndStatus();
 
     // ... (остальной код map, getIcon, renderPhotoList, loadMarkers, refreshMarkers, saveBtn.onclick, deleteBtn.onclick остается без изменений) ...
@@ -346,6 +352,25 @@ function initApp(){
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     let currentCenter={lat:defaultLat, lon:defaultLon};
     map.on('move',()=>{const c=map.getCenter(); currentCenter={lat:c.lat, lon:c.lng};});
+
+copyCoordsBtn.onclick = async () => {
+        const coordsText = popupCoords.textContent;
+        if (coordsText && coordsText !== '—') {
+            try {
+                await navigator.clipboard.writeText(coordsText);
+
+                const originalText = copyCoordsBtn.textContent;
+                copyCoordsBtn.textContent = 'Скопировано!';
+                setTimeout(() => {
+                    copyCoordsBtn.textContent = originalText;
+                }, 1500);
+
+            } catch (err) {
+                console.error('Ошибка копирования:', err);
+                alert(`Не удалось скопировать. Координаты: ${coordsText}`);
+            }
+        }
+    };
 
     function getIcon(color){
         const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
@@ -451,6 +476,7 @@ newPointBtn.onclick = () => {
     renderPhotoList();
     document.getElementById('popupCoords').textContent = `${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
 
+    copyCoordsBtn.textContent = 'Копировать';
     deleteBtn.style.display = 'none';
     saveBtn.textContent = 'Создать';
 
@@ -477,7 +503,7 @@ async function openEditPopup(entryId) {
         existingPhotos = e.photos || [];
         renderPhotoList();
         document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
-
+        copyCoordsBtn.textContent = 'Копировать';
         deleteBtn.style.display = 'block';
         saveBtn.textContent = 'Сохранить изменения';
 
