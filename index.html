@@ -145,23 +145,68 @@ function getInitData(){
 }
 
 // --- Форма логина браузера ---
-document.getElementById('loginBtn').onclick = async ()=>{
+document.getElementById('loginBtn').onclick = async () => {
+    await handleBrowserLogin();
+};
+
+// Добавление обработки нажатия Enter в поля ввода логина
+document.getElementById('loginUsername').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        handleBrowserLogin();
+    }
+});
+document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        handleBrowserLogin();
+    }
+});
+
+async function handleBrowserLogin() {
     const username = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value.trim();
-    if(!username || !password) return alert('Введите логин и пароль!');
+    if (!username || !password) return alert('Введите логин и пароль!');
+
+    // Блокируем кнопку на время запроса
+    const loginBtn = document.getElementById('loginBtn');
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Вход...';
+
     const fd = new FormData();
     fd.append('username', username);
     fd.append('password', password);
-    try{
-        const r = await fetch(`${SERVER_URL}/login`,{method:'POST',body:fd, credentials:'include'});
-        const d = await r.json();
-        if(d.status==='success'){
-            //alert('Вход успешен!');
-            document.getElementById('loginForm').style.display='none';
-            initApp();
-        } else alert(d.message);
-    }catch(e){console.error(e);}
-};
+
+    try {
+        const r = await fetch(`${SERVER_URL}/login`, {
+            method: 'POST',
+            body: fd,
+            credentials: 'include'
+        });
+
+        // Проверяем статус ответа, если сервер ответил, но с ошибкой (например, 401)
+        if (r.ok) {
+            const d = await r.json();
+            if (d.status === 'success') {
+                document.getElementById('loginForm').style.display = 'none';
+                initApp();
+            } else {
+                alert(d.message || 'Неверные учетные данные');
+            }
+        } else {
+             // Обработка ошибок HTTP (4xx, 5xx), кроме тех, что вызывают сбой fetch
+             const errorText = await r.text();
+             alert(`Ошибка входа: Сервер ответил со статусом ${r.status}. ${errorText.substring(0, 50)}...`);
+        }
+
+    } catch (e) {
+        // 🚨 Здесь срабатывает, если сервер НЕДОСТУПЕН (Network Error, CORS Blocked и т.д.)
+        console.error("Ошибка сети или недоступность сервера:", e);
+        alert('❌ Ошибка: Сервер недоступен. Проверьте подключение или адрес.');
+    } finally {
+        // Разблокируем кнопку
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Войти';
+    }
+}
 
 // --- Основная логика приложения ---
 function initApp(){
@@ -303,41 +348,58 @@ function initApp(){
 
     loadMarkers(); setInterval(refreshMarkers,30000);
 
-    newPointBtn.onclick = () => {
-        currentEntryId = null;
-        noteInput.value = '';
-        breedInput.value = '';
-        objectInput.value = '';
-        markerColorSelect.value = 'green';
-        selectedFiles = [];
-        existingPhotos = [];
-        renderPhotoList();
-        document.getElementById('popupCoords').textContent = `${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
-        popupWindow.style.display = 'block';
-    };
+// ===================================
+// 1. Создание новой точки (newPointBtn.onclick)
+// ===================================
+newPointBtn.onclick = () => {
+    currentEntryId = null;
+    noteInput.value = '';
+    breedInput.value = '';
+    objectInput.value = '';
+    markerColorSelect.value = 'green';
+    selectedFiles = [];
+    existingPhotos = [];
+    renderPhotoList();
+    document.getElementById('popupCoords').textContent = `${currentCenter.lat.toFixed(6)}, ${currentCenter.lon.toFixed(6)}`;
+    
+    // ⬇️ Изменения для кнопки удаления и сохранения
+    deleteBtn.style.display = 'none'; 
+    saveBtn.textContent = 'Создать';
 
-    async function openEditPopup(entryId) {
-        currentEntryId = entryId;
-        selectedFiles = [];
-        existingPhotos = [];
-        try {
-            const r = await fetchWithAuth(`${SERVER_URL}/entry/${entryId}`);
-            const d = await r.json();
-            if (d.status !== 'success') return alert(d.message);
-            const e = d.entry;
-            noteInput.value = e.note;
-            breedInput.value = e.breed;
-            objectInput.value = e.object;
-            markerColorSelect.value = e.color;
-            existingPhotos = e.photos || [];
-            renderPhotoList();
-            document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
-            popupWindow.style.display = 'block';
-        } catch (err) {
-            console.error(err);
-            alert('Ошибка загрузки данных метки');
-        }
+    popupWindow.style.display = 'block';
+};
+
+// ===================================
+// 2. Редактирование существующей метки (openEditPopup)
+// ===================================
+async function openEditPopup(entryId) {
+    currentEntryId = entryId;
+    selectedFiles = [];
+    existingPhotos = [];
+    try {
+        const r = await fetchWithAuth(`${SERVER_URL}/entry/${entryId}`);
+        const d = await r.json();
+        if (d.status !== 'success') return alert(d.message);
+        const e = d.entry;
+        
+        noteInput.value = e.note;
+        breedInput.value = e.breed;
+        objectInput.value = e.object;
+        markerColorSelect.value = e.color;
+        existingPhotos = e.photos || [];
+        renderPhotoList();
+        document.getElementById('popupCoords').textContent = `${e.lat.toFixed(6)}, ${e.lon.toFixed(6)}`;
+
+        // ⬇️ Изменения для кнопки удаления и сохранения
+        deleteBtn.style.display = 'block'; 
+        saveBtn.textContent = 'Сохранить изменения';
+        
+        popupWindow.style.display = 'block';
+    } catch (err) {
+        console.error(err);
+        alert('Ошибка загрузки данных метки');
     }
+}
 
     saveBtn.onclick = async () => {
         spinner.style.display = 'block';
