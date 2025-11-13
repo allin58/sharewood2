@@ -109,36 +109,62 @@ html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
     </div>
 </div>
 
-<div id="userEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:4000;">
-    <div style="background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; position:relative;">
-        <div id="userEditModalClose" style="position:absolute; top:10px; right:10px; font-size:24px; cursor:pointer;">×</div>
-        <h3 id="userEditTitle">Создание пользователя</h3>
+<div id="userEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:flex-start; z-index:4000; overflow-y: auto;">
+
+    <div style="background:white; padding:25px; border-radius:8px;
+                width: calc(100% - 40px); /* Гарантирует отступ 20px с каждой стороны */
+                max-width: 500px; /* Немного уменьшил для безопасности */
+                margin: 10px auto; /* Центрирует и добавляет отступы сверху/снизу */
+                position:relative; box-shadow: 0 8px 20px rgba(0,0,0,0.3);">
+
+        <div id="userEditModalClose" style="position:absolute; top:15px; right:15px; font-size:28px; color: #333; cursor:pointer; line-height: 1;">×</div>
+        <h3 id="userEditTitle" style="margin-top:0; border-bottom: 1px solid #eee; padding-bottom: 15px; color: #333;">Создание пользователя</h3>
 
         <input type="hidden" id="editUserId">
 
-        <label>ФИО **(Обязательно)**</label><input type="text" id="editFullName">
-
-        <label>Роль</label>
-        <select id="editRole">
-            <option value="user">user</option>
-            <option value="admin">admin</option>
-        </select>
-
-        <div id="newAccountFields" style="border: 1px dashed #ccc; padding: 10px; margin: 10px 0;">
-            <h4>Данные для входа:</h4>
-            <label>Telegram ID (Опционально)</label><input type="text" id="editTelegramId">
-            <label>Username (Для браузера, если нет Telegram ID)</label><input type="text" id="editUsername">
-            <label>Password (Для браузера, если нет Telegram ID)</label><input type="password" id="editPassword">
-            <p style="font-size: 12px; color: #666; margin: 5px 0;">*Нужно заполнить либо Telegram ID, либо связку Username/Password.</p>
+        <div style="margin-bottom: 10px;">
+            <label style="display: block; font-weight: 600; margin: 10px 0 4px 0; color: #555;">ФИО <span style="color: #dc3545;">*</span></label>
+            <input type="text" id="editFullName" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px;">
         </div>
 
-        <div id="optionalInfoFields">
-            <h4>Дополнительная информация:</h4>
-            <label>Телефон</label><input type="text" id="editPhone">
-            <label>Дополнительная информация</label><textarea id="editAdditionalInfo" rows="3"></textarea>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: 600; margin: 10px 0 4px 0; color: #555;">Роль</label>
+            <select id="editRole" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 14px;">
+                <option value="user">user</option>
+                <option value="admin">admin</option>
+            </select>
         </div>
-        <button id="deleteUserBtn" style="margin-top:15px; padding:8px 12px; border:none; border-radius:4px; background:#dc3545; color:white; cursor:pointer; width:100%; display: none;">Удалить пользователя</button>
-        <button id="saveUserBtn" style="margin-top:15px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer; width:100%;">Сохранить</button>
+
+        <div id="newAccountFields" style="border: 1px dashed #007bff; padding: 15px; margin: 20px 0; border-radius: 6px; background: #f9fcff;">
+            <h4 style="margin-top: 0; color: #007bff; font-size: 16px; border-bottom: 1px solid #e0f0ff; padding-bottom: 8px;">Данные для входа:</h4>
+
+            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Telegram ID (Опционально)</label>
+            <input type="text" id="editTelegramId" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
+
+            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Username (для браузера)</label>
+            <input type="text" id="editUsername" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
+
+            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Password (для браузера)</label>
+            <input type="password" id="editPassword" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
+
+            <p style="font-size: 12px; color: #888; margin: 5px 0;">*Нужно заполнить либо **Telegram ID**, либо связку **Username/Password**.</p>
+        </div>
+
+        <div id="optionalInfoFields" style="border: 1px solid #eee; padding: 15px; margin: 20px 0; border-radius: 6px; background: #fcfcfc;">
+            <h4 style="margin-top: 0; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">Контактная информация:</h4>
+
+            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Телефон</label>
+            <input type="text" id="editPhone" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px;">
+
+            <label style="display: block; font-weight: 500; margin: 10px 0 4px 0;">Дополнительная информация</label>
+            <textarea id="editAdditionalInfo" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical;"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 25px;">
+            <button id="deleteUserBtn" style="padding:10px 15px; border:none; border-radius:4px; background:#dc3545; color:white; cursor:pointer; flex-grow: 1; display: none; font-size: 15px; font-weight: 600; transition: background 0.2s;">Удалить</button>
+            <button id="saveUserBtn" style="padding:10px 15px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer; flex-grow: 1; font-size: 15px; font-weight: 600; transition: background 0.2s;">Сохранить</button>
+        </div>
+
     </div>
 </div>
         <div id="tab-objects" class="adminTabContentPane" style="display: none;">
@@ -477,14 +503,14 @@ function initApp(){
 // ----------------------------------------------------
 deleteUserBtn.onclick = async () => {
     const userId = editUserId.value;
-    
-    if (!userId) return; 
+
+    if (!userId) return;
 
     if (confirm(`Вы уверены, что хотите удалить этого пользователя? Это действие необратимо.`)) {
         try {
             const url = `${SERVER_URL}/admin/user/${userId}`;
             const r = await fetchWithAuth(url, { method: 'DELETE' });
-            
+
             if (!r.ok) {
                 const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
                 alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
@@ -492,7 +518,7 @@ deleteUserBtn.onclick = async () => {
             }
 
             const d = await r.json();
-            
+
             if (d.status === 'success') {
                 alert(d.message);
                 userEditModal.style.display = 'none';
