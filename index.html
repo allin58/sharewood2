@@ -1505,7 +1505,7 @@ function renderPhotoList() {
                 objectsTableBody.innerHTML = '<tr><td>Загрузка...</td></tr>';
 
                 try {
-                    const r = await fetchWithAuth(`${SERVER_URL}/objects`);
+                    const r = await fetchWithAuth(`${SERVER_URL}/admin/objects`);
                     const d = await r.json();
 
                     objectsTableBody.innerHTML = '';
