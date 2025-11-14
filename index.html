@@ -1091,7 +1091,7 @@ function renderPhotoList() {
                 pointObjectSelect.innerHTML = '<option value="">-- Загрузка объектов... --</option>';
 
                 try {
-                    const r = await fetchWithAuth(`${SERVER_URL}/admin/objects`);
+                    const r = await fetchWithAuth(`${SERVER_URL}/objects`);
                     const d = await r.json();
 
                     pointObjectSelect.innerHTML = '<option value="">-- Выберите объект --</option>';
