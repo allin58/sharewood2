@@ -14,7 +14,7 @@
         #connectionDot {width:12px; height:12px; border-radius:50%; margin-right:6px; background:#d9534f;}
         #telegramUsername {font-size:12px; color:#666; margin-top:4px; font-weight:normal;}
         /* Основной Popup использует фиксированное позиционирование, заполняя экран */
-        #popupWindow {position: fixed; top:80px; left:0; width:100%; height:calc(100% - 80px); z-index:2000; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
+        #popupWindow {position: fixed; top:80px; left:0; width:100%; height:calc(100% - 80px); z-index: 999998 !important; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
 
         /* Стиль крестика - всегда видимый */
         #crosshair {
@@ -22,6 +22,8 @@
             margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:999;
             display: block; /* Всегда видим */
         }
+
+
         #crosshair::before, #crosshair::after {content:''; position:absolute; background:black;}
         #crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
         #crosshair::after {top:50%; left:0; width:100%; height:2px; margin-top:-1px;}
@@ -39,9 +41,68 @@
         #deleteBtn {background:red; margin-top:6px;}
         #spinner {display:none; text-align:center; margin-top:10px;}
         .loader {border:4px solid #f3f3f3; border-top:4px solid #007bff; border-radius:50%; width:30px; height:30px; animation:spin 1s linear infinite; display:inline-block;}
-        #photoModal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:3000;}
-        #photoModal img {max-width:90%; max-height:90%; border-radius:6px;}
-        #photoModal span {position:absolute; top:20px; right:30px; font-size:30px; color:white; cursor:pointer;}
+#photoModal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  justify-content: center;
+  align-items: center;
+  z-index: 999999;
+}
+#photoModal img {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 6px;
+}
+#photoModal span {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  font-size: 30px;
+  color: white;
+  cursor: pointer;
+}
+
+/* Action Buttons */
+.circleButton {
+  position: absolute;
+  bottom: 15px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  font-size: 24px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0.9;
+}
+
+.circleButton:hover {
+  opacity: 1;
+}
+
+.centerButton {
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.leftButton {
+  left: 10px;
+  background-color: #4CAF50;
+}
+
+.rightButton {
+  right: 10px;
+  background-color: #F44336;
+}
         @keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
         #loginForm {position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:none; z-index:5000; justify-content:center; align-items:center; flex-direction:column;}
         #loginForm input {margin:4px 0; padding:6px; width:200px;}
@@ -227,6 +288,7 @@ table{
 #assignment-table tbody tr:hover td:first-child{background-color: var(--firstcol-bg) !important;}
 
 
+
     </style>
 </head>
 <body>
@@ -245,7 +307,7 @@ table{
         <div id="telegramUsername"></div>
     </div>
 
-    <button id="newPointBtn">➕ Новая точка</button>
+    <button id="newPointBtn">➕ Новая метка</button>
     <button id="adminPanelBtn" class="admin-action-button" style="display:none; background-color: #6c757d; position:absolute; bottom:55px; left:50%; transform:translateX(-50%); z-index:1000;">Админ-панель</button>
 
 
@@ -258,7 +320,7 @@ table{
 
     <div id="popupWindow">
         <span id="popupClose">&times;</span>
-        <h3>Детали метки</h3>
+        <h3 id="popupTitle" style="font-size: 18px; margin: 0px 0;">Новая метка #</h3>
 
         <div class="form-group">
             <label>Координаты:</label>
@@ -276,14 +338,15 @@ table{
         </div>
 
         <div class="form-group">
+            <label for="breedInput">Параметры дерева:</label>
+            <input type="text" id="breedInput">
+        </div>
+
+        <div class="form-group">
             <label for="noteInput">Заметка:</label>
             <textarea id="noteInput" rows="3"></textarea>
         </div>
 
-        <div class="form-group">
-            <label for="breedInput">Порода / Тип:</label>
-            <input type="text" id="breedInput">
-        </div>
 
         <div class="form-group">
             <label for="markerColor">Цвет метки:</label>
@@ -308,10 +371,20 @@ table{
         </div>
     </div>
 
-    <div id="photoModal">
-        <span id="closePhotoModal">&times;</span>
-        <img src="" alt="Full Photo">
+<div id="photoModal">
+    <span id="closePhotoModal">&times;</span>
+
+    <div id="photoWrapper" style="position: relative;">
+        <img id="photoImage" src="" alt="Photo" style="max-width: 100%; max-height: 80vh;">
+        <canvas id="doodleCanvas" style="position: absolute; top: 0; left: 0; display: none;"></canvas>
+
+        <!-- Action Buttons -->
+        <button id="startDoodle" class="circleButton centerButton">✨</button>
+        <button id="saveDoodle" class="circleButton leftButton" style="display: none;">✔</button>
+        <button id="cancelDoodle" class="circleButton rightButton" style="display: none;">✖</button>
     </div>
+</div>
+
 
     <div id="adminPanelWindow" class="admin-modal-window">
         <div class="admin-modal-content">
@@ -417,7 +490,16 @@ table{
 
             <label for="editObjectInfo">Доп. информация:</label>
             <textarea id="editObjectInfo" rows="3"></textarea>
-
+            <div id="objectPointsList" style="margin-top: 15px;">
+                <label>Метки, привязанные к объекту:</label>
+                <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px;">
+                    <table id="pointTable" style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <tbody>
+                            <!-- Метки будут добавляться динамически -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <div style="display: flex; justify-content: space-between; margin-top: 20px;">
                 <button id="saveObjectBtn" class="admin-action-button" style="flex-grow: 1;">Сохранить</button>
                 <button id="deleteObjectBtn" class="admin-action-button" style="display: none;">Удалить</button>
@@ -432,7 +514,7 @@ table{
         // =========================================================
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // =========================================================
-        const SERVER_URL = "https://f1f516dca5a0.ngrok-free.app";
+        const SERVER_URL = "https://74mh1i-37-215-34-248.ru.tuna.am";
         let TELEGRAM_INIT_DATA = null;
         let telegramUsername = null;
         let isAdmin = false;
@@ -688,6 +770,79 @@ table{
             const assignmentTable = document.getElementById('assignment-table');
             let currentAssignments = new Set();
 
+            const photoImage = document.getElementById('photoImage');
+            const doodleCanvas = document.getElementById('doodleCanvas');
+            const startDoodleBtn = document.getElementById('startDoodle');
+            const saveDoodleBtn = document.getElementById('saveDoodle');
+            const cancelDoodleBtn = document.getElementById('cancelDoodle');
+
+let currentEditingImg = null;
+let ctx, drawing = false;
+
+// Активируем режим дудла
+startDoodleBtn.onclick = () => {
+    // Настроим canvas по размеру фото
+    doodleCanvas.width = photoImage.clientWidth;
+    doodleCanvas.height = photoImage.clientHeight;
+    doodleCanvas.style.display = 'block';
+
+    ctx = doodleCanvas.getContext('2d');
+    ctx.strokeStyle = "red";   // Цвет рисования
+    ctx.lineWidth = 3;         // Толщина линии
+
+    startDoodleBtn.style.display = 'none';
+    saveDoodleBtn.style.display = 'inline-block';
+    cancelDoodleBtn.style.display = 'inline-block';
+
+    // Слушаем рисование
+    doodleCanvas.onmousedown = (e) => { drawing = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); };
+    doodleCanvas.onmousemove = (e) => { if (drawing) { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); }};
+    doodleCanvas.onmouseup = () => drawing = false;
+    doodleCanvas.onmouseleave = () => drawing = false;
+};
+
+// Сохранение с рисунком
+saveDoodleBtn.onclick = () => {
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = doodleCanvas.width;
+    finalCanvas.height = doodleCanvas.height;
+    const ctx = finalCanvas.getContext('2d');
+
+    // Слоями: оригинал + дудл
+    ctx.drawImage(photoImage, 0, 0, finalCanvas.width, finalCanvas.height);
+    ctx.drawImage(doodleCanvas, 0, 0);
+
+    const dataUrl = finalCanvas.toDataURL('image/png');
+
+    // Практически раньше мы делали только replace в DOM, а надо ещё преобразовать в File 👇
+    replacePhotoInList(currentEditingImg, dataUrl);
+    resetDoodleCanvas();
+    photoModal.style.display = 'none';
+};
+
+function resetDoodleCanvas() {
+    doodleCanvas.style.display = 'none';
+    doodleCanvas.getContext('2d').clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+
+    startDoodleBtn.style.display = 'inline-block';
+    saveDoodleBtn.style.display = 'none';
+    cancelDoodleBtn.style.display = 'none';
+
+    currentEditingImg = null; // сбрасываем текущую редактируемую миниатюру
+}
+
+
+// Отменить
+cancelDoodleBtn.onclick = resetDoodle;
+
+function resetDoodle() {
+    doodleCanvas.style.display = 'none';
+    doodleCanvas.getContext('2d').clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+
+    startDoodleBtn.style.display = 'inline-block';
+    saveDoodleBtn.style.display = 'none';
+    cancelDoodleBtn.style.display = 'none';
+}
 
 
 // --- 1. ФУНКЦИЯ ЗАГРУЗКИ ДАННЫХ (Вызывается при switchAdminTab) ---
@@ -802,6 +957,7 @@ async function handleAssignmentToggle(event) {
     } finally {
         cell.style.pointerEvents = 'auto';
     }
+    refreshMarkers()
 }
 
 
@@ -925,6 +1081,15 @@ assignmentWrap.addEventListener('mousemove', e=>{
                 const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
                 marker.entryId=idStr;
                 marker.on('click',()=>handleOpenMarkerPopup(idStr));
+
+            const tooltipContent = `ID метки: ${entry.id}<br>Объект: ${entry.object_name || '—'}`;
+            marker.bindTooltip(tooltipContent, {
+                permanent: false,   // показывается только при наведении
+                direction: 'bottom',   // где появляется относительно маркера
+                className: 'marker-tooltip' // можно использовать кастомный стиль
+            });
+
+
                 markersMap[idStr]=marker;
             }
 
@@ -1006,81 +1171,132 @@ function renderPhotoList() {
     ];
 
     allPhotos.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'photoItem';
+    const div = document.createElement('div');
+    div.className = 'photoItem';
 
-        let imgUrl;
-        let dataSrc = '';
-        let isProtected = p.isExisting; // Все существующие фото с сервера защищены
+    let imgUrl;
+    let dataSrc = '';
+    let isExisting = p.isExisting; // true если с сервера, false если локально
 
-        if (p.isExisting) {
-            // Устанавливаем пустой SRC или заглушку, пока не завершится асинхронная загрузка
-            imgUrl = '';
-            dataSrc = p.filename;
-        } else {
-            // Локальные файлы (новые) отображаются сразу через Blob URL
-            imgUrl = URL.createObjectURL(p.file);
-        }
+    if (isExisting) {
+        imgUrl = ''; // Пока ассинхронная загрузка не завершилась
+        dataSrc = p.filename;
+    } else {
+        imgUrl = URL.createObjectURL(p.file);
+    }
 
-        const removeBtnId = p.isExisting ? p.index : `s${p.index}`;
+    // Генерируем ID фото (по индексу в соответствующем списке)
+    const photoIndex = p.index;
 
-        // data-full-src изначально равен imgUrl. Будет обновлен асинхронно для защищенных фото.
-        div.innerHTML = `<img src="${imgUrl}" data-filename="${dataSrc}" data-is-protected="${isProtected}" data-full-src="${imgUrl}">
-                         <div class="removePhoto" data-i="${removeBtnId}">×</div>`;
-        photoList.appendChild(div);
+    div.innerHTML = `
+        <img src="${imgUrl}"
+             data-index="${photoIndex}"
+             data-is-existing="${isExisting}"
+             data-full-src="${imgUrl}">
+        <div class="removePhoto" data-index="${photoIndex}" data-is-existing="${isExisting}">×</div>
+    `;
 
-        // 🔥 Запуск универсальной загрузки только для защищенных (существующих) фото
-        if (isProtected) {
-            const imgElement = div.querySelector('img');
-            fetchProtectedImage(p.filename)
-                .then(localUrl => {
-                    if (localUrl) {
-                        imgElement.src = localUrl;
-                        imgElement.setAttribute('data-full-src', localUrl); // Обновляем ссылку для модального окна
-                    } else {
-                        // Визуальная индикация ошибки загрузки
-                        console.error(`Не удалось загрузить защищенное фото: ${p.filename}`);
-                        // Используем Base64 для отображения иконки "ошибка"
-                        imgElement.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x-octagon"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
-                    }
-                })
-                .catch(error => console.error("Ошибка при fetchProtectedImage:", error));
-        }
-    });
+    photoList.appendChild(div);
+
+    // 🔥 Только для существующих фото — загружаем защищённое содержимое
+    if (isExisting) {
+        const imgElement = div.querySelector('img');
+        fetchProtectedImage(p.filename)
+            .then(localUrl => {
+                if (localUrl) {
+                    imgElement.src = localUrl;
+                    imgElement.setAttribute('data-full-src', localUrl);
+                } else {
+                    imgElement.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x-octagon"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+                }
+            })
+            .catch(error => console.error("Ошибка при fetchProtectedImage:", error));
+    }
+});
+
 
     // Обработчики удаления
-    photoList.querySelectorAll('.removePhoto').forEach(btn => {
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            const id = btn.dataset.i;
-            if (String(id).startsWith('s')) {
-                selectedFiles.splice(parseInt(id.slice(1)), 1);
-            } else {
-                existingPhotos.splice(parseInt(id), 1);
-            }
-            renderPhotoList();
-        };
-    });
+photoList.querySelectorAll('.removePhoto').forEach(btn => {
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        const index = parseInt(btn.dataset.index);
+        const isExisting = btn.dataset.isExisting === 'true';
+
+        if (isExisting) {
+            existingPhotos.splice(index, 1);
+        } else {
+            selectedFiles.splice(index, 1);
+        }
+
+        renderPhotoList();
+    };
+});
+
 
     // Обработчики для модального окна просмотра
-    photoList.querySelectorAll('img').forEach(img => {
-        img.onclick = (e) => {
-            e.stopPropagation();
+photoList.querySelectorAll('img').forEach(img => {
+    img.onclick = (e) => {
+        e.stopPropagation();
 
-            // Используем data-full-src, который содержит либо локальный URL для Blob,
-            // либо локальный URL для нового файла.
-            const src = img.getAttribute('data-full-src') || img.src;
+        const src = img.getAttribute('data-full-src') || img.src;
+        if (!src || src.startsWith('data:image/svg')) return;
 
-            if (!src || src.startsWith('data:image/svg')) {
-                 // Не показывать модалку, если изображение еще не загружено или это иконка ошибки
-                 return;
-            }
+        // Сбрасываем canvas перед открытием новой фото
+        resetDoodleCanvas();
 
-            photoModal.querySelector('img').src = src;
-            photoModal.style.display = 'flex';
-        };
-    });
+        // Сохраняем текущее фото для дудла
+        currentEditingImg = img;
+
+        photoImage.src = src;
+        photoModal.style.display = 'flex';
+    };
+});
 }
+
+
+
+function replacePhotoInList(imgElement, dataUrl) {
+    const index = parseInt(imgElement.dataset.index);
+    const isExisting = imgElement.dataset.isExisting === 'true';
+
+    // Удаляем фото из существующего массива
+    if (isExisting) {
+        existingPhotos.splice(index, 1);
+    } else {
+        selectedFiles.splice(index, 1);
+    }
+
+    // Добавляем обновлённое фото
+    const newFile = dataURLtoFile(dataUrl, `edited_${Date.now()}.png`);
+    selectedFiles.push(newFile);
+
+    // Перерисовываем список
+    renderPhotoList();
+}
+
+
+function dataURLtoFile(dataurl, filename) {
+    let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+    let bstr = atob(arr[1]);
+    let n = bstr.length;
+    let u8arr = new Uint8Array(n);
+    while(n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, {type: mime});
+}
+
+
+function dataURLtoFile(dataurl, filename) {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while(n--) u8arr[n] = bstr.charCodeAt(n);
+    return new File([u8arr], filename, { type: mime });
+}
+
 
 
             // =========================================================
@@ -1120,6 +1336,7 @@ function renderPhotoList() {
                     if (data.status === 'success' && data.marker) {
                         const marker = data.marker;
                         popupCoords.textContent = `${marker.lat.toFixed(6)}, ${marker.lon.toFixed(6)}`;
+                        document.getElementById('popupTitle').textContent = `Метка #${pointId}`;
                         noteInput.value = marker.note || '';
                         breedInput.value = marker.breed || '';
 
@@ -1153,11 +1370,12 @@ function renderPhotoList() {
                 }
             }
 
+
             async function handleOpenMarkerPopup(pointId = null) {
                 currentEntryId = pointId;
                 selectedFiles = [];
                 existingPhotos = [];
-
+                document.getElementById('popupTitle').textContent = `Метка #`;
                 noteInput.value = '';
                 breedInput.value = '';
                 markerColorSelect.value = 'green';
@@ -1171,7 +1389,12 @@ function renderPhotoList() {
 
                 if (pointId) {
                     // РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕЙ ТОЧКИ
+
                     const success = await loadMarkerData(pointId);
+
+
+
+
                     if (!success) {
                         popupWindow.style.display = 'none';
                         return;
@@ -1192,7 +1415,9 @@ function renderPhotoList() {
                     deleteBtn.style.display = 'none';
                 }
 
+
                 popupWindow.style.display = 'block';
+
             }
 
 
@@ -1238,7 +1463,12 @@ function renderPhotoList() {
 
                 fd.append('color', markerColorSelect.value);
                 // Передаем только имена существующих файлов, которые не были удалены
-                fd.append('existing_photos', JSON.stringify(existingPhotos.map(p => p.filename)));
+                if (existingPhotos.length > 0) {
+  fd.append('existing_photos', JSON.stringify(existingPhotos.map(p => p.filename)));
+} else {
+  // ВАЖНО: если фото не трогали, явно говорим серверу "ничего не менялось"
+  fd.append('existing_photos', 'keep');
+}
 
                 // *** ИСПРАВЛЕНИЕ: Вернули 'photos' (без []) и убедились, что цикл отрабатывает ***
                 compressedFiles.forEach(f => fd.append('photos[]', f));
@@ -1536,7 +1766,8 @@ function renderPhotoList() {
                 if (objectId) {
                     objectEditTitle.textContent = 'Редактирование объекта';
                     deleteObjectBtn.style.display = 'block';
-
+                    const objectPointsList = document.getElementById('objectPointsList');
+                    objectPointsList.style.display = 'block';
                     try {
                         const r = await fetchWithAuth(`${SERVER_URL}/admin/object/${objectId}`);
                         const d = await r.json();
@@ -1557,9 +1788,12 @@ function renderPhotoList() {
                 } else {
                     objectEditTitle.textContent = 'Создание нового объекта';
                     deleteObjectBtn.style.display = 'none';
+                    objectPointsList.style.display = 'none';
                 }
-
+                loadObjectPoints(objectId);
                 objectEditModal.style.display = 'flex';
+
+
             }
 
             saveObjectBtn.onclick = async () => {
@@ -1690,6 +1924,43 @@ function renderPhotoList() {
             adminPanelClose.onclick = () => {
                 adminPanelWindow.style.display = 'none';
             };
+
+
+async function loadObjectPoints(objectId) {
+    try {
+        const response = await fetchWithAuth(`${SERVER_URL}/markers/by-object/${objectId}`);
+        const data = await response.json();
+
+        const tbody = document.querySelector("#pointTable tbody");
+        tbody.innerHTML = ""; // очищаем таблицу перед загрузкой
+
+        if (data.status === "success" && Array.isArray(data.markers) && data.markers.length > 0) {
+            data.markers.forEach(marker => {
+                const tr = document.createElement("tr");
+                tr.style.cursor = "pointer";
+
+                tr.innerHTML = `
+                    <td style="padding: 6px; border-bottom: 1px solid #eee;">Метка #${marker.id}</td>
+                `;
+
+                // Клик по строке открывает попап с данными метки
+                tr.onclick = () => handleOpenMarkerPopup(marker.id);
+
+                tbody.appendChild(tr);
+            });
+        } else {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td style="padding: 6px; text-align: center;">Нет меток</td>`;
+            tbody.appendChild(tr);
+        }
+    } catch (e) {
+        console.error("Ошибка загрузки меток:", e);
+        const tbody = document.querySelector("#pointTable tbody");
+        tbody.innerHTML = `<tr><td style="padding: 6px; text-align: center;">Ошибка соединения</td></tr>`;
+    }
+}
+
+
 
 
             // --- FINAL CALLS ---
