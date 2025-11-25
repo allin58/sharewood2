@@ -5,291 +5,629 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Geo-Point App</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <style>
-        /* ВАШИ ИЗНАЧАЛЬНЫЕ СТИЛЫ + ИСПРАВЛЕНИЯ */
-        html, body {margin:0; padding:0; height:100%; font-family:sans-serif;}
-        #map {height:100vh; width:100%;}
-        #connectionStatus {position: fixed; top: 10px; right: 40px; z-index: 3000; display:flex; flex-direction:column; align-items:flex-end; font-size:14px; font-weight:bold; pointer-events:none; background:rgba(255,255,255,0.9); padding:8px 12px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.2);}
-        #connectionStatusRow {display:flex; align-items:center;}
-        #connectionDot {width:12px; height:12px; border-radius:50%; margin-right:6px; background:#d9534f;}
-        #telegramUsername {font-size:12px; color:#666; margin-top:4px; font-weight:normal;}
-        /* Основной Popup использует фиксированное позиционирование, заполняя экран */
-        #popupWindow {position: fixed; top:80px; left:0; width:100%; height:calc(100% - 80px); z-index: 999998 !important; background:white; display:none; overflow-y:auto; padding:16px; box-sizing:border-box;}
+ <style>
+    /* ------------------------------------------- */
+    /* 1. БАЗОВЫЕ НАСТРОЙКИ И ТИПОГРАФИКА */
+    /* ------------------------------------------- */
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Улучшенная читабельность */
+        color: #333; /* Базовый цвет текста */
+    }
+    #map {
+        height: 100vh;
+        width: 100%;
+    }
+    :root{
+        --primary-color: #007bff;
+        --success-color: #28a745;
+        --danger-color: #dc3545;
+        --warning-color: #ffc107;
+        --cell-size: 48px;
+        --grid-gap-color: #e9ecef; /* Более светлый */
+        --line-size: 1px;
+        --header-bg: #f8f9fa;
+        --firstcol-bg: #f8f9fa;
+        --accent-hover: rgba(0, 123, 255, 0.15); /* Более заметный ховер */
+    }
 
-        /* Стиль крестика - всегда видимый */
-        #crosshair {
-            position:absolute; top:50%; left:50%; width:20px; height:20px;
-            margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:999;
-            display: block; /* Всегда видим */
+    /* ------------------------------------------- */
+    /* 2. ЭЛЕМЕНТЫ КАРТЫ И КНОПКИ ДЕЙСТВИЙ (FAB) */
+    /* ------------------------------------------- */
+
+    /* Статус Соединения */
+    #connectionStatus {
+        position: fixed;
+        top: 15px;
+        right: 15px;
+        z-index: 3000;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        font-size: 14px;
+        font-weight: bold;
+        pointer-events: auto; /* Должен быть доступен для взаимодействия */
+        background: rgba(255, 255, 255, 0.95);
+        padding: 8px 12px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+        transition: background 0.2s;
+        cursor: default;
+    }
+    #connectionStatusRow {
+        display: flex;
+        align-items: center;
+    }
+    #connectionDot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 6px;
+        background: var(--danger-color); /* Изначально красный (нет подключения/загрузка) */
+    }
+    #telegramUsername {
+        font-size: 11px; /* Меньше и менее заметно */
+        color: #888;
+        margin-top: 2px;
+        font-weight: normal;
+    }
+
+    /* Крестик */
+    #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 24px; /* Чуть больше */
+        height: 24px;
+        margin-left: -12px;
+        margin-top: -12px;
+        pointer-events: none;
+        z-index: 999;
+        opacity: 0.7; /* Менее навязчивый */
+    }
+    #crosshair::before, #crosshair::after {
+        content: '';
+        position: absolute;
+        background: #000; /* Черный */
+    }
+    #crosshair::before {
+        left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px;
+    }
+    #crosshair::after {
+        top: 50%; left: 0; width: 100%; height: 2px; margin-top: -1px;
+    }
+
+    /* Кнопки действий (FAB & Admin) */
+    #newPointBtn {
+        /* FAB стиль, правый нижний угол */
+        position: absolute;
+        bottom: 15px;
+        right: 15px;
+        left: auto;
+        transform: none;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background-color: var(--success-color);
+        color: white;
+        font-size: 28px;
+        line-height: 56px;
+        text-align: center;
+        padding: 0;
+        border: none;
+        cursor: pointer;
+        z-index: 1000;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        transition: background-color 0.2s, transform 0.2s;
+    }
+    #newPointBtn:hover {
+        background-color: #1e7e34;
+        transform: scale(1.05);
+    }
+
+    #adminPanelBtn {
+        /* Второстепенная кнопка, левый нижний угол */
+        position: absolute;
+        bottom: 15px;
+        left: 15px;
+        transform: none;
+        z-index: 1000;
+        background-color: #6c757d;
+        color: white;
+        padding: 10px 16px; /* Чуть больше padding */
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transition: background-color 0.2s;
+    }
+    #adminPanelBtn:hover {
+        background-color: #5a6268;
+    }
+
+    /* ------------------------------------------- */
+    /* 3. ОСНОВНОЕ ОКНО РЕДАКТИРОВАНИЯ (#popupWindow) */
+    /* ------------------------------------------- */
+
+    /* Мобильный стиль (по умолчанию) */
+    #popupWindow {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%; /* Занимает весь экран на мобильных */
+        z-index: 999998 !important;
+        background: white;
+        display: none;
+        overflow-y: auto;
+        padding: 20px;
+        box-sizing: border-box;
+        transition: opacity 0.3s, transform 0.3s;
+    }
+
+    #popupClose {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        font-size: 30px;
+        color: #333;
+        cursor: pointer;
+        font-weight: 200;
+    }
+
+    /* Стиль для всех полей ввода в формах */
+    #popupWindow label {
+        display: block;
+        margin-top: 12px;
+        font-weight: 600; /* Более жирный заголовок */
+        font-size: 14px;
+        color: #555;
+    }
+    #popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {
+        width: 100%;
+        padding: 8px; /* Чуть больше padding */
+        margin-top: 5px;
+        box-sizing: border-box;
+        border-radius: 4px;
+        border: 1px solid #ced4da; /* Светлее рамка */
+        font-size: 15px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #popupWindow input[type="text"]:focus, #popupWindow textarea:focus, #popupWindow select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        outline: none;
+    }
+
+    #popupWindow textarea {
+        resize: vertical;
+    }
+
+    /* Стиль для блока координат */
+    .form-group > div {
+        border: 1px solid #ced4da;
+        padding: 8px;
+        border-radius: 4px;
+    }
+    #popupCoords {
+        font-weight: 600;
+        color: #333;
+    }
+    #copyCoordsBtn {
+        font-size: 16px;
+        opacity: 0.7;
+    }
+    #copyCoordsBtn:hover {
+        opacity: 1;
+        color: #0056b3;
+    }
+
+    /* Список фото */
+    #photoList {
+        margin-top: 10px;
+        max-height: 180px; /* Чуть больше высота */
+        overflow-y: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px; /* Промежутки между фото */
+        border: 1px solid #eee; /* Легкая рамка */
+        padding: 8px 4px;
+        border-radius: 4px;
+    }
+    .photoItem {
+        position: relative;
+    }
+    .photoItem img {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 6px;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+    }
+    .photoItem img:hover {
+        transform: scale(1.05);
+    }
+    .removePhoto {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: var(--danger-color);
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        text-align: center;
+        line-height: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Кнопки Сохранить/Удалить */
+    #saveBtn, #deleteBtn {
+        margin-top: 20px; /* Увеличить отступ */
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.2s, box-shadow 0.2s;
+        font-weight: 600;
+    }
+    #saveBtn {
+        background: var(--primary-color);
+        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+    }
+    #saveBtn:hover {
+        background: #0056b3;
+    }
+    #deleteBtn {
+        background: var(--danger-color);
+        opacity: 0.9;
+    }
+    #deleteBtn:hover {
+        opacity: 1;
+        background: #bd2130;
+    }
+
+    /* Загрузка */
+    #spinner { display: none; text-align: center; margin-top: 15px; }
+    .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        width: 30px; height: 30px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+
+    /* ------------------------------------------- */
+    /* 4. АДАПТАЦИЯ ДЛЯ ДЕСКТОПА (Popup) */
+    /* ------------------------------------------- */
+    @media (min-width: 768px) {
+        #popupWindow {
+            /* Ограничить размер и центрировать */
+            width: 450px; /* Фиксированная ширина */
+            height: auto;
+            max-height: 90vh;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 10px; /* Скругленные углы */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            padding: 30px;
         }
-
-
-        #crosshair::before, #crosshair::after {content:''; position:absolute; background:black;}
-        #crosshair::before {left:50%; top:0; width:2px; height:100%; margin-left:-1px;}
-        #crosshair::after {top:50%; left:0; width:100%; height:2px; margin-top:-1px;}
-
-        #newPointBtn {position:absolute; bottom:10px; left:50%; transform:translateX(-50%); z-index:1000; padding:8px 16px; border:none; border-radius:6px; background-color:#28a745; color:white; cursor:pointer;}
-        #popupWindow label {display:block; margin-top:10px; font-weight:bold;}
-        #popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {width:100%; padding:6px; margin-top:4px; box-sizing:border-box; border-radius:4px; border:1px solid #ccc; font-size:14px;}
-        #popupWindow textarea {resize:vertical;}
-        #photoList {margin-top:8px; max-height:150px; overflow-y:auto; display:flex; flex-wrap:wrap;}
-        .photoItem {position:relative; margin:4px;}
-        .photoItem img {width:70px; height:70px; object-fit:cover; border-radius:4px; cursor:pointer;}
-        .removePhoto {position:absolute; top:-5px; right:-5px; background:red; color:white; border-radius:50%; width:18px; height:18px; text-align:center; line-height:18px; font-weight:bold; cursor:pointer;}
-        #popupClose {position:absolute; top:10px; right:10px; font-size:24px; cursor:pointer;}
-        #saveBtn, #deleteBtn {margin-top:12px; padding:8px 12px; border:none; border-radius:4px; background:#007bff; color:white; cursor:pointer; width:100%;}
-        #deleteBtn {background:red; margin-top:6px;}
-        #spinner {display:none; text-align:center; margin-top:10px;}
-        .loader {border:4px solid #f3f3f3; border-top:4px solid #007bff; border-radius:50%; width:30px; height:30px; animation:spin 1s linear infinite; display:inline-block;}
-#photoModal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  justify-content: center;
-  align-items: center;
-  z-index: 999999;
-}
-#photoModal img {
-  max-width: 90%;
-  max-height: 90%;
-  border-radius: 6px;
-}
-#photoModal span {
-  position: absolute;
-  top: 20px;
-  right: 30px;
-  font-size: 30px;
-  color: white;
-  cursor: pointer;
-}
-
-/* Action Buttons */
-.circleButton {
-  position: absolute;
-  bottom: 15px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: none;
-  font-size: 24px;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  opacity: 0.9;
-}
-
-.circleButton:hover {
-  opacity: 1;
-}
-
-.centerButton {
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.leftButton {
-  left: 10px;
-  background-color: #4CAF50;
-}
-
-.rightButton {
-  right: 10px;
-  background-color: #F44336;
-}
-        @keyframes spin {0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
-        #loginForm {position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:none; z-index:5000; justify-content:center; align-items:center; flex-direction:column;}
-        #loginForm input {margin:4px 0; padding:6px; width:200px;}
-        #loginForm button {padding:6px 12px; margin-top:8px;}
-
-        /* АДАПТАЦИЯ и ИСПРАВЛЕНИЯ для Административной панели и связанных модальных окон */
-        .admin-modal-window {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); z-index: 4000; justify-content: center; align-items: center;
+        #popupClose {
+            top: 15px;
+            right: 15px;
         }
-        .admin-modal-content {
-            background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-            max-width: 90%; max-height: 90%; overflow-y: auto; position: relative;
-        }
-        #adminPanelWindow .admin-modal-content { width: 700px; min-height: 400px; }
-        #userEditModal .admin-modal-content, #objectEditModal .admin-modal-content { width: 350px; }
-        .modal-close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #333; }
+    }
 
-        /* ИСПРАВЛЕНО: Унифицированные стили для полей в админ-окнах */
-        .admin-modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
-        .admin-modal-content input[type="text"],
-        .admin-modal-content input[type="password"],
-        .admin-modal-content textarea,
-        .admin-modal-content select {
-            width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-size: 14px;
-        }
-        .admin-modal-content textarea { resize: vertical; }
 
-        /* Кнопки в админке */
-        .admin-action-button {
-            padding: 6px 10px; border: none; border-radius: 4px; background-color: #007bff; color: white;
-            cursor: pointer; margin-bottom: 10px; font-size: 14px;
-        }
-        .admin-action-button:hover { background-color: #0056b3; }
+    /* ------------------------------------------- */
+    /* 5. МОДАЛЬНОЕ ОКНО ФОТО (#photoModal) */
+    /* ------------------------------------------- */
+    #photoModal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9); /* Более темный фон для контраста */
+        justify-content: center;
+        align-items: center;
+        z-index: 999999;
+    }
+    #photoModal img {
+        max-width: 90%;
+        max-height: 90%;
+        border-radius: 6px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+    }
+    #closePhotoModal { /* Переименовано из #photoModal span */
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        font-size: 40px; /* Больше, легче попасть */
+        color: white;
+        cursor: pointer;
+        text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    }
+    #photoWrapper {
+        position: relative;
+    }
 
-        /* Вкладки в админке */
-        .admin-tabs { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 10px; }
-        .adminTabButton {
-            padding: 8px 12px; cursor: pointer; background: #f4f4f4; border-radius: 4px 4px 0 0;
-            border: 1px solid #ccc; border-bottom: none; margin-bottom: -1px; margin-right: 5px; font-size: 14px;
-        }
-        .adminTabButton.active { background: white; border-bottom: 2px solid white; }
-        .adminTabContentPane { display: none; padding-top: 5px; }
-        .adminTabContentPane table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        .adminTabContentPane th, .adminTabContentPane td { padding: 6px; border: 1px solid #ccc; text-align: left; }
-        .adminTabContentPane th { background-color: #f9f9f9; }
+    /* Кнопки рисования (Doodle Buttons) */
+    .circleButton {
+        position: absolute;
+        bottom: 20px; /* Отступ от нижнего края фото */
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: none;
+        font-size: 24px;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 1;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+        transition: background-color 0.2s, transform 0.2s;
+    }
+    .circleButton:hover {
+        transform: scale(1.1);
+    }
+    #startDoodle {
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #17a2b8; /* Info Blue */
+    }
+    #saveDoodle {
+        left: 20px;
+        background-color: var(--success-color);
+    }
+    #cancelDoodle {
+        right: 20px;
+        background-color: var(--danger-color);
+    }
 
-        /* Админ-кнопки удаления */
-        #deleteUserBtn, #deleteObjectBtn { background: red; margin-left: 10px; }
 
-        /* --- Стили для Сетки Назначений --- */
+    /* ------------------------------------------- */
+    /* 6. АДМИН-ПАНЕЛЬ И МОДАЛЬНЫЕ ОКНА */
+    /* ------------------------------------------- */
 
-/* ... ВАШИ ИЗНАЧАЛЬНЫЕ СТИЛЫ ... */
+    .admin-modal-window {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.7); z-index: 4000; justify-content: center; align-items: center;
+    }
+    .admin-modal-content {
+        background: white; padding: 25px; border-radius: 8px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+        max-width: 90%; max-height: 90%; overflow-y: auto; position: relative;
+    }
+    #adminPanelWindow .admin-modal-content { width: 90%; max-width: 800px; min-height: 400px; } /* Чуть шире */
+    #userEditModal .admin-modal-content, #objectEditModal .admin-modal-content { width: 90%; max-width: 450px; }
+    .modal-close-btn { position: absolute; top: 10px; right: 15px; font-size: 30px; cursor: pointer; color: #555; }
 
-/* --- НОВЫЕ/ИСПРАВЛЕННЫЕ СТИЛИ ДЛЯ СЕТКИ НАЗНАЧЕНИЙ --- */
+    /* Поля ввода в админке */
+    .admin-modal-content label { display: block; margin-top: 10px; font-weight: 600; font-size: 14px; color: #555; }
+    .admin-modal-content input[type="text"],
+    .admin-modal-content input[type="password"],
+    .admin-modal-content textarea,
+    .admin-modal-content select {
+        width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ced4da; font-size: 15px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .admin-modal-content input:focus, .admin-modal-content textarea:focus, .admin-modal-content select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        outline: none;
+    }
+    .admin-modal-content textarea { resize: vertical; }
 
-:root{
-    --cell-size: 48px;
-    --grid-gap-color: #d0d7de;
-    --line-size: 1px;
-    --header-bg: #f7fafc;
-    --firstcol-bg: #f7fafc;
-    --accent: #0b69ff;
-    /* font-family уже объявлен в начале */
+    /* Кнопки в админке */
+    .admin-action-button {
+        padding: 8px 12px; border: none; border-radius: 4px; background-color: var(--primary-color); color: white;
+        cursor: pointer; margin-bottom: 10px; font-size: 14px; font-weight: 600;
+        transition: background-color 0.2s;
+    }
+    .admin-action-button:hover { background-color: #0056b3; }
+    #deleteUserBtn, #deleteObjectBtn { background: var(--danger-color); margin-left: 10px; }
+    #deleteUserBtn:hover, #deleteObjectBtn:hover { background: #bd2130; }
+
+    /* Вкладки в админке */
+    .admin-tabs { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 10px; }
+    .adminTabButton {
+        padding: 10px 15px; cursor: pointer; background: #f4f4f4; border-radius: 4px 4px 0 0;
+        border: 1px solid #ccc; border-bottom: none; margin-bottom: -2px; margin-right: 5px; font-size: 15px;
+        font-weight: 600; transition: background-color 0.2s;
+    }
+    .adminTabButton.active { background: white; border-bottom: 2px solid white; color: var(--primary-color); }
+    .adminTabButton:hover:not(.active) { background-color: #e9ecef; }
+    .adminTabContentPane { display: none; padding-top: 10px; }
+
+    /* Таблицы в админке - Общие стили */
+    .adminTabContentPane table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+    .adminTabContentPane th, .adminTabContentPane td { padding: 8px 10px; border: 1px solid #e9ecef; text-align: left; }
+    .adminTabContentPane th { background-color: #f8f9fa; font-weight: 600; }
+    /* Подсветка строк для кликабельных таблиц */
+    #usersTable tbody tr, #objectsTable tbody tr {
+        cursor: pointer;
+        transition: background-color 0.15s;
+    }
+    #usersTable tbody tr:hover, #objectsTable tbody tr:hover {
+        background-color: #e9ecef;
+    }
+
+    /* ------------------------------------------- */
+    /* 7. СЕТКА НАЗНАЧЕНИЙ (GRID) */
+    /* ------------------------------------------- */
+
+    .table-wrap{
+        border:1px solid #e2e8f0;
+        overflow:auto;
+        max-height:60vh;
+        max-width:100%;
+        position:relative;
+        cursor:grab; /* Для UX перетаскивания */
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .table-wrap::-webkit-scrollbar { display: none; }
+    .table-wrap:active { cursor: grabbing; } /* Курсор при активном перетаскивании */
+
+    #assignment-table{
+        border-collapse:separate;
+        border-spacing:0;
+        width:max-content;
+        min-width:100%;
+    }
+
+    /* Общие стили ячеек */
+    #assignment-table th, #assignment-table td{
+        width:var(--cell-size);
+        height:var(--cell-size);
+        min-width:var(--cell-size);
+        min-height:var(--cell-size);
+        padding:6px 8px;
+        box-sizing:border-box;
+        text-align:left;
+        vertical-align:middle;
+        border-right: var(--line-size) solid var(--grid-gap-color);
+        border-bottom: var(--line-size) solid var(--grid-gap-color);
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        cursor: pointer;
+        background-color: #fcfcfc; /* Очень светлый фон для неназначенной клетки */
+        transition: background-color 0.2s;
+        font-size: 13px;
+    }
+
+    /* Закрепленные заголовки */
+    #assignment-table thead th:first-child{
+        position: sticky; top:0; left:0;
+        background: var(--header-bg); z-index: 5;
+    }
+    #assignment-table thead th:not(:first-child){
+        position: sticky; top:0;
+        background: var(--header-bg); z-index: 4;
+        text-align:center; font-weight:700;
+    }
+    #assignment-table tbody td:first-child{
+        position: sticky; left:0;
+        background: var(--firstcol-bg); z-index: 3;
+        box-shadow:2px 0 4px rgba(0,0,0,0.04);
+        cursor: default;
+        font-weight: bold;
+    }
+
+    /* СТИЛИ ПОДСВЕТКИ И НАЗНАЧЕНИЯ */
+    .assigned {
+        background-color: var(--success-color) !important;
+        color: white;
+        text-align: center;
+        font-weight: bold;
+    }
+    .assigned::after {
+        content: '✓'; /* Визуальное подтверждение назначения */
+        font-size: 16px;
+    }
+    .unassigned {
+        background-color: #fcfcfc;
+    }
+
+    /* Подсветка при наведении */
+    .col-hover, .row-hover {
+        background-color: var(--accent-hover) !important; /* Более заметная подсветка */
+    }
+
+    /* Сброс подсветки для закрепленных ячеек */
+    .col-hover:first-child, .row-hover:first-child { background-color: var(--firstcol-bg) !important; }
+    #assignment-table thead th:first-child.col-hover { background-color: var(--header-bg) !important; }
+
+    /* Гарантируем, что назначенная ячейка не теряет цвет */
+    .assigned.col-hover,
+    .assigned.row-hover {
+        background-color: var(--success-color) !important;
+        color: white !important;
+    }
+
+    /* Подсветка строки при наведении */
+    #assignment-table tbody tr:hover td:not(:first-child){
+        background-color: rgba(0, 123, 255, 0.05); /* Легкий оттенок */
+    }
+    /* Сохраняем фон первого столбца при наведении на строку */
+    #assignment-table tbody tr:hover td:first-child{
+        background-color: var(--firstcol-bg) !important;
+    }
+
+
+ /* ------------------------------------------- */
+/* 8. ФОРМА ВХОДА (#loginForm) */
+/* ------------------------------------------- */
+
+#loginForm {
+    /* Растягиваем на весь экран */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    /* Устанавливаем фон и z-index */
+    background: white;
+    z-index: 5000;
+
+    /* Используем Flexbox для центрирования содержимого */
+    display: flex;
+    justify-content: center; /* Центрирование по горизонтали */
+    align-items: center; /* Центрирование по вертикали */
+    flex-direction: column; /* Элементы в столбец */
 }
 
-/* Контейнер таблицы */
-.table-wrap{
-    border:1px solid #e2e8f0;
-    overflow:auto; /* Разрешаем прокрутку */
-    max-height:60vh;
-    max-width:100%;
-    position:relative;
-    cursor:grab;
-
-    /* Скрытие полос прокрутки */
-    -ms-overflow-style: none; /* IE и Edge */
-    scrollbar-width: none;  /* Firefox */
+/* Стили для полей ввода внутри формы */
+#loginForm h3 {
+    font-size: 20px;
+    margin-bottom: 15px;
+    color: #333;
 }
-.table-wrap::-webkit-scrollbar { display: none; } /* Chrome, Safari */
-
-table{
-    border-collapse:separate; /* Обязательно для border-spacing */
-    border-spacing:0;
-    width:max-content;
-    min-width:100%;
+#loginForm input[type="text"],
+#loginForm input[type="password"] {
+    padding: 10px;
+    margin: 6px 0;
+    width: 250px; /* Фиксированная ширина */
+    box-sizing: border-box;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 16px;
 }
-
-/* Общие стили ячеек */
-#assignment-table th, #assignment-table td{
-    width:var(--cell-size);
-    height:var(--cell-size);
-    min-width:var(--cell-size);
-    min-height:var(--cell-size);
-    padding:6px 8px;
-    box-sizing:border-box;
-    text-align:left;
-    vertical-align:middle;
-    border-right: var(--line-size) solid var(--grid-gap-color);
-    border-bottom: var(--line-size) solid var(--grid-gap-color);
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-
-    /* Добавляем стили для интерактивных клеток */
+#loginForm button {
+    width: 250px;
+    padding: 10px;
+    margin-top: 15px;
+    background-color: var(--primary-color, #007bff);
+    color: white;
+    border: none;
+    border-radius: 4px;
     cursor: pointer;
-    background-color: #e9ecef; /* Фон для неназначенной клетки */
+    font-weight: bold;
     transition: background-color 0.2s;
 }
-
-/* Угловая ячейка */
-#assignment-table thead th:first-child{
-    position: sticky;
-    top:0;
-    left:0;
-    background: var(--header-bg);
-    z-index: 5; /* Самый высокий */
+#loginForm button:hover {
+    background-color: #0056b3;
 }
 
-/* Заголовки столбцов (Объекты) */
-#assignment-table thead th:not(:first-child){
-    position: sticky;
-    top:0;
-    background: var(--header-bg);
-    z-index: 4;
-    text-align:center;
-    font-weight:700;
-}
 
-/* Первый столбец (Пользователи) */
-#assignment-table tbody td:first-child{
-    position: sticky;
-    left:0;
-    background: var(--firstcol-bg);
-    z-index: 3;
-    box-shadow:2px 0 4px rgba(0,0,0,0.04);
-    cursor: default; /* Не кликабельно для назначения */
-    font-weight: bold;
-}
-
-/* Остальные данные (клетки назначения) */
-#assignment-table tbody td:not(:first-child){
-    position: relative;
-    z-index:1;
-}
-
-/* --- СТИЛИ ПОДСВЕТКИ И НАЗНАЧЕНИЯ --- */
-
-/* Класс "назначено" */
-.assigned {
-    background-color: #28a745 !important; /* Зеленый */
-    color: white;
-}
-.unassigned {
-    background-color: #e9ecef; /* Серый */
-}
-
-/* 🔥 НОВОЕ ПРАВИЛО: Гарантируем, что назначенная ячейка не теряет цвет при подсветке столбца или строки */
-.assigned.col-hover,
-.assigned.row-hover {
-    background-color: #28a745 !important; /* Назначенный цвет всегда выигрывает */
-    color: white !important;
-}
-
-/* 🔥 НОВОЕ ПРАВИЛО: Ячейка при клике (выделении) должна сохранять свой фон, но получить рамку */
-#assignment-table td:not(:first-child) {
-    /* Сброс outline, если он был задан inline стилем */
-    outline: none !important;
-}
-
-/* --- СТИЛИ ПОДСВЕТКИ --- */
-
-.col-hover {background-color: rgba(11,105,255,0.08) !important;}
-.row-hover {background-color: rgba(11,105,255,0.08) !important;}
-
-/* Сброс подсветки для закрепленных ячеек */
-.col-hover:first-child, .row-hover:first-child {background-color: var(--firstcol-bg) !important;}
-#assignment-table thead th:first-child.col-hover {background-color: var(--header-bg) !important;}
-
-/* Подсветка строки при наведении */
-#assignment-table tbody tr:hover td:not(:first-child){background-color:rgba(11,105,255,0.03);}
-/* Сохраняем фон первого столбца при наведении на строку */
-#assignment-table tbody tr:hover td:first-child{background-color: var(--firstcol-bg) !important;}
-
-
-
-    </style>
+</style>
 </head>
 <body>
 
@@ -299,34 +637,34 @@ table{
 
     <div id="spinner"><div class="loader"></div></div>
 
-    <div id="connectionStatus">
+    <div id="connectionStatus" role="status">
         <div id="connectionStatusRow">
-            <div id="connectionDot"></div>
+            <div id="connectionDot" aria-hidden="true"></div>
             <div id="connectionText">Загрузка...</div>
         </div>
         <div id="telegramUsername"></div>
     </div>
 
-    <button id="newPointBtn">➕ Новая метка</button>
-    <button id="adminPanelBtn" class="admin-action-button" style="display:none; background-color: #6c757d; position:absolute; bottom:55px; left:50%; transform:translateX(-50%); z-index:1000;">Админ-панель</button>
+    <button id="newPointBtn" title="Создать новую метку">➕</button>
+    <button id="adminPanelBtn" class="admin-action-button hidden-by-default" title="Открыть Административную панель">Админка</button>
 
 
     <div id="loginForm">
         <h3>Вход</h3>
-        <input type="text" id="loginUsername" placeholder="Логин (Username)" required>
-        <input type="password" id="loginPassword" placeholder="Пароль" required>
+        <input type="text" id="loginUsername" placeholder="Логин (Username)" required aria-label="Логин">
+        <input type="password" id="loginPassword" placeholder="Пароль" required aria-label="Пароль">
         <button id="loginBtn">Войти</button>
     </div>
 
-    <div id="popupWindow">
-        <span id="popupClose">&times;</span>
+    <div id="popupWindow" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
+        <span id="popupClose" title="Закрыть" aria-label="Закрыть окно">&times;</span>
         <h3 id="popupTitle" style="font-size: 18px; margin: 0px 0;">Новая метка #</h3>
 
         <div class="form-group">
             <label>Координаты:</label>
             <div style="display: flex; align-items: center; border: 1px solid #ccc; padding: 6px; border-radius: 4px;">
-                <span id="popupCoords" style="flex-grow: 1;">—</span>
-                <button id="copyCoordsBtn" title="Копировать" style="background: none; color: #007bff; border: none; cursor: pointer; padding: 0 5px; font-size: 14px;">📋</button>
+                <span id="popupCoords" style="flex-grow: 1;" aria-live="polite">—</span>
+                <button id="copyCoordsBtn" title="Копировать координаты" aria-label="Копировать координаты" style="background: none; color: #007bff; border: none; cursor: pointer; padding: 0 5px; font-size: 14px;">📋</button>
             </div>
         </div>
 
@@ -338,13 +676,13 @@ table{
         </div>
 
         <div class="form-group">
-            <label for="breedInput">Параметры дерева:</label>
-            <input type="text" id="breedInput">
+            <label for="breedInput">Параметры (например, порода дерева):</label>
+            <input type="text" id="breedInput" placeholder="Введите параметры">
         </div>
 
         <div class="form-group">
             <label for="noteInput">Заметка:</label>
-            <textarea id="noteInput" rows="3"></textarea>
+            <textarea id="noteInput" rows="3" placeholder="Введите дополнительную информацию"></textarea>
         </div>
 
 
@@ -361,7 +699,8 @@ table{
 
         <div class="form-group">
             <label for="photoInput">Фотографии:</label>
-            <input type="file" id="photoInput" accept="image/*" multiple>
+            <input type="file" id="photoInput" accept="image/*" multiple aria-describedby="photo_hint">
+            <small id="photo_hint" style="display: block; font-size: 11px; color: #666; margin-top: 4px;">Выберите одно или несколько изображений.</small>
             <div id="photoList"></div>
         </div>
 
@@ -371,33 +710,33 @@ table{
         </div>
     </div>
 
-<div id="photoModal">
-    <span id="closePhotoModal">&times;</span>
+<div id="photoModal" role="dialog" aria-modal="true" aria-labelledby="photoModalTitle">
+    <h2 id="photoModalTitle" style="position: absolute; left: -9999px;">Просмотр и редактирование фото</h2>
+    <span id="closePhotoModal" title="Закрыть" aria-label="Закрыть фото">&times;</span>
 
     <div id="photoWrapper" style="position: relative;">
         <img id="photoImage" src="" alt="Photo" style="max-width: 100%; max-height: 80vh;">
         <canvas id="doodleCanvas" style="position: absolute; top: 0; left: 0; display: none;"></canvas>
 
-        <!-- Action Buttons -->
-        <button id="startDoodle" class="circleButton centerButton">✨</button>
-        <button id="saveDoodle" class="circleButton leftButton" style="display: none;">✔</button>
-        <button id="cancelDoodle" class="circleButton rightButton" style="display: none;">✖</button>
+        <button id="startDoodle" class="circleButton" title="Начать рисование" aria-label="Начать рисование">✎</button>
+        <button id="saveDoodle" class="circleButton" style="display: none;" title="Сохранить рисунок" aria-label="Сохранить рисунок">✔</button>
+        <button id="cancelDoodle" class="circleButton" style="display: none;" title="Отменить рисунок" aria-label="Отменить рисунок">✖</button>
     </div>
 </div>
 
 
-    <div id="adminPanelWindow" class="admin-modal-window">
+    <div id="adminPanelWindow" class="admin-modal-window" role="dialog" aria-modal="true" aria-labelledby="adminPanelTitle">
         <div class="admin-modal-content">
-            <span id="adminPanelClose" class="modal-close-btn">&times;</span>
-            <h3>Админ-панель</h3>
+            <span id="adminPanelClose" class="modal-close-btn" title="Закрыть" aria-label="Закрыть админ-панель">&times;</span>
+            <h3 id="adminPanelTitle">Админ-панель</h3>
 
-            <div class="admin-tabs">
-                <div class="adminTabButton active" data-tab="users">Пользователи</div>
-                <div class="adminTabButton" data-tab="objects">Объекты</div>
-                <div class="adminTabButton" data-tab="assignments">Назначение</div>
+            <div role="tablist" class="admin-tabs">
+                <button role="tab" class="adminTabButton active" data-tab="users" aria-selected="true" aria-controls="tab-users">Пользователи</button>
+                <button role="tab" class="adminTabButton" data-tab="objects" aria-selected="false" aria-controls="tab-objects">Объекты</button>
+                <button role="tab" class="adminTabButton" data-tab="assignments" aria-selected="false" aria-controls="tab-assignments">Назначение</button>
             </div>
 
-            <div id="tab-users" class="adminTabContentPane" style="display: block;">
+            <div id="tab-users" class="adminTabContentPane" role="tabpanel" style="display: block;">
                 <button id="createUserBtn" class="admin-action-button" style="background-color: #28a745;">➕ Создать пользователя</button>
                 <h4>Список пользователей:</h4>
                 <table id="usersTable">
@@ -410,7 +749,7 @@ table{
                 </table>
             </div>
 
-            <div id="tab-objects" class="adminTabContentPane">
+            <div id="tab-objects" class="adminTabContentPane" role="tabpanel">
                 <button id="createObjectBtn" class="admin-action-button" style="background-color: #28a745;">➕ Создать объект</button>
                 <h4>Список объектов:</h4>
                 <table id="objectsTable">
@@ -423,11 +762,11 @@ table{
                 </table>
             </div>
 
-            <div id="tab-assignments" class="adminTabContentPane">
+            <div id="tab-assignments" class="adminTabContentPane" role="tabpanel">
                 <h4>Назначение объектов пользователям:</h4>
 
                 <div class="table-wrap" id="assignmentWrap">
-                    <table id="assignment-table" aria-label="Таблица пользователей и объектов">
+                    <table id="assignment-table" aria-label="Таблица назначения объектов пользователям">
                         <thead>
                             <tr id="headerRow">
                                 <th>Пользователь \ Объект</th>
@@ -443,9 +782,9 @@ table{
         </div>
     </div>
 
-    <div id="userEditModal" class="admin-modal-window">
+    <div id="userEditModal" class="admin-modal-window" role="dialog" aria-modal="true" aria-labelledby="userEditTitle">
         <div class="admin-modal-content">
-            <span id="userEditModalClose" class="modal-close-btn">&times;</span>
+            <span id="userEditModalClose" class="modal-close-btn" title="Закрыть" aria-label="Закрыть окно">&times;</span>
             <h3 id="userEditTitle">Редактирование пользователя</h3>
             <input type="hidden" id="editUserId">
 
@@ -479,9 +818,9 @@ table{
         </div>
     </div>
 
-    <div id="objectEditModal" class="admin-modal-window">
+    <div id="objectEditModal" class="admin-modal-window" role="dialog" aria-modal="true" aria-labelledby="objectEditTitle">
         <div class="admin-modal-content">
-            <span id="objectEditModalClose" class="modal-close-btn">&times;</span>
+            <span id="objectEditModalClose" class="modal-close-btn" title="Закрыть" aria-label="Закрыть окно">&times;</span>
             <h3 id="objectEditTitle">Редактирование объекта</h3>
             <input type="hidden" id="editObjectId">
 
@@ -495,8 +834,7 @@ table{
                 <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 4px;">
                     <table id="pointTable" style="width: 100%; border-collapse: collapse; text-align: left;">
                         <tbody>
-                            <!-- Метки будут добавляться динамически -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
@@ -514,7 +852,7 @@ table{
         // =========================================================
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // =========================================================
-        const SERVER_URL = "https://true-cups-slide.loca.lt";
+        const SERVER_URL = "https://funny-ducks-yell.loca.lt";
         let TELEGRAM_INIT_DATA = null;
         let telegramUsername = null;
         let isAdmin = false;
@@ -651,6 +989,7 @@ table{
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Войти';
             }
+            refreshMarkers()
         }
 
         function getInitData(){
@@ -1058,7 +1397,7 @@ assignmentWrap.addEventListener('mousemove', e=>{
             });
 
             // --- PERIODIC CHECK ---
-            setInterval(fetchMeAndStatus, 5000);
+            setInterval(fetchMeAndStatus, 60000);
             fetchMeAndStatus();
 
             // =========================================================
@@ -1428,91 +1767,108 @@ function dataURLtoFile(dataurl, filename) {
             // Кнопка "Новая точка" сразу открывает форму с координатами центра карты
             newPointBtn.onclick = () => handleOpenMarkerPopup(null);
 
-            saveBtn.onclick = async () => {
-                spinner.style.display = 'block';
-                saveBtn.disabled = true;
+ saveBtn.onclick = async () => {
+    // 1. Подготовка и UX
+    spinner.style.display = 'block';
+    saveBtn.disabled = true;
 
-                const isNew = currentEntryId === null;
-                const selectedObjectId = pointObjectSelect.value;
+    const isNew = currentEntryId === null;
+    const selectedObjectId = pointObjectSelect.value;
 
-                if (isNew && !selectedObjectId) {
-                    alert('Пожалуйста, выберите Объект для новой метки.');
-                    saveBtn.disabled = false;
-                    spinner.style.display = 'none';
-                    return;
-                }
+    if (isNew && !selectedObjectId) {
+        alert('Пожалуйста, выберите Объект для новой метки.');
+        saveBtn.disabled = false;
+        spinner.style.display = 'none';
+        return;
+    }
 
-                const compressedFilesPromises = selectedFiles.map(file => compressImage(file));
-                let compressedFiles = [];
-                try {
-                    compressedFiles = await Promise.all(compressedFilesPromises);
-                } catch (err) {
-                    spinner.style.display = 'none';
-                    saveBtn.disabled = false;
-                    console.error('Ошибка при сжатии фото:', err);
-                    return alert('Ошибка при обработке фотографий.');
-                }
+    // 2. Сжатие и обработка файлов
+    const compressedFilesPromises = selectedFiles.map(file => compressImage(file));
+    let compressedFiles = [];
+    try {
+        compressedFiles = await Promise.all(compressedFilesPromises);
+    } catch (err) {
+        spinner.style.display = 'none';
+        saveBtn.disabled = false;
+        console.error('Ошибка при сжатии фото:', err);
+        return alert('Ошибка при обработке фотографий.');
+    }
 
-                const fd = new FormData();
-                fd.append('note', noteInput.value);
-                fd.append('breed', breedInput.value);
+    // 3. Формирование FormData
+    const fd = new FormData();
+    fd.append('note', noteInput.value);
+    fd.append('breed', breedInput.value);
 
-                if (selectedObjectId) {
-                    fd.append('object_id', selectedObjectId);
-                }
+    if (selectedObjectId) {
+        fd.append('object_id', selectedObjectId);
+    }
 
-                fd.append('color', markerColorSelect.value);
-                // Передаем только имена существующих файлов, которые не были удалены
-                if (existingPhotos.length > 0) {
-  fd.append('existing_photos', JSON.stringify(existingPhotos.map(p => p.filename)));
-} else {
-  // ВАЖНО: если фото не трогали, явно говорим серверу "ничего не менялось"
-  fd.append('existing_photos', 'keep');
-}
+    fd.append('color', markerColorSelect.value);
 
-                // *** ИСПРАВЛЕНИЕ: Вернули 'photos' (без []) и убедились, что цикл отрабатывает ***
-                compressedFiles.forEach(f => fd.append('photos[]', f));
+    // --- ИСПРАВЛЕННАЯ ЛОГИКА ДЛЯ existing_photos ---
+    if (!isNew) {
+        // Если метка существует, мы должны отправить список, который должен остаться.
 
-                if (isNew) {
-                    const [lat, lon] = popupCoords.textContent.split(',').map(s => s.trim());
-                    if (!lat || !lon || lat === '—') {
-                        alert('Координаты не определены. Переместите карту и попробуйте снова.');
-                        saveBtn.disabled = false;
-                        spinner.style.display = 'none';
-                        return;
-                    }
-                    fd.append('lat', lat);
-                    fd.append('lon', lon);
-                }
+        if (existingPhotos.length > 0) {
+            // Если есть фото, которые должны остаться, отправляем их список.
+            fd.append('existing_photos', JSON.stringify(existingPhotos.map(p => p.filename)));
+        } else {
+            // Если existingPhotos.length === 0, значит, все старые фото были удалены.
+            // Отправляем пустой JSON-массив '[]', чтобы сервер явно удалил все записи.
+            fd.append('existing_photos', '[]');
+        }
+    }
+    // Если это новая метка (isNew), 'existing_photos' не отправляется вообще.
+    // ----------------------------------------------------
 
-                const url = isNew ? `${SERVER_URL}/upload` : `${SERVER_URL}/marker/${currentEntryId}`;
-                const method = 'POST';
+    // Добавление новых файлов
+    compressedFiles.forEach(f => fd.append('photos[]', f));
 
-                try {
-                    const r = await fetchWithAuth(url, { method: method, body: fd });
+    // 4. Добавление координат (только для новой метки)
+    if (isNew) {
+        const [lat, lon] = popupCoords.textContent.split(',').map(s => s.trim());
+        if (!lat || !lon || lat === '—') {
+            alert('Координаты не определены. Переместите карту и попробуйте снова.');
+            saveBtn.disabled = false;
+            spinner.style.display = 'none';
+            return;
+        }
+        fd.append('lat', lat);
+        fd.append('lon', lon);
+    }
 
-                    if (!r.ok) {
-                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
-                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
-                        return;
-                    }
+    // 5. Отправка запроса
+    const url = isNew ? `${SERVER_URL}/upload` : `${SERVER_URL}/marker/${currentEntryId}`;
+    const method = 'POST';
 
-                    const d = await r.json();
+    try {
+        const r = await fetchWithAuth(url, { method: method, body: fd });
 
-                    if (d.status === 'success') {
-                        popupWindow.style.display = 'none';
-                        loadMarkers();
-                    } else {
-                        alert(d.message || 'Ошибка сохранения.');
-                    }
-                } catch (e) {
-                    alert('Ошибка соединения при сохранении метки.');
-                    console.error("Save Point Error:", e);
-                } finally {
-                    spinner.style.display = 'none';
-                    saveBtn.disabled = false;
-                }
-            };
+        if (!r.ok) {
+            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+            return;
+        }
+
+        const d = await r.json();
+
+        if (d.status === 'success') {
+            popupWindow.style.display = 'none';
+            loadMarkers();
+        } else {
+            alert(d.message || 'Ошибка сохранения.');
+        }
+    } catch (e) {
+        alert('Ошибка соединения при сохранении метки.');
+        console.error("Save Point Error:", e);
+    } finally {
+        // 6. Восстановление UX
+        spinner.style.display = 'none';
+        saveBtn.disabled = false;
+    }
+
+    refreshMarkers()
+};
 
             deleteBtn.onclick = async () => {
                 if (!currentEntryId) return;
@@ -1864,6 +2220,7 @@ function dataURLtoFile(dataurl, filename) {
                     alert('Ошибка соединения при удалении объекта.');
                     console.error("Delete Object Error:", e);
                 }
+                refreshMarkers()
             };
 
             createObjectBtn.onclick = () => openObjectEditModal();
