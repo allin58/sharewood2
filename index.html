@@ -852,7 +852,7 @@
         // =========================================================
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // =========================================================
-        const SERVER_URL = "https://funny-ducks-yell.loca.lt";
+        const SERVER_URL = "https://strong-jeans-follow.loca.lt";
         let TELEGRAM_INIT_DATA = null;
         let telegramUsername = null;
         let isAdmin = false;
@@ -1138,6 +1138,47 @@ startDoodleBtn.onclick = () => {
     doodleCanvas.onmousemove = (e) => { if (drawing) { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); }};
     doodleCanvas.onmouseup = () => drawing = false;
     doodleCanvas.onmouseleave = () => drawing = false;
+
+
+// --- 📱 Обработчики для Касания (Новый код) ---
+
+    // Вспомогательная функция для получения координат касания
+    const getTouchPos = (e) => {
+        // e.touches[0] - это первое касание
+        const rect = doodleCanvas.getBoundingClientRect();
+        return {
+            x: e.touches[0].clientX - rect.left,
+            y: e.touches[0].clientY - rect.top
+        };
+    };
+
+    doodleCanvas.addEventListener('touchstart', (e) => {
+        // Предотвращаем прокрутку страницы во время рисования
+        e.preventDefault();
+
+        const pos = getTouchPos(e);
+        drawing = true;
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+    }, { passive: false }); // { passive: false } важен для preventDefault
+
+    doodleCanvas.addEventListener('touchmove', (e) => {
+        if (drawing) {
+            const pos = getTouchPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+    });
+
+    doodleCanvas.addEventListener('touchend', () => {
+        drawing = false;
+    });
+
+    doodleCanvas.addEventListener('touchcancel', () => {
+        drawing = false;
+    });
+
+ ////////////////////////////////////////////////////////
 };
 
 // Сохранение с рисунком
