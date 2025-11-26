@@ -1933,12 +1933,17 @@ function dataURLtoFile(dataurl, filename) {
             // Здесь отправьте location.latitude и location.longitude на ваш сервер
             // или обновите интерфейс.
             alert(`Ваше местоположение: ${location.latitude}, ${location.longitude}`);
+            const el = document.getElementById('telegramUsername');
+            el.textContent = 'Final Location:';
         },
         // Error Callback
         (errorMsg) => {
             console.error('Location Error:', errorMsg);
             alert(`Не удалось получить местоположение: ${errorMsg}`);
             // Здесь можно предложить пользователю ввести данные вручную
+
+            const el = document.getElementById('telegramUsername');
+            el.textContent = 'Location Error:';
         }
     );
 };
