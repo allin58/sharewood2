@@ -852,7 +852,7 @@
         // =========================================================
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // =========================================================
-        const SERVER_URL = "https://strong-jeans-follow.loca.lt";
+        const SERVER_URL = "http://localhost:5000";
         let TELEGRAM_INIT_DATA = null;
         let telegramUsername = null;
         let isAdmin = false;
@@ -866,7 +866,7 @@
 
         const COPY_SYMBOL = '📋';
         const COPIED_SYMBOL = '✔️';
-
+        const isLocationSupported = window.Telegram.WebApp.isVersionAtLeast('6.1');
         // =========================================================
         // АУТЕНТИФИКАЦИЯ И УТИЛИТЫ (без изменений)
         // =========================================================
@@ -943,7 +943,7 @@
                 }
             } catch {
                 connectionDot.style.background="#d9534f";
-                connectionText.textContent="Нет соединения";
+                connectionText.textContent="Нет соединения " + isLocationSupported;
                 telegramUsername = null; isAdmin = false; updateUsernameDisplay(); updateAdminPanelVisibility();
             }
         }
@@ -974,6 +974,7 @@
                         await fetchMeAndStatus();
                         document.getElementById('loginForm').style.display='none';
                         initApp();
+                       // loadMarkers();
                     } else {
                         alert(d.message || 'Неверные учетные данные');
                     }
@@ -989,7 +990,7 @@
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Войти';
             }
-            refreshMarkers()
+
         }
 
         function getInitData(){
@@ -1053,6 +1054,8 @@
         // ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
         // =========================================================
         function initApp(){
+
+
             if(appInitialized) return;
             appInitialized = true;
 
