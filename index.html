@@ -1866,7 +1866,7 @@ CoordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
         (location) => {
             // Успех
             console.log('Location received:', location);
-            alert(`Ваше местоположение: ${location.latitude}, ${location.longitude}`);
+            //alert(`Ваше местоположение: ${location.latitude}, ${location.longitude}`);
             map.setView([location.latitude, location.longitude], map.getZoom());
         },
         (errorMsg) => {
