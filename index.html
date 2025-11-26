@@ -649,12 +649,12 @@
     <button id="adminPanelBtn" class="admin-action-button hidden-by-default" title="Открыть Административную панель">Админка</button>
 
 
-    <div id="loginForm">
-        <h3>Вход</h3>
-        <input type="text" id="loginUsername" placeholder="Логин (Username)" required aria-label="Логин">
-        <input type="password" id="loginPassword" placeholder="Пароль" required aria-label="Пароль">
-        <button id="loginBtn">Войти</button>
-    </div>
+<!--    <div id="loginForm">-->
+<!--        <h3>Вход</h3>-->
+<!--        <input type="text" id="loginUsername" placeholder="Логин (Username)" required aria-label="Логин">-->
+<!--        <input type="password" id="loginPassword" placeholder="Пароль" required aria-label="Пароль">-->
+<!--        <button id="loginBtn">Войти</button>-->
+<!--    </div>-->
 
     <div id="popupWindow" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
         <span id="popupClose" title="Закрыть" aria-label="Закрыть окно">&times;</span>
@@ -852,7 +852,7 @@
         // =========================================================
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // =========================================================
-        const SERVER_URL = "http://192.168.100.33:5000";
+        const SERVER_URL = "http://localhost:5000";
         let TELEGRAM_INIT_DATA = null;
         let telegramUsername = null;
         let isAdmin = false;
