@@ -127,11 +127,17 @@
         transform: scale(1.05);
     }
 
-/* Кнопка действий: По центру */
-#CoordBtn { /* ИЗМЕНЕНО: #centerActionBtn -> #CoordBtn */
-    /* Общие стили FAB */
+#coordBtnWrapper {
     position: absolute;
     bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 56px;
+    z-index: 1000;
+}
+
+#coordBtn {
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -143,19 +149,29 @@
     padding: 0;
     border: none;
     cursor: pointer;
-    z-index: 1000;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    transition: background-color 0.2s, transform 0.2s;
-
-    /* Специфичное позиционирование: Центр экрана */
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transition: background-color 0.2s;
 }
 
-#CoordBtn:hover { /* ИЗМЕНЕНО: #centerActionBtn -> #CoordBtn */
-    background-color: #0056b3;
-    transform: translateX(-50%) scale(1.05);
+/* Вращение компаса + лёгкая пульсация кнопки */
+#coordBtn.loading {
+    animation: rotateCompass 1s linear infinite, pulse 1.2s ease-in-out infinite;
 }
+
+/* Вращение компаса */
+@keyframes rotateCompass {
+    to { transform: rotate(360deg); }
+}
+
+/* Пульсация / моргание кнопки */
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 4px 8px rgba(0,123,255,0.3); }
+    50% { box-shadow: 0 0 12px rgba(0,123,255,0.7); }
+}
+
+
 
 
 
@@ -678,7 +694,11 @@
     </div>
 
     <button id="newPointBtn" title="Создать новую метку">➕</button>
-    <button id="CoordBtn" title="Определить мое местоположение">🧭</button>
+<!--    <button id="coordBtn" title="Определить мое местоположение">🧭</button>-->
+    <div id="coordBtnWrapper"> <button id="coordBtn">🧭</button></div>
+
+
+
     <button id="adminPanelBtn" class="admin-action-button hidden-by-default" title="Открыть Административную панель">Админка</button>
 
 
@@ -1127,7 +1147,7 @@ function getLocation(successCallback, errorCallback) {
             const photoModal = document.getElementById('photoModal');
             const closePhotoModal = document.getElementById('closePhotoModal');
             const newPointBtn = document.getElementById('newPointBtn');
-            const CoordBtn = document.getElementById('CoordBtn');
+            const coordBtn = document.getElementById('coordBtn');
             const popupCoords = document.getElementById('popupCoords');
             const copyCoordsBtn = document.getElementById('copyCoordsBtn');
             const crosshair = document.getElementById('crosshair');
@@ -1860,19 +1880,22 @@ function dataURLtoFile(dataurl, filename) {
 
 
 
-CoordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
+coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
     // Вызов функции получения геоданных
+    coordBtn.classList.add("loading");
     getLocation(
         (location) => {
             // Успех
             console.log('Location received:', location);
             //alert(`Ваше местоположение: ${location.latitude}, ${location.longitude}`);
             map.setView([location.latitude, location.longitude], map.getZoom());
+            coordBtn.classList.remove("loading");
         },
         (errorMsg) => {
             // Ошибка
             console.error('Location error:', errorMsg);
             alert(`Не удалось получить местоположение: ${errorMsg}`);
+            coordBtn.classList.remove("loading");
         }
     );
 };
