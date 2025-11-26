@@ -913,7 +913,7 @@
         </div>
     </div>
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <script>
@@ -921,8 +921,7 @@
         // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // =========================================================
         const SERVER_URL = "http://localhost:5000";
-        let TELEGRAM_INIT_DATA = null;
-        let telegramUsername = null;
+
         let isAdmin = false;
         let appInitialized = false;
         const params = new URLSearchParams(window.location.search);
@@ -934,6 +933,7 @@
 
         const COPY_SYMBOL = '📋';
         const COPIED_SYMBOL = '✔️';
+
 
 
 function getLocation(successCallback, errorCallback) {
@@ -996,29 +996,20 @@ function getLocation(successCallback, errorCallback) {
 }
 
 
-        // =========================================================
-        // АУТЕНТИФИКАЦИЯ И УТИЛИТЫ (без изменений)
-        // =========================================================
-        async function fetchWithAuth(url, options={}) {
-            options = options || {};
-            options.credentials = 'include';
-            options.headers = options.headers || {};
-            if(TELEGRAM_INIT_DATA){
-                options.headers['X-Telegram-Init-Data'] = TELEGRAM_INIT_DATA;
-            }
-            return fetch(url, options);
-        }
-        function getTelegramUser() {
-            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe){
-                const user = Telegram.WebApp.initDataUnsafe.user;
-                return {username: user?.username, firstName: user?.first_name};
-            }
-            return null;
-        }
-        function getTelegramUsername() {
-            const u = getTelegramUser();
-            return u?.username || u?.firstName || null;
-        }
+async function fetchWithAuth(url, options={}) {
+    options = options || {};
+    options.credentials = 'include'; // если нужна cookie-сессия
+    options.headers = options.headers || {};
+
+    if (USER_TOKEN) {
+        options.headers['Authorization'] = `Bearer ${USER_TOKEN}`;
+    }
+
+    return fetch(url, options);
+}
+
+
+
         function updateUsernameDisplay(){
             const el = document.getElementById('telegramUsername');
             let displayUsername = telegramUsername;
@@ -1039,63 +1030,61 @@ function getLocation(successCallback, errorCallback) {
                 adminPanelBtn.style.display = isAdmin ? 'block' : 'none';
             }
         }
-        async function fetchMeAndStatus(){
-            const connectionDot = document.getElementById("connectionDot");
-            const connectionText = document.getElementById("connectionText");
 
-            try{
-                const r = await fetchWithAuth(`${SERVER_URL}/me`);
 
-                let d;
-                try {
-                    d = await r.json();
-                } catch (e) {
-                    connectionDot.style.background="#d9534f";
-                    connectionText.textContent="Ошибка данных";
-                    telegramUsername = null; isAdmin = false; updateUsernameDisplay(); updateAdminPanelVisibility();
-                    return;
-                }
+async function fetchMeAndStatus() {
+    const connectionDot = document.getElementById("connectionDot");
+    const connectionText = document.getElementById("connectionText");
 
-                if(d.status==="success" && d.user){
-                    connectionDot.style.background="#28a745";
-                    connectionText.textContent="Подключено";
-                    telegramUsername = d.user.username;
-                    isAdmin = d.user.role === 'admin';
-                    updateUsernameDisplay();
-                    updateAdminPanelVisibility();
-                } else {
-                    connectionDot.style.background="#d9534f";
-                    connectionText.textContent="Не авторизован";
-                    telegramUsername = null; isAdmin = false;
-                    updateUsernameDisplay();
-                    updateAdminPanelVisibility();
-                }
-            } catch {
-                connectionDot.style.background="#d9534f";
-                connectionText.textContent="Нет соединения";
-                telegramUsername = null; isAdmin = false; updateUsernameDisplay(); updateAdminPanelVisibility();
-            }
+    try {
+        const r = await fetchWithAuth(`/me`);
+        const d = await r.json();
+
+        if (d.status === "success" && d.user) {
+            connectionDot.style.background = "#28a745";
+            connectionText.textContent = `Подключено: ${d.user.username}`;
+            telegramUsername = d.user.username;
+            isAdmin = d.user.role === "admin";
+            updateUsernameDisplay();
+            updateAdminPanelVisibility();
+        } else {
+            connectionDot.style.background = "#d9534f";
+            connectionText.textContent = "Не авторизован";
         }
+    } catch (e) {
+        connectionDot.style.background = "#d9534f";
+        connectionText.textContent = "Нет соединения";
+        console.error(e);
+    }
+}
 
-        async function handleBrowserLogin() {
-              document.getElementById('loginForm').style.display='none';
-              initApp();
 
-        }
 
-        function getInitData(){
-            if(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData){
-                TELEGRAM_INIT_DATA = Telegram.WebApp.initData;
-                telegramUsername = getTelegramUsername();
-                document.getElementById('loginForm').style.display='none';
-                initApp();
-            } else {
-                TELEGRAM_INIT_DATA = null;
-                telegramUsername = null;
-                document.getElementById('loginForm').style.display='flex';
-                initApp();
-            }
-        }
+async function handleBrowserLogin() {
+    const username = document.getElementById("usernameInput").value;
+    const password = document.getElementById("passwordInput").value;
+
+    const res = await fetch("/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username, password})
+    });
+
+    const data = await res.json();
+
+    if (data.status === "success") {
+        // Получаем токен сессии от сервера (если хотите, сервер может возвращать JWT)
+        USER_TOKEN = data.token;
+        localStorage.setItem("userToken", USER_TOKEN);
+        document.getElementById('loginForm').style.display = 'none';
+        initApp();
+    } else {
+        alert("Неверный логин или пароль");
+    }
+}
+
+
+
 
         function compressImage(file, quality = 0.6, maxWidth = 800) {
             return new Promise((resolve, reject) => {
@@ -1603,7 +1592,7 @@ assignmentWrap.addEventListener('mousemove', e=>{
 // В вашем <script>
 async function fetchProtectedImage(filename) {
     const url = `${SERVER_URL}/photo/${filename}`;
-    const initData = TELEGRAM_INIT_DATA || ''; // Получаем initData, если доступно
+
 
     const options = {
         method: 'GET',
@@ -1611,10 +1600,6 @@ async function fetchProtectedImage(filename) {
         credentials: 'include' // 🔥 ВАЖНО: Это гарантирует отправку куки сессии в браузере
     };
 
-    if (initData) {
-        // 🔥 Для Telegram Mini App: вручную добавляем заголовок авторизации
-        options.headers['X-Telegram-Init-Data'] = initData;
-    }
 
     try {
         const response = await fetch(url, options);
@@ -2491,8 +2476,26 @@ async function loadObjectPoints(objectId) {
         }
 
 
-        // --- Инициализация при загрузке DOM ---
-        document.addEventListener('DOMContentLoaded', getInitData);
+document.addEventListener('DOMContentLoaded', () => {
+    // Проверяем токен из URL или localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get("token");
+
+    if (tokenFromUrl) {
+        USER_TOKEN = tokenFromUrl;
+        localStorage.setItem("userToken", USER_TOKEN);
+        document.getElementById('loginForm').style.display = 'none';
+        initApp();
+    } else {
+        USER_TOKEN = localStorage.getItem("userToken");
+        if (USER_TOKEN) {
+            document.getElementById('loginForm').style.display = 'none';
+        } else {
+            document.getElementById('loginForm').style.display = 'flex';
+        }
+        initApp();
+    }
+});
     </script>
 </body>
 </html>
