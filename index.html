@@ -881,6 +881,8 @@
  * @param {function(string): void} errorCallback - Callback при ошибке или отказе пользователя.
  */
 function getLocation(successCallback, errorCallback) {
+    const el = document.getElementById('telegramUsername');
+    el.textContent = "getLocation";
     const minTgVersion = '6.1'; // Версия, начиная с которой доступен Location Manager
 
     // --- 1. Попытка использовать Telegram Mini App API ---
@@ -1934,7 +1936,7 @@ function dataURLtoFile(dataurl, filename) {
             // или обновите интерфейс.
             alert(`Ваше местоположение: ${location.latitude}, ${location.longitude}`);
             const el = document.getElementById('telegramUsername');
-            el.textContent = 'Final Location:';
+            el.textContent = 'Final Location:2';
         },
         // Error Callback
         (errorMsg) => {
