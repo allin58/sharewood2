@@ -127,6 +127,38 @@
         transform: scale(1.05);
     }
 
+/* Кнопка действий: По центру */
+#CoordBtn { /* ИЗМЕНЕНО: #centerActionBtn -> #CoordBtn */
+    /* Общие стили FAB */
+    position: absolute;
+    bottom: 15px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--primary-color, #007bff);
+    color: white;
+    font-size: 28px;
+    line-height: 56px;
+    text-align: center;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: background-color 0.2s, transform 0.2s;
+
+    /* Специфичное позиционирование: Центр экрана */
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+#CoordBtn:hover { /* ИЗМЕНЕНО: #centerActionBtn -> #CoordBtn */
+    background-color: #0056b3;
+    transform: translateX(-50%) scale(1.05);
+}
+
+
+
     #adminPanelBtn {
         /* Второстепенная кнопка, левый нижний угол */
         position: absolute;
@@ -646,6 +678,7 @@
     </div>
 
     <button id="newPointBtn" title="Создать новую метку">➕</button>
+    <button id="CoordBtn" title="Определить мое местоположение">📍</button>
     <button id="adminPanelBtn" class="admin-action-button hidden-by-default" title="Открыть Административную панель">Админка</button>
 
 
@@ -867,6 +900,67 @@
         const COPY_SYMBOL = '📋';
         const COPIED_SYMBOL = '✔️';
 
+
+function getLocation(successCallback, errorCallback) {
+
+    // --- 1. Проверка доступности Web Geolocation API ---
+    if (!navigator.geolocation) {
+        const errorMessage = 'Geolocation is not supported by this browser/device.';
+        console.error(errorMessage);
+        errorCallback(errorMessage);
+        return;
+    }
+
+    console.log('Initiating standard Web Geolocation request.');
+
+    // --- 2. Запрос местоположения (getCurrentPosition) ---
+    navigator.geolocation.getCurrentPosition(
+        // Успех (Success Callback)
+        (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            console.log(`Geolocation Success. Latitude: ${lat}, Longitude: ${lon}`);
+            // Передаем данные в callback
+            successCallback({ latitude: lat, longitude: lon });
+        },
+
+        // Ошибка (Error Callback)
+        (error) => {
+            let errorMessage = 'Geolocation error.';
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    // Код 1: Пользователь отказал в разрешении (наиболее частая ошибка)
+                    errorMessage = 'Permission Denied: User blocked location access.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    // Код 2: Местоположение недоступно (например, нет GPS или Wi-Fi)
+                    errorMessage = 'Position Unavailable: Location information could not be determined.';
+                    break;
+                case error.TIMEOUT:
+                    // Код 3: Превышено время ожидания
+                    errorMessage = 'Timeout: The request to get user location timed out.';
+                    break;
+                default:
+                    errorMessage = `An unknown error occurred: ${error.message}`;
+                    break;
+            }
+            console.error(`Geolocation Error (${error.code}): ${errorMessage}`);
+            errorCallback(errorMessage);
+        },
+
+        // Опции (Options)
+        {
+            // enableHighAccuracy: Требует максимально возможной точности (использует GPS на мобильных)
+            enableHighAccuracy: true,
+            // timeout: Максимальное время (в мс) ожидания успешного ответа
+            timeout: 15000,
+            // maximumAge: Максимальное время (в мс), в течение которого можно использовать кэшированные данные. 0 означает, что нужны новые данные.
+            maximumAge: 0
+        }
+    );
+}
+
+
         // =========================================================
         // АУТЕНТИФИКАЦИЯ И УТИЛИТЫ (без изменений)
         // =========================================================
@@ -1033,6 +1127,7 @@
             const photoModal = document.getElementById('photoModal');
             const closePhotoModal = document.getElementById('closePhotoModal');
             const newPointBtn = document.getElementById('newPointBtn');
+            const CoordBtn = document.getElementById('CoordBtn');
             const popupCoords = document.getElementById('popupCoords');
             const copyCoordsBtn = document.getElementById('copyCoordsBtn');
             const crosshair = document.getElementById('crosshair');
@@ -1763,12 +1858,40 @@ function dataURLtoFile(dataurl, filename) {
             }
 
 
+
+
+CoordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
+    // Вызов функции получения геоданных
+    getLocation(
+        (location) => {
+            // Успех
+            console.log('Location received:', location);
+            alert(`Ваше местоположение: ${location.latitude}, ${location.longitude}`);
+        },
+        (errorMsg) => {
+            // Ошибка
+            console.error('Location error:', errorMsg);
+            alert(`Не удалось получить местоположение: ${errorMsg}`);
+        }
+    );
+};
+
+
+
+
+
+
+
+
             // =========================================================
             // POPUP BUTTON HANDLERS (УБРАНЫ АЛЕРТЫ УСПЕХА И CONFIRM)
             // =========================================================
 
             // Кнопка "Новая точка" сразу открывает форму с координатами центра карты
             newPointBtn.onclick = () => handleOpenMarkerPopup(null);
+
+
+
 
  saveBtn.onclick = async () => {
     // 1. Подготовка и UX
