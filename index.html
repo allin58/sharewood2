@@ -1046,11 +1046,11 @@ async function fetchMeAndStatus() {
         const r = await fetchWithAuth(`${SERVER_URL}/me`);
         const d = await r.json();
 
-        if (d.status === "success" && d.user) {
+        if (d.status === "success") {
             connectionDot.style.background = "#28a745";
             connectionText.textContent = "Подключено";
 
-            currentUsername = d.user.username;  // <-- ВАЖНО!
+            currentUsername = d.user.username;
             isAdmin = d.user.role === 'admin';
 
             updateUsernameDisplay();
@@ -1080,11 +1080,12 @@ async function fetchMeAndStatus() {
 
 
 
-async function handleBrowserLogin() {
-    const username = document.getElementById("usernameInput").value;
-    const password = document.getElementById("passwordInput").value;
 
-    const res = await fetch("/login", {
+async function handleBrowserLogin() {
+    const username = document.getElementById("loginUsername").value;
+    const password = document.getElementById("loginPassword").value;
+
+    const res = await fetch(`${SERVER_URL}/login`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({username, password})
