@@ -866,7 +866,120 @@
 
         const COPY_SYMBOL = '📋';
         const COPIED_SYMBOL = '✔️';
+
         const isLocationSupported = window.Telegram.WebApp.isVersionAtLeast('6.1');
+ /**
+ * @typedef {object} GeolocationData
+ * @property {number} latitude - Широта
+ * @property {number} longitude - Долгота
+ */
+
+/**
+ * Универсальная функция для получения геоданных.
+ * Сначала использует Telegram Mini App API, затем Web Geolocation API.
+ * * @param {function(GeolocationData): void} successCallback - Callback при успешном получении данных.
+ * @param {function(string): void} errorCallback - Callback при ошибке или отказе пользователя.
+ */
+function getLocation(successCallback, errorCallback) {
+    const minTgVersion = '6.1'; // Версия, начиная с которой доступен Location Manager
+
+    // --- 1. Попытка использовать Telegram Mini App API ---
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.isVersionAtLeast(minTgVersion)) {
+        console.log('Using Telegram Mini App API for location request.');
+
+        // 1a. Инициализация и настройка обработчика
+        window.Telegram.WebApp.ready();
+
+        // Обработчик ответа от Telegram-клиента
+        const locationHandler = (data) => {
+            // Удаляем обработчик после первого ответа, чтобы избежать повторных вызовов
+            window.Telegram.WebApp.offEvent('location_requested', locationHandler);
+
+            if (data.available && data.access_granted) {
+                const { latitude, longitude } = data.location;
+                console.log(`Telegram API Success: Lat: ${latitude}, Lon: ${longitude}`);
+                successCallback({ latitude, longitude });
+            } else {
+                let errorMessage = 'User denied location access or location is unavailable.';
+                if (data.error && data.error.message) {
+                     errorMessage = data.error.message;
+                }
+                console.error(`Telegram API Error: ${errorMessage}`);
+                errorCallback(errorMessage);
+            }
+        };
+
+        // Добавляем обработчик
+        window.Telegram.WebApp.onEvent('location_requested', locationHandler);
+
+        // 1b. Отправка запроса в Telegram-клиент
+        // Это инициирует системный запрос на разрешение местоположения
+        try {
+            window.Telegram.WebApp.sendData(JSON.stringify({
+                method: 'web_app_request_location'
+            }));
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('light'); // Добавляем тактильный отклик
+        } catch (e) {
+            console.error('Error sending location request via Telegram API:', e);
+            // Если отправка не удалась, можно попробовать fallback, но обычно это
+            // не требуется, так как Mini App API должен быть доступен, если прошли проверку isVersionAtLeast
+            errorCallback('Failed to initiate Telegram location request.');
+        }
+
+        return; // Завершаем выполнение, ожидая ответа от Telegram
+    }
+
+    // --- 2. Fallback: Использование Web Geolocation API (для браузеров) ---
+    console.log('Using standard Web Geolocation API.');
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            // Успех
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                console.log(`Web API Success: Lat: ${lat}, Lon: ${lon}`);
+                successCallback({ latitude: lat, longitude: lon });
+            },
+            // Ошибка
+            (error) => {
+                let errorMessage = 'Geolocation error.';
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = 'User denied the request for Geolocation.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = 'Location information is unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = 'The request to get user location timed out.';
+                        break;
+                    default:
+                        errorMessage = `An unknown error occurred: ${error.message}`;
+                        break;
+                }
+                console.error(`Web API Error: ${errorMessage}`);
+                errorCallback(errorMessage);
+            },
+            // Опции
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    } else {
+        // --- 3. Если ничего не доступно ---
+        const errorMessage = 'Geolocation is not supported by this environment.';
+        console.error(errorMessage);
+        errorCallback(errorMessage);
+    }
+}
+
+
+
+
+
         // =========================================================
         // АУТЕНТИФИКАЦИЯ И УТИЛИТЫ (без изменений)
         // =========================================================
@@ -943,7 +1056,7 @@
                 }
             } catch {
                 connectionDot.style.background="#d9534f";
-                connectionText.textContent="Нет соединения " + isLocationSupported;
+                connectionText.textContent="Нет соединения ";
                 telegramUsername = null; isAdmin = false; updateUsernameDisplay(); updateAdminPanelVisibility();
             }
         }
@@ -1809,7 +1922,37 @@ function dataURLtoFile(dataurl, filename) {
             // =========================================================
 
             // Кнопка "Новая точка" сразу открывает форму с координатами центра карты
-            newPointBtn.onclick = () => handleOpenMarkerPopup(null);
+            //newPointBtn.onclick = () => handleOpenMarkerPopup(null);
+
+  newPointBtn.onclick = () => {
+    // Пользователь нажал кнопку, теперь запрашиваем местоположение
+    getLocation(
+        // Success Callback
+        (location) => {
+            console.log('Final Location:', location);
+            // Здесь отправьте location.latitude и location.longitude на ваш сервер
+            // или обновите интерфейс.
+            alert(`Ваше местоположение: ${location.latitude}, ${location.longitude}`);
+        },
+        // Error Callback
+        (errorMsg) => {
+            console.error('Location Error:', errorMsg);
+            alert(`Не удалось получить местоположение: ${errorMsg}`);
+            // Здесь можно предложить пользователю ввести данные вручную
+        }
+    );
+};
+
+
+
+
+
+
+
+
+
+
+
 
  saveBtn.onclick = async () => {
     // 1. Подготовка и UX
