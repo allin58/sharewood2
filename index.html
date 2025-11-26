@@ -649,12 +649,12 @@
     <button id="adminPanelBtn" class="admin-action-button hidden-by-default" title="Открыть Административную панель">Админка</button>
 
 
-<!--    <div id="loginForm">-->
-<!--        <h3>Вход</h3>-->
-<!--        <input type="text" id="loginUsername" placeholder="Логин (Username)" required aria-label="Логин">-->
-<!--        <input type="password" id="loginPassword" placeholder="Пароль" required aria-label="Пароль">-->
-<!--        <button id="loginBtn">Войти</button>-->
-<!--    </div>-->
+    <div id="loginForm">
+        <h3>Вход</h3>
+        <input type="text" id="loginUsername" placeholder="Логин (Username)" required aria-label="Логин">
+        <input type="password" id="loginPassword" placeholder="Пароль" required aria-label="Пароль">
+        <button id="loginBtn">Войти</button>
+    </div>
 
     <div id="popupWindow" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
         <span id="popupClose" title="Закрыть" aria-label="Закрыть окно">&times;</span>
@@ -949,47 +949,8 @@
         }
 
         async function handleBrowserLogin() {
-            const username = document.getElementById('loginUsername').value.trim();
-            const password = document.getElementById('loginPassword').value.trim();
-            if (!username || !password) return alert('Введите логин и пароль!');
-
-            const loginBtn = document.getElementById('loginBtn');
-            loginBtn.disabled = true;
-            loginBtn.textContent = 'Вход...';
-
-            const fd = new FormData();
-            fd.append('username', username);
-            fd.append('password', password);
-
-            try {
-                const r = await fetch(`${SERVER_URL}/login`, {
-                    method: 'POST',
-                    body: fd,
-                    credentials: 'include'
-                });
-
-                if (r.ok) {
-                    const d = await r.json();
-                    if (d.status === 'success') {
-                        await fetchMeAndStatus();
-                        document.getElementById('loginForm').style.display='none';
-                        initApp();
-                       // loadMarkers();
-                    } else {
-                        alert(d.message || 'Неверные учетные данные');
-                    }
-                } else {
-                    const errorText = await r.text();
-                    alert(`Ошибка входа: Сервер ответил со статусом ${r.status}. ${errorText.substring(0, 50)}...`);
-                }
-
-            } catch (e) {
-                console.error("Ошибка сети или недоступность сервера:", e);
-                alert('❌ Ошибка: Сервер недоступен. Проверьте подключение или адрес.');
-            } finally {
-                loginBtn.disabled = false;
-                loginBtn.textContent = 'Войти';
-            }
+              document.getElementById('loginForm').style.display='none';
+              initApp();
 
         }
 
