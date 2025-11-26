@@ -1010,20 +1010,26 @@ async function fetchWithAuth(url, options={}) {
 
 
 
-        function updateUsernameDisplay(){
-            const el = document.getElementById('telegramUsername');
-            let displayUsername = telegramUsername;
-            if (isAdmin) {
-                displayUsername = (displayUsername || "Admin") + "_admin";
-            }
-            if(displayUsername){
-                let finalDisplay = displayUsername.startsWith("@") ? displayUsername : "@" + displayUsername;
-                el.textContent = finalDisplay;
-                el.style.display='block';
-            } else {
-                el.style.display='none';
-            }
-        }
+function updateUsernameDisplay() {
+    const el = document.getElementById('telegramUsername');
+
+    let displayUsername = currentUsername;
+
+    if (isAdmin) {
+        displayUsername = (displayUsername || "Admin") + "_admin";
+    }
+
+    if (displayUsername) {
+        const finalDisplay = displayUsername.startsWith("@")
+            ? displayUsername
+            : "@" + displayUsername;
+
+        el.textContent = finalDisplay;
+        el.style.display = 'block';
+    } else {
+        el.style.display = 'none';
+    }
+}
         function updateAdminPanelVisibility() {
             const adminPanelBtn = document.getElementById('adminPanelBtn');
             if (adminPanelBtn) {
@@ -1037,26 +1043,40 @@ async function fetchMeAndStatus() {
     const connectionText = document.getElementById("connectionText");
 
     try {
-        const r = await fetchWithAuth(`/me`);
+        const r = await fetchWithAuth(`${SERVER_URL}/me`);
         const d = await r.json();
 
         if (d.status === "success" && d.user) {
             connectionDot.style.background = "#28a745";
-            connectionText.textContent = `Подключено: ${d.user.username}`;
-            telegramUsername = d.user.username;
-            isAdmin = d.user.role === "admin";
+            connectionText.textContent = "Подключено";
+
+            currentUsername = d.user.username;  // <-- ВАЖНО!
+            isAdmin = d.user.role === 'admin';
+
             updateUsernameDisplay();
             updateAdminPanelVisibility();
         } else {
             connectionDot.style.background = "#d9534f";
             connectionText.textContent = "Не авторизован";
+
+            currentUsername = null;
+            isAdmin = false;
+
+            updateUsernameDisplay();
+            updateAdminPanelVisibility();
         }
     } catch (e) {
         connectionDot.style.background = "#d9534f";
         connectionText.textContent = "Нет соединения";
-        console.error(e);
+
+        currentUsername = null;
+        isAdmin = false;
+
+        updateUsernameDisplay();
+        updateAdminPanelVisibility();
     }
 }
+
 
 
 
