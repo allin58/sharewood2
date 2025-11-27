@@ -1041,28 +1041,29 @@ html, body {
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <script>
-        // =========================================================
-        // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
-        // =========================================================
-        const SERVER_URL = "http://localhost:5000";
+// =========================================================
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// =========================================================
+const SERVER_URL = "http://localhost:5000"; // Базовый URL бэкенд-сервера
 
-        let isAdmin = false;
-        let appInitialized = false;
-        const params = new URLSearchParams(window.location.search);
-        let currentEntryId = null;
-        let selectedFiles = [];
-        let existingPhotos = [];
-        let markersMap = {};
-        let currentCenter = {lat: 54.1032, lon: 28.3186};
+let isAdmin = false; // Флаг, указывающий, является ли текущий пользователь администратором
+let appInitialized = false; // Флаг, указывающий, была ли инициализирована основная логика приложения
+const params = new URLSearchParams(window.location.search); // Объект для работы с параметрами URL
+let currentEntryId = null; // ID текущей записи, с которой работает пользователь
+let selectedFiles = []; // Массив для хранения выбранных пользователем файлов (например, для загрузки)
+let existingPhotos = []; // Массив для хранения данных о существующих фотографиях, связанных с записью
+let markersMap = {}; // Объект-карта для хранения меток на карте по их ID
+let currentCenter = {lat: 54.1032, lon: 28.3186}; // Координаты центра карты по умолчанию
 
-        const COPY_SYMBOL = '📋';
-        const COPIED_SYMBOL = '✔️';
+const COPY_SYMBOL = '📋'; // Символ для кнопки "Копировать"
+const COPIED_SYMBOL = '✔️'; // Символ для кнопки после успешного копирования
 
-
-
+// ---
+// Функция для получения текущего географического местоположения пользователя
+// Использует Web Geolocation API
+// ---
 function getLocation(successCallback, errorCallback) {
-
-    // --- 1. Проверка доступности Web Geolocation API ---
+    // 1. Проверка доступности Web Geolocation API
     if (!navigator.geolocation) {
         const errorMessage = 'Geolocation is not supported by this browser/device.';
         console.error(errorMessage);
@@ -1072,7 +1073,7 @@ function getLocation(successCallback, errorCallback) {
 
     console.log('Initiating standard Web Geolocation request.');
 
-    // --- 2. Запрос местоположения (getCurrentPosition) ---
+    // 2. Запрос местоположения (getCurrentPosition)
     navigator.geolocation.getCurrentPosition(
         // Успех (Success Callback)
         (position) => {
@@ -1082,17 +1083,16 @@ function getLocation(successCallback, errorCallback) {
             // Передаем данные в callback
             successCallback({ latitude: lat, longitude: lon });
         },
-
         // Ошибка (Error Callback)
         (error) => {
             let errorMessage = 'Geolocation error.';
             switch (error.code) {
                 case error.PERMISSION_DENIED:
-                    // Код 1: Пользователь отказал в разрешении (наиболее частая ошибка)
+                    // Код 1: Пользователь отказал в разрешении
                     errorMessage = 'Permission Denied: User blocked location access.';
                     break;
                 case error.POSITION_UNAVAILABLE:
-                    // Код 2: Местоположение недоступно (например, нет GPS или Wi-Fi)
+                    // Код 2: Местоположение недоступно
                     errorMessage = 'Position Unavailable: Location information could not be determined.';
                     break;
                 case error.TIMEOUT:
@@ -1106,74 +1106,81 @@ function getLocation(successCallback, errorCallback) {
             console.error(`Geolocation Error (${error.code}): ${errorMessage}`);
             errorCallback(errorMessage);
         },
-
         // Опции (Options)
         {
-            // enableHighAccuracy: Требует максимально возможной точности (использует GPS на мобильных)
-            enableHighAccuracy: true,
-            // timeout: Максимальное время (в мс) ожидания успешного ответа
-            timeout: 15000,
-            // maximumAge: Максимальное время (в мс), в течение которого можно использовать кэшированные данные. 0 означает, что нужны новые данные.
-            maximumAge: 0
+            enableHighAccuracy: true, // Требовать максимально возможной точности
+            timeout: 15000, // Максимальное время ожидания (15 секунд)
+            maximumAge: 0 // Не использовать кэшированные данные, запрашивать новые
         }
     );
 }
 
-
+// ---
+// Обертка над стандартным fetch для автоматического добавления токена авторизации
+// из localStorage и включения куки-сессии
+// ---
 async function fetchWithAuth(url, options = {}) {
     options = options || {};
-    options.credentials = 'include'; // если нужна cookie-сессия
+    options.credentials = 'include'; // Включение куки для сессии
     options.headers = options.headers || {};
 
-    const token = localStorage.getItem("userToken"); // берём токен прямо из localStorage
+    const token = localStorage.getItem("userToken"); // Получение токена из localStorage
     if (token) {
-        options.headers['Authorization'] = `Bearer ${token}`;
+        options.headers['Authorization'] = `Bearer ${token}`; // Добавление заголовка авторизации
     }
 
     return fetch(url, options);
 }
 
-
-
-
+// ---
+// Обновление отображения имени пользователя (логина Telegram) в интерфейсе
+// Добавляет суффикс "_admin", если пользователь имеет права администратора
+// ---
 function updateUsernameDisplay() {
     const el = document.getElementById('telegramUsername');
 
     let displayUsername = currentUsername;
 
     if (isAdmin) {
-        displayUsername = (displayUsername || "Admin") + "_admin";
+        displayUsername = (displayUsername || "Admin") + "_admin"; // Добавление суффикса для админа
     }
 
     if (displayUsername) {
         const finalDisplay = displayUsername.startsWith("@")
             ? displayUsername
-            : "@" + displayUsername;
+            : "@" + displayUsername; // Добавление символа '@'
 
         el.textContent = finalDisplay;
-        el.style.display = 'block';
+        el.style.display = 'block'; // Показать элемент
     } else {
-        el.style.display = 'none';
+        el.style.display = 'none'; // Скрыть элемент, если имя не определено
     }
 }
-        function updateAdminPanelVisibility() {
-            const adminPanelBtn = document.getElementById('adminPanelBtn');
-            if (adminPanelBtn) {
-                adminPanelBtn.style.display = isAdmin ? 'block' : 'none';
-            }
-        }
 
+// ---
+// Управление видимостью кнопки или панели администратора в зависимости от флага isAdmin
+// ---
+function updateAdminPanelVisibility() {
+    const adminPanelBtn = document.getElementById('adminPanelBtn');
+    if (adminPanelBtn) {
+        adminPanelBtn.style.display = isAdmin ? 'block' : 'none'; // Показать только для админов
+    }
+}
 
+// ---
+// Запрос информации о текущем пользователе и обновление статуса подключения/авторизации
+// ---
 async function fetchMeAndStatus() {
     const connectionDot = document.getElementById("connectionDot");
     const connectionText = document.getElementById("connectionText");
 
     try {
-        const r = await fetchWithAuth(`${SERVER_URL}/me`);
+        const r = await fetchWithAuth(`${SERVER_URL}/me`); // Запрос данных пользователя
         const d = await r.json();
 
         if (d.status === "success") {
-            connectionDot.style.background = "#28a745";
+            // Успешная авторизация
+            connectionDot.style.background = "#28a745"; // Зеленый цвет
             connectionText.textContent = "Подключено";
 
             currentUsername = d.user.telegram_username;
@@ -1182,7 +1189,8 @@ async function fetchMeAndStatus() {
             updateUsernameDisplay();
             updateAdminPanelVisibility();
         } else {
-            connectionDot.style.background = "#d9534f";
+            // Ошибка авторизации или нет данных
+            connectionDot.style.background = "#d9534f"; // Красный цвет
             connectionText.textContent = "Не авторизован";
 
             currentUsername = null;
@@ -1192,7 +1200,8 @@ async function fetchMeAndStatus() {
             updateAdminPanelVisibility();
         }
     } catch (e) {
-        connectionDot.style.background = "#d9534f";
+        // Ошибка соединения с сервером
+        connectionDot.style.background = "#d9534f"; // Красный цвет
         connectionText.textContent = "Нет соединения";
 
         currentUsername = null;
@@ -1203,231 +1212,257 @@ async function fetchMeAndStatus() {
     }
 }
 
+// ---
+// Функция для сжатия изображения перед загрузкой (уменьшение размера и конвертация в JPEG)
+// Возвращает Promise с новым объектом File (сжатым)
+// ---
+function compressImage(file, quality = 0.6, maxWidth = 800) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file); // Чтение файла как Data URL
 
-        function compressImage(file, quality = 0.6, maxWidth = 800) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = event => {
-                    const img = new Image();
-                    img.src = event.target.result;
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
 
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
 
-                        if (width > maxWidth) {
-                            height *= maxWidth / width;
-                            width = maxWidth;
-                        }
+                // Масштабирование, если ширина превышает maxWidth
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
 
-                        canvas.width = width;
-                        canvas.height = height;
+                canvas.width = width;
+                canvas.height = height;
 
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height); // Отрисовка сжатого изображения
 
-                        canvas.toBlob(blob => {
-                            if (blob) {
-                                const compressedFile = new File([blob], file.name.replace(/\.(png|gif)$/i, '.jpeg'), {
-                                    type: 'image/jpeg',
-                                    lastModified: Date.now()
-                                });
-                                resolve(compressedFile);
-                            } else {
-                                reject(new Error('Canvas to Blob failed'));
-                            }
-                        }, 'image/jpeg', quality);
-                    };
+                // Получение Blob из Canvas в формате JPEG с заданной компрессией
+                canvas.toBlob(blob => {
+                    if (blob) {
+                        // Создание нового объекта File
+                        const compressedFile = new File([blob], file.name.replace(/\.(png|gif)$/i, '.jpeg'), {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    } else {
+                        reject(new Error('Canvas to Blob failed'));
+                    }
+                }, 'image/jpeg', quality);
+            };
 
-                    img.onerror = error => reject(error);
-                };
-                reader.onerror = error => reject(error);
-            });
-        }
-
-        // =========================================================
-        // ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
-        // =========================================================
-        function initApp(){
-            if(appInitialized) return;
-            appInitialized = true;
-
-            // --- HTML ЭЛЕМЕНТЫ ---
-            const popupWindow = document.getElementById('popupWindow');
-            const popupClose = document.getElementById('popupClose');
-            const noteInput = document.getElementById('noteInput');
-            const breedInput = document.getElementById('breedInput');
-            const pointObjectSelect = document.getElementById('pointObjectSelect');
-            const markerColorSelect = document.getElementById('markerColor');
-            const photoInput = document.getElementById('photoInput');
-            const photoList = document.getElementById('photoList');
-            const saveBtn = document.getElementById('saveBtn');
-            const deleteBtn = document.getElementById('deleteBtn');
-            const spinner = document.getElementById('spinner');
-            const photoModal = document.getElementById('photoModal');
-            const closePhotoModal = document.getElementById('closePhotoModal');
-            const newPointBtn = document.getElementById('newPointBtn');
-            const coordBtn = document.getElementById('coordBtn');
-            const popupCoords = document.getElementById('popupCoords');
-            const copyCoordsBtn = document.getElementById('copyCoordsBtn');
-            const crosshair = document.getElementById('crosshair');
-            const adminPanelBtn = document.getElementById('adminPanelBtn');
-            const adminPanelWindow = document.getElementById('adminPanelWindow');
-            const adminPanelClose = document.getElementById('adminPanelClose');
-            const adminTabButtons = document.querySelectorAll('.adminTabButton');
-            const usersTableBody = document.querySelector('#usersTable tbody');
-            const createUserBtn = document.getElementById('createUserBtn');
-            const userEditModal = document.getElementById('userEditModal');
-            const userEditModalClose = document.getElementById('userEditModalClose');
-            const userEditTitle = document.getElementById('userEditTitle');
-            const saveUserBtn = document.getElementById('saveUserBtn');
-            const editUserId = document.getElementById('editUserId');
-            const editFullName = document.getElementById('editFullName');
-            const editRole = document.getElementById('editRole');
-            const editTelegramId = document.getElementById('editTelegramId');
-            const editPhone = document.getElementById('editPhone');
-            const editAdditionalInfo = document.getElementById('editAdditionalInfo');
-            const newAccountFields = document.getElementById('newAccountFields');
-            const optionalInfoFields = document.getElementById('optionalInfoFields');
-            const deleteUserBtn = document.getElementById('deleteUserBtn');
-            const objectsTableBody = document.querySelector('#objectsTable tbody');
-            const createObjectBtn = document.getElementById('createObjectBtn');
-            const objectEditModal = document.getElementById('objectEditModal');
-            const objectEditModalClose = document.getElementById('objectEditModalClose');
-            const objectEditTitle = document.getElementById('objectEditTitle');
-            const saveObjectBtn = document.getElementById('saveObjectBtn');
-            const deleteObjectBtn = document.getElementById('deleteObjectBtn');
-            const editObjectId = document.getElementById('editObjectId');
-            const editObjectName = document.getElementById('editObjectName');
-            const editObjectInfo = document.getElementById('editObjectInfo');
-            const assignmentWrap = document.getElementById('assignmentWrap');
-            const assignmentTable = document.getElementById('assignment-table');
-            let currentAssignments = new Set();
-
-            const photoImage = document.getElementById('photoImage');
-            const doodleCanvas = document.getElementById('doodleCanvas');
-            const startDoodleBtn = document.getElementById('startDoodle');
-            const saveDoodleBtn = document.getElementById('saveDoodle');
-            const cancelDoodleBtn = document.getElementById('cancelDoodle');
-
-let currentEditingImg = null;
-let ctx, drawing = false;
-
-// Активируем режим дудла
-startDoodleBtn.onclick = () => {
-    // Настроим canvas по размеру фото
-    doodleCanvas.width = photoImage.clientWidth;
-    doodleCanvas.height = photoImage.clientHeight;
-    doodleCanvas.style.display = 'block';
-
-    ctx = doodleCanvas.getContext('2d');
-    ctx.strokeStyle = "red";   // Цвет рисования
-    ctx.lineWidth = 3;         // Толщина линии
-
-    startDoodleBtn.style.display = 'none';
-    saveDoodleBtn.style.display = 'inline-block';
-    cancelDoodleBtn.style.display = 'inline-block';
-
-    // Слушаем рисование
-    doodleCanvas.onmousedown = (e) => { drawing = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); };
-    doodleCanvas.onmousemove = (e) => { if (drawing) { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); }};
-    doodleCanvas.onmouseup = () => drawing = false;
-    doodleCanvas.onmouseleave = () => drawing = false;
-
-
-// --- 📱 Обработчики для Касания (Новый код) ---
-
-    // Вспомогательная функция для получения координат касания
-    const getTouchPos = (e) => {
-        // e.touches[0] - это первое касание
-        const rect = doodleCanvas.getBoundingClientRect();
-        return {
-            x: e.touches[0].clientX - rect.left,
-            y: e.touches[0].clientY - rect.top
+            img.onerror = error => reject(error);
         };
+        reader.onerror = error => reject(error);
+    });
+}
+
+// =========================================================
+// ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
+// =========================================================
+function initApp() {
+    if (appInitialized) return; // Защита от повторной инициализации
+    appInitialized = true;
+
+    // --- HTML ЭЛЕМЕНТЫ: Основные элементы управления ---
+    const popupWindow = document.getElementById('popupWindow'); // Модальное окно для редактирования точки
+    const popupClose = document.getElementById('popupClose'); // Кнопка закрытия модального окна точки
+    const noteInput = document.getElementById('noteInput'); // Поле ввода заметки
+    const breedInput = document.getElementById('breedInput'); // Поле ввода породы (или аналог)
+    const pointObjectSelect = document.getElementById('pointObjectSelect'); // Выпадающий список объектов
+    const markerColorSelect = document.getElementById('markerColor'); // Выбор цвета маркера
+    const photoInput = document.getElementById('photoInput'); // Поле для загрузки файлов
+    const photoList = document.getElementById('photoList'); // Контейнер для превью фотографий
+    const saveBtn = document.getElementById('saveBtn'); // Кнопка сохранения записи
+    const deleteBtn = document.getElementById('deleteBtn'); // Кнопка удаления записи
+    const spinner = document.getElementById('spinner'); // Индикатор загрузки/спиннер
+    const photoModal = document.getElementById('photoModal'); // Модальное окно для просмотра/редактирования фото
+    const closePhotoModal = document.getElementById('closePhotoModal'); // Кнопка закрытия модального окна фото
+    const newPointBtn = document.getElementById('newPointBtn'); // Кнопка создания новой точки
+    const coordBtn = document.getElementById('coordBtn'); // Кнопка получения текущих координат
+    const popupCoords = document.getElementById('popupCoords'); // Элемент для отображения координат в попапе
+    const copyCoordsBtn = document.getElementById('copyCoordsBtn'); // Кнопка копирования координат
+    const crosshair = document.getElementById('crosshair'); // Прицел (для режима выбора точки на карте)
+
+    // --- HTML ЭЛЕМЕНТЫ: Панель администратора ---
+    const adminPanelBtn = document.getElementById('adminPanelBtn'); // Кнопка открытия панели админа
+    const adminPanelWindow = document.getElementById('adminPanelWindow'); // Окно панели админа
+    const adminPanelClose = document.getElementById('adminPanelClose'); // Кнопка закрытия панели админа
+    const adminTabButtons = document.querySelectorAll('.adminTabButton'); // Кнопки вкладок в панели админа
+
+    // --- HTML ЭЛЕМЕНТЫ: Управление пользователями ---
+    const usersTableBody = document.querySelector('#usersTable tbody'); // Тело таблицы пользователей
+    const createUserBtn = document.getElementById('createUserBtn'); // Кнопка создания нового пользователя
+    const userEditModal = document.getElementById('userEditModal'); // Модальное окно редактирования пользователя
+    const userEditModalClose = document.getElementById('userEditModalClose'); // Закрытие модального окна пользователя
+    const userEditTitle = document.getElementById('userEditTitle'); // Заголовок модального окна пользователя
+    const saveUserBtn = document.getElementById('saveUserBtn'); // Кнопка сохранения данных пользователя
+    const editUserId = document.getElementById('editUserId'); // Скрытое поле ID пользователя
+    const editFullName = document.getElementById('editFullName'); // Поле ФИО
+    const editRole = document.getElementById('editRole'); // Поле Роли (admin/user)
+    const editTelegramId = document.getElementById('editTelegramId'); // Поле Telegram ID
+    const editPhone = document.getElementById('editPhone'); // Поле Телефона
+    const editAdditionalInfo = document.getElementById('editAdditionalInfo'); // Поле Дополнительной информации
+    const newAccountFields = document.getElementById('newAccountFields'); // Контейнер полей для нового аккаунта
+    const optionalInfoFields = document.getElementById('optionalInfoFields'); // Контейнер опциональных полей
+    const deleteUserBtn = document.getElementById('deleteUserBtn'); // Кнопка удаления пользователя
+
+    // --- HTML ЭЛЕМЕНТЫ: Управление объектами ---
+    const objectsTableBody = document.querySelector('#objectsTable tbody'); // Тело таблицы объектов
+    const createObjectBtn = document.getElementById('createObjectBtn'); // Кнопка создания нового объекта
+    const objectEditModal = document.getElementById('objectEditModal'); // Модальное окно редактирования объекта
+    const objectEditModalClose = document.getElementById('objectEditModalClose'); // Закрытие модального окна объекта
+    const objectEditTitle = document.getElementById('objectEditTitle'); // Заголовок модального окна объекта
+    const saveObjectBtn = document.getElementById('saveObjectBtn'); // Кнопка сохранения данных объекта
+    const deleteObjectBtn = document.getElementById('deleteObjectBtn'); // Кнопка удаления объекта
+    const editObjectId = document.getElementById('editObjectId'); // Скрытое поле ID объекта
+    const editObjectName = document.getElementById('editObjectName'); // Поле Имени объекта
+    const editObjectInfo = document.getElementById('editObjectInfo'); // Поле Информации об объекте
+    const assignmentWrap = document.getElementById('assignmentWrap'); // Обертка для секции назначения
+    const assignmentTable = document.getElementById('assignment-table'); // Таблица назначений (кому доступен объект)
+    let currentAssignments = new Set(); // Set для отслеживания текущих назначений объекта пользователям
+
+    // --- HTML ЭЛЕМЕНТЫ: Редактирование фото (Doodle) ---
+    const photoImage = document.getElementById('photoImage'); // Элемент IMG с редактируемым фото
+    const doodleCanvas = document.getElementById('doodleCanvas'); // Canvas для рисования поверх фото
+    const startDoodleBtn = document.getElementById('startDoodle'); // Кнопка "Начать рисование"
+    const saveDoodleBtn = document.getElementById('saveDoodle'); // Кнопка "Сохранить рисунок"
+    const cancelDoodleBtn = document.getElementById('cancelDoodle'); // Кнопка "Отменить рисование"
+
+    // --- Переменные для режима рисования ---
+    let currentEditingImg = null; // Ссылка на текущую миниатюру (DOM-элемент), которую редактируем
+    let ctx, drawing = false; // Контекст Canvas и флаг состояния рисования
+
+    // --- Активация режима рисования (Doodle) ---
+    startDoodleBtn.onclick = () => {
+        // Настройка Canvas по размеру отображаемого фото
+        doodleCanvas.width = photoImage.clientWidth;
+        doodleCanvas.height = photoImage.clientHeight;
+        doodleCanvas.style.display = 'block';
+
+        ctx = doodleCanvas.getContext('2d');
+        ctx.strokeStyle = "red";   // Цвет рисования
+        ctx.lineWidth = 3;         // Толщина линии
+
+        // Скрытие/Отображение кнопок управления
+        startDoodleBtn.style.display = 'none';
+        saveDoodleBtn.style.display = 'inline-block';
+        cancelDoodleBtn.style.display = 'inline-block';
+
+        // --- Обработчики для Мыши (Desktop) ---
+        doodleCanvas.onmousedown = (e) => {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        };
+        doodleCanvas.onmousemove = (e) => {
+            if (drawing) {
+                ctx.lineTo(e.offsetX, e.offsetY);
+                ctx.stroke();
+            }
+        };
+        doodleCanvas.onmouseup = () => drawing = false;
+        doodleCanvas.onmouseleave = () => drawing = false;
+
+
+        // --- Обработчики для Касания (Mobile/Touch devices) ---
+
+        // Вспомогательная функция для получения координат касания
+        const getTouchPos = (e) => {
+            // e.touches[0] - это первое касание
+            const rect = doodleCanvas.getBoundingClientRect();
+            return {
+                x: e.touches[0].clientX - rect.left,
+                y: e.touches[0].clientY - rect.top
+            };
+        };
+
+        doodleCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Предотвращаем прокрутку страницы
+            const pos = getTouchPos(e);
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }, { passive: false }); // { passive: false } необходим для работы preventDefault
+
+        doodleCanvas.addEventListener('touchmove', (e) => {
+            if (drawing) {
+                const pos = getTouchPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+        });
+
+        doodleCanvas.addEventListener('touchend', () => {
+            drawing = false;
+        });
+
+        doodleCanvas.addEventListener('touchcancel', () => {
+            drawing = false;
+        });
     };
 
-    doodleCanvas.addEventListener('touchstart', (e) => {
-        // Предотвращаем прокрутку страницы во время рисования
-        e.preventDefault();
+    // --- Сохранение с рисунком ---
+    saveDoodleBtn.onclick = () => {
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = doodleCanvas.width;
+        finalCanvas.height = doodleCanvas.height;
+        const ctx = finalCanvas.getContext('2d');
 
-        const pos = getTouchPos(e);
-        drawing = true;
-        ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
-    }, { passive: false }); // { passive: false } важен для preventDefault
+        // Рисование оригинала, затем рисунка (комбинирование слоев)
+        ctx.drawImage(photoImage, 0, 0, finalCanvas.width, finalCanvas.height);
+        ctx.drawImage(doodleCanvas, 0, 0);
 
-    doodleCanvas.addEventListener('touchmove', (e) => {
-        if (drawing) {
-            const pos = getTouchPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        }
-    });
+        const dataUrl = finalCanvas.toDataURL('image/png');
 
-    doodleCanvas.addEventListener('touchend', () => {
-        drawing = false;
-    });
+        // Замена исходного фото в списке на новую Data URL
+        replacePhotoInList(currentEditingImg, dataUrl); // Предполагается, что эта функция существует
+        resetDoodleCanvas();
+        photoModal.style.display = 'none'; // Закрытие модального окна
+    };
 
-    doodleCanvas.addEventListener('touchcancel', () => {
-        drawing = false;
-    });
+    // --- Сброс режима рисования ---
+    function resetDoodleCanvas() {
+        doodleCanvas.style.display = 'none';
+        // Очистка Canvas
+        doodleCanvas.getContext('2d').clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
 
- ////////////////////////////////////////////////////////
-};
+        // Восстановление состояния кнопок
+        startDoodleBtn.style.display = 'inline-block';
+        saveDoodleBtn.style.display = 'none';
+        cancelDoodleBtn.style.display = 'none';
 
-// Сохранение с рисунком
-saveDoodleBtn.onclick = () => {
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = doodleCanvas.width;
-    finalCanvas.height = doodleCanvas.height;
-    const ctx = finalCanvas.getContext('2d');
+        currentEditingImg = null; // Сброс ссылки на редактируемую миниатюру
+    }
 
-    // Слоями: оригинал + дудл
-    ctx.drawImage(photoImage, 0, 0, finalCanvas.width, finalCanvas.height);
-    ctx.drawImage(doodleCanvas, 0, 0);
+    // --- Отмена рисования ---
+    cancelDoodleBtn.onclick = resetDoodleCanvas;
 
-    const dataUrl = finalCanvas.toDataURL('image/png');
-
-    // Практически раньше мы делали только replace в DOM, а надо ещё преобразовать в File 👇
-    replacePhotoInList(currentEditingImg, dataUrl);
-    resetDoodleCanvas();
-    photoModal.style.display = 'none';
-};
-
-function resetDoodleCanvas() {
-    doodleCanvas.style.display = 'none';
-    doodleCanvas.getContext('2d').clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
-
-    startDoodleBtn.style.display = 'inline-block';
-    saveDoodleBtn.style.display = 'none';
-    cancelDoodleBtn.style.display = 'none';
-
-    currentEditingImg = null; // сбрасываем текущую редактируемую миниатюру
-}
-
-
-// Отменить
-cancelDoodleBtn.onclick = resetDoodle;
-
+// --- Сброс режима рисования (Doodle) ---
+// Функция, которая делает то же самое, что и resetDoodleCanvas, но вызывается по кнопке "Отмена"
 function resetDoodle() {
     doodleCanvas.style.display = 'none';
+    // Очистка Canvas
     doodleCanvas.getContext('2d').clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
 
+    // Восстановление состояния кнопок
     startDoodleBtn.style.display = 'inline-block';
     saveDoodleBtn.style.display = 'none';
     cancelDoodleBtn.style.display = 'none';
 }
 
-
-// --- 1. ФУНКЦИЯ ЗАГРУЗКИ ДАННЫХ (Вызывается при switchAdminTab) ---
-
+// --- 1. ФУНКЦИЯ ЗАГРУЗКИ ДАННЫХ НАЗНАЧЕНИЙ (Вызывается при переключении на вкладку Админа) ---
 async function loadAssignmentData() {
     try {
         const table = document.getElementById('assignment-table');
         if (table) {
+            // Установка временного сообщения о загрузке
             table.innerHTML = '<tbody><tr><td colspan="100">Загрузка данных...</td></tr></tbody>';
         }
 
@@ -1437,9 +1472,10 @@ async function loadAssignmentData() {
         console.log("Assignments data:", data);
 
         if (!data.users || !data.objects) {
-            throw new Error("Некорректные данные от сервера");
+            throw new Error("Некорректные данные от сервера (отсутствуют 'users' или 'objects').");
         }
 
+        // Сохранение текущих назначений в Set для быстрого доступа
         currentAssignments = new Set(data.assignments || []);
 
         renderAssignmentTable(data.users, data.objects, currentAssignments);
@@ -1453,29 +1489,31 @@ async function loadAssignmentData() {
     }
 }
 
-// --- 2. ФУНКЦИЯ ОТРЕСОВКИ ТАБЛИЦЫ ---
+// --- 2. ФУНКЦИЯ ОТРЕСОВКИ ТАБЛИЦЫ НАЗНАЧЕНИЙ ---
 function renderAssignmentTable(users, objects, assignments) {
     const table = document.getElementById('assignment-table');
     if (!table) return;
 
-    let html = "<thead><tr><th>Пользователь</th>";
+    // --- Формирование заголовка таблицы (Шапка) ---
+    let html = "<thead id='headerRow'><tr><th>Пользователь</th>"; // Добавляем id для дальнейшей работы с подсветкой
     objects.forEach(obj => {
-        html += `<th>${obj.name}</th>`;
+        html += `<th>${obj.name}</th>`; // Имена объектов как столбцы
     });
     html += "</tr></thead><tbody>";
 
+    // --- Формирование тела таблицы ---
     users.forEach(user => {
         const label = user.full_name || user.telegram_username || `User #${user.id}`;
-        html += `<tr data-user="${user.id}"><td>${label}</td>`;
+        html += `<tr data-user="${user.id}"><td>${label}</td>`; // Первый столбец - имя пользователя
 
         objects.forEach(obj => {
-            const key = `${user.id}_${obj.id}`;
-            const active = assignments.has(key);
+            const key = `${user.id}_${obj.id}`; // Ключ для Set
+            const active = assignments.has(key); // Проверка наличия назначения
             html += `<td
                         class="assignCell ${active ? 'assigned' : 'unassigned'}"
                         data-user="${user.id}"
                         data-object="${obj.id}">
-                    </td>`;
+                    </td>`; // Ячейка для переключения назначения
         });
 
         html += "</tr>";
@@ -1484,22 +1522,24 @@ function renderAssignmentTable(users, objects, assignments) {
     html += "</tbody>";
     table.innerHTML = html;
 
-    // Привязываем клики по ячейкам
+    // Привязка обработчиков клика к ячейкам
     const cells = table.querySelectorAll('.assignCell');
     cells.forEach(cell => {
         cell.addEventListener('click', handleAssignmentToggle);
     });
 }
 
-// --- 3. ФУНКЦИЯ ОБРАБОТКИ КЛИКА ---
+// --- 3. ФУНКЦИЯ ОБРАБОТКИ КЛИКА (Переключение назначения) ---
 async function handleAssignmentToggle(event) {
-    const cell = event.currentTarget; // td.assignCell
+    const cell = event.currentTarget; // Получаем элемент <td>
     const userId = cell.dataset.user;
     const objectId = cell.dataset.object;
 
+    // Блокируем ячейку на время запроса, чтобы избежать двойного клика
     cell.style.pointerEvents = 'none';
 
     try {
+        // Отправка запроса на сервер для переключения статуса
         const response = await fetchWithAuth(`${SERVER_URL}/assignments/toggle`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1509,11 +1549,12 @@ async function handleAssignmentToggle(event) {
 
         if (data.status === 'success') {
             const assignmentKey = `${userId}_${objectId}`;
+            // Обновление DOM и локального Set в зависимости от действия сервера
             if (data.action === 'added') {
                 cell.classList.remove('unassigned');
                 cell.classList.add('assigned');
                 currentAssignments.add(assignmentKey);
-            } else {
+            } else { // data.action === 'removed'
                 cell.classList.remove('assigned');
                 cell.classList.add('unassigned');
                 currentAssignments.delete(assignmentKey);
@@ -1525,61 +1566,77 @@ async function handleAssignmentToggle(event) {
         console.error('Ошибка переключения назначения:', error);
         alert('Сбой сети или сервера при изменении назначения.');
     } finally {
+        // Разблокировка ячейки
         cell.style.pointerEvents = 'auto';
     }
 
-    // Обновление маркеров, если нужно
+    // Обновление маркеров на карте, если функция существует
     if (typeof refreshMarkers === 'function') refreshMarkers();
 }
 
-// --- 4. ПОДСВЕТКА СТРОК И СТОЛБЦОВ ---
-//const assignmentTable = document.getElementById('assignment-table');
-//const assignmentWrap = document.getElementById('assignmentWrap');
-const headerRow = document.getElementById('headerRow');
+// --- 4. ПОДСВЕТКА СТРОК И СТОЛБЦОВ при наведении ---
+// headerRow, assignmentTable, assignmentWrap определены ранее в initApp
+const headerRow = document.getElementById('headerRow'); // Получаем элемент шапки
+const assignmentTable = document.getElementById('assignment-table');
+const assignmentWrap = document.getElementById('assignmentWrap');
 
 assignmentTable.addEventListener('mousemove', e => {
+    // Очистка предыдущих подсветок
     assignmentTable.querySelectorAll('.col-hover, .row-hover').forEach(c => c.classList.remove('col-hover', 'row-hover'));
     const cell = e.target.closest('td, th');
     if (!cell) return;
-    const colIndex = cell.cellIndex;
+    const colIndex = cell.cellIndex; // Индекс текущего столбца
     const row = cell.parentElement;
 
-    // Подсветка колонки
+    // Подсветка колонки (кроме первого столбца с пользователями)
     if (colIndex > 0) {
+        // Подсветка ячеек в теле таблицы
         assignmentTable.querySelectorAll('tbody tr').forEach(r => {
             const c = r.children[colIndex];
             if (c) c.classList.add('col-hover');
         });
-        headerRow.children[colIndex].classList.add('col-hover');
+        // Подсветка соответствующего заголовка
+        if (headerRow && headerRow.children[colIndex]) {
+            headerRow.children[colIndex].classList.add('col-hover');
+        }
     }
 
-    // Подсветка строки
+    // Подсветка строки (только для строк тела таблицы)
     if (row.parentElement.tagName === 'TBODY') {
         row.querySelectorAll('td').forEach(c => c.classList.add('row-hover'));
     }
 });
 
+// Убираем подсветку при уходе курсора с таблицы
 assignmentTable.addEventListener('mouseleave', () => {
     assignmentTable.querySelectorAll('.col-hover, .row-hover').forEach(c => c.classList.remove('col-hover', 'row-hover'));
 });
 
-// --- 5. DRAG-SCROLL ---
-let isDown = false, startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
+// --- 5. DRAG-SCROLL (Перетаскивание для прокрутки) ---
+let isDown = false; // Флаг, указывающий, нажата ли кнопка мыши
+let startX = 0, startY = 0; // Начальные координаты курсора
+let scrollLeft = 0, scrollTop = 0; // Начальные позиции прокрутки
+let dragMode = false; // Режим прокрутки ('hor' или 'ver')
 
 assignmentWrap.addEventListener('mousedown', e => {
     const cell = e.target.closest('td, th');
-    if (!cell) return;
-    const row = cell.parentElement;
-
-    if (cell.tagName === 'TH' && row.parentElement.tagName === 'THEAD' && cell.cellIndex > 0) {
-        isDown = 'hor';
-    } else if (cell.tagName === 'TD' && cell.cellIndex === 0) {
-        isDown = 'ver';
-    } else {
+    if (!cell) {
         isDown = false;
         return;
     }
+    const row = cell.parentElement;
 
+    // Определяем режим прокрутки: горизонтальный (шапка объектов) или вертикальный (первый столбец)
+    if (cell.tagName === 'TH' && row.parentElement.tagName === 'THEAD' && cell.cellIndex > 0) {
+        dragMode = 'hor'; // Прокрутка по горизонтали
+    } else if (cell.tagName === 'TD' && cell.cellIndex === 0) {
+        dragMode = 'ver'; // Прокрутка по вертикали
+    } else {
+        dragMode = false;
+        return;
+    }
+
+    isDown = true;
     startX = e.pageX - assignmentWrap.offsetLeft;
     startY = e.pageY - assignmentWrap.offsetTop;
     scrollLeft = assignmentWrap.scrollLeft;
@@ -1587,156 +1644,190 @@ assignmentWrap.addEventListener('mousedown', e => {
     assignmentWrap.style.cursor = 'grabbing';
 });
 
-assignmentWrap.addEventListener('mouseup', () => { isDown = false; assignmentWrap.style.cursor = 'grab'; });
-assignmentWrap.addEventListener('mouseleave', () => { isDown = false; assignmentWrap.style.cursor = 'grab'; });
+// Завершение перетаскивания
+assignmentWrap.addEventListener('mouseup', () => {
+    isDown = false;
+    assignmentWrap.style.cursor = 'grab';
+});
+assignmentWrap.addEventListener('mouseleave', () => {
+    isDown = false;
+    assignmentWrap.style.cursor = 'grab';
+});
+
+// Обработка движения мыши для прокрутки
+assignmentWrap.addEventListener('mousemove', e => {
+    if (!isDown) return;
+    e.preventDefault(); // Предотвращение стандартной прокрутки
+    const x = e.pageX - assignmentWrap.offsetLeft;
+    const y = e.pageY - assignmentWrap.offsetTop;
+
+    // Вычисление и применение прокрутки
+    if (dragMode === 'hor') assignmentWrap.scrollLeft = scrollLeft - (x - startX);
+    if (dragMode === 'ver') assignmentWrap.scrollTop = scrollTop - (y - startY);
+});
+
+// Обработка движения мыши для прокрутки (продолжение из предыдущего фрагмента)
 assignmentWrap.addEventListener('mousemove', e => {
     if (!isDown) return;
     e.preventDefault();
     const x = e.pageX - assignmentWrap.offsetLeft;
     const y = e.pageY - assignmentWrap.offsetTop;
-    if (isDown === 'hor') assignmentWrap.scrollLeft = scrollLeft - (x - startX);
-    if (isDown === 'ver') assignmentWrap.scrollTop = scrollTop - (y - startY);
+
+    // Применение прокрутки: горизонтальная или вертикальная
+    if (dragMode === 'hor') assignmentWrap.scrollLeft = scrollLeft - (x - startX);
+    if (dragMode === 'ver') assignmentWrap.scrollTop = scrollTop - (y - startY);
 });
 
+// ---------------------------------------------------------
+// --- ИНИЦИАЛИЗАЦИЯ КАРТЫ (Leaflet) ---
+// ---------------------------------------------------------
 
+// Получение координат из URL или использование значений по умолчанию
+const defaultLat = parseFloat(params.get("lat")) || 54.1032;
+const defaultLon = parseFloat(params.get("lon")) || 28.3186;
+currentCenter = {lat: defaultLat, lon: defaultLon};
 
+// Создание экземпляра карты Leaflet
+const map = L.map('map', {
+    center: [defaultLat, defaultLon],
+    zoom: 12, // Начальный зум
+    attributionControl: false // Отключение стандартной подписи Leaflet
+});
 
-assignmentWrap.addEventListener('mousedown', e=>{
-    const cell = e.target.closest('td, th');
-    if(!cell) return;
-    const row = cell.parentElement;
+// Добавление тайлового слоя OpenStreetMap
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Определяем режим прокрутки: горизонтальный (шапка объектов) или вертикальный (первый столбец)
-    if(cell.tagName==='TH' && row.parentElement.tagName==='THEAD' && cell.cellIndex>0) {
-        isDown = 'hor';
-    } else if(cell.tagName==='TD' && cell.cellIndex===0) {
-        isDown = 'ver';
-    } else {
-        isDown = false;
-        return;
+// ОБНОВЛЕНИЕ ЦЕНТРА: Обновление глобальной переменной при перемещении карты
+map.on('move', () => {
+    const c = map.getCenter();
+    currentCenter = {lat: c.lat, lon: c.lng};
+});
+
+// СКРЫТИЕ POPUP: Скрытие окна редактирования/создания при клике на карту
+map.on('click', () => {
+    popupWindow.style.display = 'none';
+});
+
+// --- ПЕРИОДИЧЕСКАЯ ПРОВЕРКА СТАТУСА ---
+// Запуск проверки статуса авторизации каждые 60 секунд
+setInterval(fetchMeAndStatus, 60000);
+// Первая немедленная проверка при загрузке
+fetchMeAndStatus();
+
+// =========================================================
+// MAP & MARKER LOGIC
+// =========================================================
+
+// --- Функция для получения иконок маркеров ---
+function getIcon(color) {
+    // URL-адреса для разных цветов из библиотеки leaflet-color-markers
+    const urls = {
+        green: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+        red: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+        blue: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+        yellow: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
+        black: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png'
+    };
+    // Создание объекта иконки Leaflet
+    return L.icon({
+        iconUrl: urls[color] || urls.green, // Использование зеленой иконки по умолчанию
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+}
+
+// --- Добавление отдельного маркера на карту ---
+function addMarkerToMap(entry) {
+    const idStr = String(entry.id);
+    if (markersMap[idStr]) return; // Проверка, чтобы не добавлять маркер повторно
+
+    // Создание маркера с координатами и нужной иконкой
+    const marker = L.marker([entry.lat, entry.lon], {icon: getIcon(entry.color)}).addTo(map);
+    marker.entryId = idStr;
+
+    // Обработчик клика: открывает попап для редактирования
+    marker.on('click', () => handleOpenMarkerPopup(idStr)); // Предполагается, что handleOpenMarkerPopup существует
+
+    // Создание всплывающей подсказки (тултипа)
+    const tooltipContent = `ID метки: ${entry.id}<br>Объект: ${entry.object_name || '—'}`;
+    marker.bindTooltip(tooltipContent, {
+        permanent: false, // Показывается при наведении
+        direction: 'bottom',
+        className: 'marker-tooltip'
+    });
+
+    markersMap[idStr] = marker; // Сохранение маркера в глобальном объекте
+}
+
+// --- Первичная загрузка всех маркеров с сервера ---
+async function loadMarkers() {
+    try {
+        const r = await fetchWithAuth(`${SERVER_URL}/markers`);
+        const d = await r.json();
+        if (d.status === 'success') d.markers.forEach(addMarkerToMap);
+    } catch (err) {
+        console.error('Ошибка при загрузке маркеров', err);
     }
+}
 
-    startX = e.pageX - assignmentWrap.offsetLeft;
-    startY = e.pageY - assignmentWrap.offsetTop;
-    scrollLeft = assignmentWrap.scrollLeft;
-    scrollTop = assignmentWrap.scrollTop;
-    assignmentWrap.style.cursor='grabbing';
-});
+// --- Обновление и синхронизация маркеров с данными сервера ---
+async function refreshMarkers() {
+    try {
+        const r = await fetchWithAuth(`${SERVER_URL}/markers`);
+        let d = {status: 'error', markers: []};
+        try {
+            d = await r.json(); // Попытка парсинга JSON
+        } catch (e) {
+            return; // Если не удалось распарсить (например, пустой ответ)
+        }
+        if (d.status !== 'success') return; // Если сервер вернул ошибку
 
-assignmentWrap.addEventListener('mouseup', ()=>{ isDown=false; assignmentWrap.style.cursor='grab'; });
-assignmentWrap.addEventListener('mouseleave', ()=>{ isDown=false; assignmentWrap.style.cursor='grab'; });
+        const serverIds = new Set(d.markers.map(m => String(m.id))); // ID всех актуальных маркеров с сервера
 
-assignmentWrap.addEventListener('mousemove', e=>{
-    if(!isDown) return;
-    e.preventDefault();
-    const x = e.pageX - assignmentWrap.offsetLeft;
-    const y = e.pageY - assignmentWrap.offsetTop;
-    if(isDown==='hor') assignmentWrap.scrollLeft = scrollLeft - (x - startX);
-    if(isDown==='ver') assignmentWrap.scrollTop  = scrollTop  - (y - startY);
-});
-
-            // --- MAP INIT ---
-            const defaultLat = parseFloat(params.get("lat")) || 54.1032;
-            const defaultLon = parseFloat(params.get("lon")) || 28.3186;
-            currentCenter={lat:defaultLat, lon:defaultLon};
-            const map = L.map('map', { center:[defaultLat, defaultLon], zoom:12, attributionControl:false });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-            // ОБНОВЛЕНИЕ ЦЕНТРА: Обновляем currentCenter при движении карты
-            map.on('move',()=>{
-                const c=map.getCenter();
-                currentCenter={lat:c.lat, lon:c.lng};
-            });
-
-            // СКРЫТИЕ POPUP при клике на карту
-            map.on('click', () => {
-                popupWindow.style.display = 'none';
-            });
-
-            // --- PERIODIC CHECK ---
-            setInterval(fetchMeAndStatus, 60000);
-            fetchMeAndStatus();
-
-            // =========================================================
-            // MAP & MARKER LOGIC
-            // =========================================================
-
-            function getIcon(color) {
-                const urls={green:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                             red:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                             blue:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-                             yellow:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
-                             black:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png'};
-                return L.icon({iconUrl:urls[color]||urls.green, shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                                iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]});
+        // 1. Обновление существующих или добавление новых
+        d.markers.forEach(m => {
+            const idStr = String(m.id);
+            if (markersMap[idStr]) {
+                // Обновление координат и иконки
+                markersMap[idStr].setLatLng([m.lat, m.lon]);
+                markersMap[idStr].setIcon(getIcon(m.color));
+            } else {
+                addMarkerToMap(m); // Добавление нового маркера
             }
+        });
 
-            function addMarkerToMap(entry){
-                const idStr=String(entry.id);
-                if(markersMap[idStr]) return;
-                const marker=L.marker([entry.lat,entry.lon],{icon:getIcon(entry.color)}).addTo(map);
-                marker.entryId=idStr;
-                marker.on('click',()=>handleOpenMarkerPopup(idStr));
-
-            const tooltipContent = `ID метки: ${entry.id}<br>Объект: ${entry.object_name || '—'}`;
-            marker.bindTooltip(tooltipContent, {
-                permanent: false,   // показывается только при наведении
-                direction: 'bottom',   // где появляется относительно маркера
-                className: 'marker-tooltip' // можно использовать кастомный стиль
-            });
-
-
-                markersMap[idStr]=marker;
+        // 2. Удаление устаревших (которых нет на сервере)
+        Object.keys(markersMap).forEach(id => {
+            // Удаляем, если ID нет на сервере И это не текущий редактируемый маркер
+            if (!serverIds.has(id) && id !== String(currentEntryId)) {
+                map.removeLayer(markersMap[id]);
+                delete markersMap[id];
             }
+        });
+    } catch (err) {
+        console.error('Ошибка при обновлении маркеров:', err);
+    }
+}
 
-            async function loadMarkers(){
-                try{
-                    const r = await fetchWithAuth(`${SERVER_URL}/markers`);
-                    const d = await r.json();
-                    if(d.status==='success') d.markers.forEach(addMarkerToMap);
-                }catch(err){ console.error('Ошибка при загрузке маркеров',err);}
-            }
+// --- PHOTO & POPUP UTILITIES ---
 
-            async function refreshMarkers(){
-                try{
-                    const r = await fetchWithAuth(`${SERVER_URL}/markers`);
-                    let d={status:'error', markers:[]};
-                    try{ d = await r.json(); } catch(e){ return; }
-                    if(d.status!=='success') return;
-                    const serverIds=new Set(d.markers.map(m=>String(m.id)));
-
-                    d.markers.forEach(m=>{
-                        const idStr=String(m.id);
-                        if(markersMap[idStr]){
-                            markersMap[idStr].setLatLng([m.lat,m.lon]);
-                            markersMap[idStr].setIcon(getIcon(m.color));
-                        } else addMarkerToMap(m);
-                    });
-
-                    Object.keys(markersMap).forEach(id=>{
-                        if(!serverIds.has(id) && id!==String(currentEntryId)){
-                            map.removeLayer(markersMap[id]);
-                            delete markersMap[id];
-                        }
-                    });
-                }catch(err){console.error(err);}
-            }
-
-            // --- PHOTO & POPUP UTILITIES ---
-
-// В вашем <script>
+// --- Асинхронная загрузка защищенного изображения с сервера ---
 async function fetchProtectedImage(filename) {
     const url = `${SERVER_URL}/photo/${filename}`;
 
     const options = {
         method: 'GET',
-        credentials: 'include', // отправляем куки
+        credentials: 'include', // Включение куки
         headers: {}
     };
 
-    // ⬅️ Добавляем Bearer-токен точно как fetchWithAuth
-    if (USER_TOKEN) {
-        options.headers['Authorization'] = `Bearer ${USER_TOKEN}`;
+    // Получение токена (предполагается, что USER_TOKEN определен в другом месте)
+    const token = localStorage.getItem("userToken");
+    if (token) {
+        options.headers['Authorization'] = `Bearer ${token}`;
     }
 
     try {
@@ -1748,6 +1839,7 @@ async function fetchProtectedImage(filename) {
         }
 
         const blob = await response.blob();
+        // Создание временного URL для отображения Blob-данных
         return URL.createObjectURL(blob);
 
     } catch (e) {
@@ -1756,272 +1848,277 @@ async function fetchProtectedImage(filename) {
     }
 }
 
-
-
+// --- Отрисовка списка фотографий в модальном окне ---
 function renderPhotoList() {
     photoList.innerHTML = '';
 
-    // Комбинируем существующие фото (с сервера) и выбранные новые (локальные файлы)
+    // Объединение фото с сервера (existingPhotos) и новых файлов (selectedFiles)
     const allPhotos = [
         ...existingPhotos.map((p, i) => ({filename: p.filename || p, isExisting: true, index: i})),
         ...selectedFiles.map((f, i) => ({file: f, isExisting: false, index: i}))
     ];
 
     allPhotos.forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'photoItem';
+        const div = document.createElement('div');
+        div.className = 'photoItem';
 
-    let imgUrl;
-    let dataSrc = '';
-    let isExisting = p.isExisting; // true если с сервера, false если локально
-
-    if (isExisting) {
-        imgUrl = ''; // Пока ассинхронная загрузка не завершилась
-        dataSrc = p.filename;
-    } else {
-        imgUrl = URL.createObjectURL(p.file);
-    }
-
-    // Генерируем ID фото (по индексу в соответствующем списке)
-    const photoIndex = p.index;
-
-    div.innerHTML = `
-        <img src="${imgUrl}"
-             data-index="${photoIndex}"
-             data-is-existing="${isExisting}"
-             data-full-src="${imgUrl}">
-        <div class="removePhoto" data-index="${photoIndex}" data-is-existing="${isExisting}">×</div>
-    `;
-
-    photoList.appendChild(div);
-
-    // 🔥 Только для существующих фото — загружаем защищённое содержимое
-    if (isExisting) {
-        const imgElement = div.querySelector('img');
-        fetchProtectedImage(p.filename)
-            .then(localUrl => {
-                if (localUrl) {
-                    imgElement.src = localUrl;
-                    imgElement.setAttribute('data-full-src', localUrl);
-                } else {
-                    imgElement.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x-octagon"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
-                }
-            })
-            .catch(error => console.error("Ошибка при fetchProtectedImage:", error));
-    }
-});
-
-
-    // Обработчики удаления
-photoList.querySelectorAll('.removePhoto').forEach(btn => {
-    btn.onclick = (e) => {
-        e.stopPropagation();
-        const index = parseInt(btn.dataset.index);
-        const isExisting = btn.dataset.isExisting === 'true';
+        let imgUrl;
+        let isExisting = p.isExisting; // Флаг, загружено ли фото с сервера или это локальный файл
 
         if (isExisting) {
-            existingPhotos.splice(index, 1);
+            imgUrl = ''; // Начальная пустая заглушка для фото с сервера
         } else {
-            selectedFiles.splice(index, 1);
+            // Создание локального URL для отображения нового файла
+            imgUrl = URL.createObjectURL(p.file);
         }
 
-        renderPhotoList();
-    };
-});
+        const photoIndex = p.index;
+
+        div.innerHTML = `
+            <img src="${imgUrl}"
+                 data-index="${photoIndex}"
+                 data-is-existing="${isExisting}"
+                 data-full-src="${imgUrl}">
+            <div class="removePhoto" data-index="${photoIndex}" data-is-existing="${isExisting}">×</div>
+        `;
+
+        photoList.appendChild(div);
+
+        // Асинхронная загрузка содержимого для существующих фото (требует авторизации)
+        if (isExisting) {
+            const imgElement = div.querySelector('img');
+            fetchProtectedImage(p.filename)
+                .then(localUrl => {
+                    if (localUrl) {
+                        imgElement.src = localUrl;
+                        imgElement.setAttribute('data-full-src', localUrl); // Сохраняем URL высокого разрешения
+                    } else {
+                        // Отображение иконки ошибки, если загрузка не удалась
+                        imgElement.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x-octagon"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+                    }
+                })
+                .catch(error => console.error("Ошибка при fetchProtectedImage:", error));
+        }
+    });
 
 
-    // Обработчики для модального окна просмотра
-photoList.querySelectorAll('img').forEach(img => {
-    img.onclick = (e) => {
-        e.stopPropagation();
+    // --- Обработчики удаления фото ---
+    photoList.querySelectorAll('.removePhoto').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const index = parseInt(btn.dataset.index);
+            const isExisting = btn.dataset.isExisting === 'true';
 
-        const src = img.getAttribute('data-full-src') || img.src;
-        if (!src || src.startsWith('data:image/svg')) return;
+            // Удаление фото из соответствующего массива
+            if (isExisting) {
+                existingPhotos.splice(index, 1);
+            } else {
+                selectedFiles.splice(index, 1);
+            }
 
-        // Сбрасываем canvas перед открытием новой фото
-        resetDoodleCanvas();
+            renderPhotoList(); // Перерисовка списка
+        };
+    });
 
-        // Сохраняем текущее фото для дудла
-        currentEditingImg = img;
 
-        photoImage.src = src;
-        photoModal.style.display = 'flex';
-    };
-});
+    // --- Обработчики открытия модального окна просмотра/редактирования ---
+    photoList.querySelectorAll('img').forEach(img => {
+        img.onclick = (e) => {
+            e.stopPropagation();
+
+            const src = img.getAttribute('data-full-src') || img.src;
+            // Игнорируем заглушки с ошибками
+            if (!src || src.startsWith('data:image/svg')) return;
+
+            resetDoodleCanvas(); // Сброс режима рисования
+
+            currentEditingImg = img; // Сохранение ссылки на миниатюру для дальнейшего сохранения дудла
+
+            photoImage.src = src;
+            photoModal.style.display = 'flex';
+        };
+    });
 }
 
 
-
+// --- Замена фото в списке после редактирования (Doodle) ---
 function replacePhotoInList(imgElement, dataUrl) {
     const index = parseInt(imgElement.dataset.index);
     const isExisting = imgElement.dataset.isExisting === 'true';
 
-    // Удаляем фото из существующего массива
+    // 1. Удаление старого фото из исходного списка
     if (isExisting) {
         existingPhotos.splice(index, 1);
     } else {
         selectedFiles.splice(index, 1);
     }
 
-    // Добавляем обновлённое фото
-    const newFile = dataURLtoFile(dataUrl, `edited_${Date.now()}.png`);
+    // 2. Добавление обновлённого фото как нового локального файла
+    const newFile = dataURLtoFile(dataUrl, `edited_${Date.now()}.png`); // Преобразование Data URL в File
     selectedFiles.push(newFile);
 
-    // Перерисовываем список
+    // 3. Перерисовка списка
     renderPhotoList();
 }
 
 
-
+// --- Вспомогательная функция: Конвертация Data URL в объект File ---
 function dataURLtoFile(dataurl, filename) {
     const arr = dataurl.split(',');
-    const mime = arr[0].match(/:(.*?);/)[1];
+    const mime = arr[0].match(/:(.*?);/)[1]; // Получение MIME-типа
     const bstr = atob(arr[1]);
     let n = bstr.length;
     const u8arr = new Uint8Array(n);
-    while(n--) u8arr[n] = bstr.charCodeAt(n);
+    // Преобразование строки base64 в Uint8Array
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    // Создание объекта File
     return new File([u8arr], filename, { type: mime });
 }
 
+// Обработка движения мыши для прокрутки (конец)
+assignmentWrap.addEventListener('mousemove', e => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - assignmentWrap.offsetLeft;
+    const y = e.pageY - assignmentWrap.offsetTop;
+    if (dragMode === 'hor') assignmentWrap.scrollLeft = scrollLeft - (x - startX);
+    if (dragMode === 'ver') assignmentWrap.scrollTop = scrollTop - (y - startY);
+});
 
+// =========================================================
+// MARKER POPUP HANDLERS
+// =========================================================
 
-            // =========================================================
-            // MARKER POPUP HANDLERS
-            // =========================================================
+// --- Загрузка списка доступных объектов для выпадающего списка ---
+async function loadObjectOptions() {
+    pointObjectSelect.innerHTML = '<option value="">-- Загрузка объектов... --</option>';
 
-            async function loadObjectOptions() {
-                pointObjectSelect.innerHTML = '<option value="">-- Загрузка объектов... --</option>';
+    try {
+        const r = await fetchWithAuth(`${SERVER_URL}/objects`);
+        const d = await r.json();
 
-                try {
-                    const r = await fetchWithAuth(`${SERVER_URL}/objects`);
-                    const d = await r.json();
+        pointObjectSelect.innerHTML = '<option value="">-- Выберите объект --</option>'; // Установка заголовка по умолчанию
 
-                    pointObjectSelect.innerHTML = '<option value="">-- Выберите объект --</option>';
+        if (d.status === 'success' && d.objects) {
+            d.objects.forEach(obj => {
+                const option = document.createElement('option');
+                option.value = obj.id;
+                option.textContent = obj.name;
+                pointObjectSelect.appendChild(option);
+            });
+        }
+    } catch (e) {
+        console.error('Ошибка при загрузке объектов:', e);
+        pointObjectSelect.innerHTML = '<option value="">-- Ошибка загрузки --</option>';
+    }
+}
 
-                    if (d.status === 'success' && d.objects) {
-                        d.objects.forEach(obj => {
-                            const option = document.createElement('option');
-                            option.value = obj.id;
-                            option.textContent = obj.name;
-                            pointObjectSelect.appendChild(option);
-                        });
-                    }
-                } catch (e) {
-                    console.error('Ошибка при загрузке объектов:', e);
-                    pointObjectSelect.innerHTML = '<option value="">-- Ошибка загрузки --</option>';
+// --- Загрузка данных конкретной метки для редактирования ---
+async function loadMarkerData(pointId) {
+    spinner.style.display = 'block';
+
+    try {
+        const response = await fetchWithAuth(`${SERVER_URL}/marker/${pointId}`);
+        const data = await response.json();
+
+        if (data.status === 'success' && data.marker) {
+            const marker = data.marker;
+            // Отображение координат
+            popupCoords.textContent = `${marker.lat.toFixed(6)}, ${marker.lon.toFixed(6)}`;
+            document.getElementById('popupTitle').textContent = `Метка #${pointId}`;
+            // Заполнение полей
+            noteInput.value = marker.note || '';
+            breedInput.value = marker.breed || '';
+            pointObjectSelect.value = marker.object_id || '';
+            markerColorSelect.value = marker.color || 'green';
+
+            // Обработка данных о существующих фото
+            existingPhotos = (marker.photos || []).map(p => {
+                if (typeof p === 'string') {
+                    return { filename: p }; // Приведение старого формата к объекту
                 }
-            }
+                return p;
+            });
 
-            async function loadMarkerData(pointId) {
-                spinner.style.display = 'block';
+            renderPhotoList(); // Перерисовка списка фото
+            map.setView([marker.lat, marker.lon], map.getZoom()); // Центрирование карты на метке
 
-                try {
-                    const response = await fetchWithAuth(`${SERVER_URL}/marker/${pointId}`);
-                    const data = await response.json();
+            return true;
+        } else {
+            alert(data.message || 'Не удалось загрузить данные метки.');
+            return false;
+        }
+    } catch (e) {
+        alert('Ошибка соединения при загрузке данных метки.');
+        console.error("Load Marker Data Error:", e);
+        return false;
+    } finally {
+        spinner.style.display = 'none';
+    }
+}
 
-                    if (data.status === 'success' && data.marker) {
-                        const marker = data.marker;
-                        popupCoords.textContent = `${marker.lat.toFixed(6)}, ${marker.lon.toFixed(6)}`;
-                        document.getElementById('popupTitle').textContent = `Метка #${pointId}`;
-                        noteInput.value = marker.note || '';
-                        breedInput.value = marker.breed || '';
+// --- Обработчик открытия окна создания/редактирования метки ---
+async function handleOpenMarkerPopup(pointId = null) {
+    // 1. Сброс состояния формы
+    currentEntryId = pointId;
+    selectedFiles = [];
+    existingPhotos = [];
+    document.getElementById('popupTitle').textContent = `Метка #`;
+    noteInput.value = '';
+    breedInput.value = '';
+    markerColorSelect.value = 'green';
+    photoInput.value = '';
+    photoList.innerHTML = '';
+    document.getElementById('copyCoordsBtn').textContent = COPY_SYMBOL;
 
-                        pointObjectSelect.value = marker.object_id || '';
+    // 2. Загрузка опций объектов
+    spinner.style.display = 'block';
+    await loadObjectOptions();
+    spinner.style.display = 'none';
 
-                        markerColorSelect.value = marker.color || 'green';
+    if (pointId) {
+        // РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕЙ ТОЧКИ
+        const success = await loadMarkerData(pointId);
 
-                        // Убеждаемся, что photos - это массив объектов с ключом 'filename'
-                        existingPhotos = (marker.photos || []).map(p => {
-                            if (typeof p === 'string') {
-                                return { filename: p };
-                            }
-                            return p;
-                        });
+        if (!success) {
+            popupWindow.style.display = 'none';
+            return;
+        }
 
-                        renderPhotoList();
+        // Блокировка объекта для существующей метки
+        pointObjectSelect.disabled = true;
+        saveBtn.textContent = 'Обновить метку';
+        deleteBtn.style.display = 'block';
 
-                        map.setView([marker.lat, marker.lon], map.getZoom());
+    } else {
+        // СОЗДАНИЕ НОВОЙ ТОЧКИ
+        const {lat, lon} = currentCenter;
+        popupCoords.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`; // Координаты берутся из центра карты
 
-                        return true;
-                    } else {
-                        alert(data.message || 'Не удалось загрузить данные метки.');
-                        return false;
-                    }
-                } catch(e) {
-                    alert('Ошибка соединения при загрузке данных метки.');
-                    console.error("Load Marker Data Error:", e);
-                    return false;
-                } finally {
-                    spinner.style.display = 'none';
-                }
-            }
+        pointObjectSelect.disabled = false;
+        pointObjectSelect.value = '';
+        saveBtn.textContent = 'Сохранить';
+        deleteBtn.style.display = 'none';
+    }
 
+    popupWindow.style.display = 'block';
+}
 
-            async function handleOpenMarkerPopup(pointId = null) {
-                currentEntryId = pointId;
-                selectedFiles = [];
-                existingPhotos = [];
-                document.getElementById('popupTitle').textContent = `Метка #`;
-                noteInput.value = '';
-                breedInput.value = '';
-                markerColorSelect.value = 'green';
-                photoInput.value = '';
-                photoList.innerHTML = '';
-                document.getElementById('copyCoordsBtn').textContent = COPY_SYMBOL;
-
-                spinner.style.display = 'block';
-                await loadObjectOptions();
-                spinner.style.display = 'none';
-
-                if (pointId) {
-                    // РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕЙ ТОЧКИ
-
-                    const success = await loadMarkerData(pointId);
-
-
-
-
-                    if (!success) {
-                        popupWindow.style.display = 'none';
-                        return;
-                    }
-
-                    pointObjectSelect.disabled = true;
-                    saveBtn.textContent = 'Обновить метку';
-                    deleteBtn.style.display = 'block';
-
-                } else {
-                    // СОЗДАНИЕ НОВОЙ ТОЧКИ
-                    const {lat, lon} = currentCenter;
-                    popupCoords.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-
-                    pointObjectSelect.disabled = false;
-                    pointObjectSelect.value = '';
-                    saveBtn.textContent = 'Сохранить';
-                    deleteBtn.style.display = 'none';
-                }
-
-
-                popupWindow.style.display = 'block';
-
-            }
-
-
-
-
-coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
-    // Вызов функции получения геоданных
+// --- Обработчик для кнопки "Определить координаты" ---
+coordBtn.onclick = () => {
+    // Визуальный индикатор загрузки
     coordBtn.classList.add("loading");
+
+    // Вызов функции получения геоданных (см. начало кода)
     getLocation(
         (location) => {
-            // Успех
+            // Успех: Центрирование карты на полученных координатах
             console.log('Location received:', location);
-            //alert(`Ваше местоположение: ${location.latitude}, ${location.longitude}`);
             map.setView([location.latitude, location.longitude], map.getZoom());
             coordBtn.classList.remove("loading");
         },
         (errorMsg) => {
-            // Ошибка
+            // Ошибка: Уведомление пользователя
             console.error('Location error:', errorMsg);
             alert(`Не удалось получить местоположение: ${errorMsg}`);
             coordBtn.classList.remove("loading");
@@ -2029,24 +2126,15 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
     );
 };
 
+// =========================================================
+// POPUP BUTTON HANDLERS (СОХРАНЕНИЕ / УДАЛЕНИЕ)
+// =========================================================
 
+// --- Кнопка "Новая точка" ---
+newPointBtn.onclick = () => handleOpenMarkerPopup(null);
 
-
-
-
-
-
-            // =========================================================
-            // POPUP BUTTON HANDLERS (УБРАНЫ АЛЕРТЫ УСПЕХА И CONFIRM)
-            // =========================================================
-
-            // Кнопка "Новая точка" сразу открывает форму с координатами центра карты
-            newPointBtn.onclick = () => handleOpenMarkerPopup(null);
-
-
-
-
- saveBtn.onclick = async () => {
+// --- Кнопка "Сохранить/Обновить" ---
+saveBtn.onclick = async () => {
     // 1. Подготовка и UX
     spinner.style.display = 'block';
     saveBtn.disabled = true;
@@ -2054,6 +2142,7 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
     const isNew = currentEntryId === null;
     const selectedObjectId = pointObjectSelect.value;
 
+    // Проверка обязательного поля для новой метки
     if (isNew && !selectedObjectId) {
         alert('Пожалуйста, выберите Объект для новой метки.');
         saveBtn.disabled = false;
@@ -2061,8 +2150,8 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
         return;
     }
 
-    // 2. Сжатие и обработка файлов
-    const compressedFilesPromises = selectedFiles.map(file => compressImage(file));
+    // 2. Сжатие и обработка новых файлов
+    const compressedFilesPromises = selectedFiles.map(file => compressImage(file)); // compressImage должен быть определен
     let compressedFiles = [];
     try {
         compressedFiles = await Promise.all(compressedFilesPromises);
@@ -2084,23 +2173,20 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
 
     fd.append('color', markerColorSelect.value);
 
-    // --- ИСПРАВЛЕННАЯ ЛОГИКА ДЛЯ existing_photos ---
+    // Логика передачи списка существующих фото для сохранения/удаления
     if (!isNew) {
-        // Если метка существует, мы должны отправить список, который должен остаться.
+        const remainingPhotoFilenames = existingPhotos.map(p => p.filename);
 
-        if (existingPhotos.length > 0) {
-            // Если есть фото, которые должны остаться, отправляем их список.
-            fd.append('existing_photos', JSON.stringify(existingPhotos.map(p => p.filename)));
+        if (remainingPhotoFilenames.length > 0) {
+            // Отправляем список фото, которые должны остаться
+            fd.append('existing_photos', JSON.stringify(remainingPhotoFilenames));
         } else {
-            // Если existingPhotos.length === 0, значит, все старые фото были удалены.
-            // Отправляем пустой JSON-массив '[]', чтобы сервер явно удалил все записи.
+            // Если массив пуст, явно указываем серверу удалить все старые фото
             fd.append('existing_photos', '[]');
         }
     }
-    // Если это новая метка (isNew), 'existing_photos' не отправляется вообще.
-    // ----------------------------------------------------
 
-    // Добавление новых файлов
+    // Добавление новых, сжатых файлов
     compressedFiles.forEach(f => fd.append('photos[]', f));
 
     // 4. Добавление координат (только для новой метки)
@@ -2118,12 +2204,13 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
 
     // 5. Отправка запроса
     const url = isNew ? `${SERVER_URL}/upload` : `${SERVER_URL}/marker/${currentEntryId}`;
-    const method = 'POST';
+    const method = 'POST'; // Используем POST для обеих операций (RESTful UPDATE через POST/PUT не всегда поддерживается в Form Data)
 
     try {
         const r = await fetchWithAuth(url, { method: method, body: fd });
 
         if (!r.ok) {
+            // Обработка ошибки HTTP-статуса
             const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
             alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
             return;
@@ -2133,7 +2220,7 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
 
         if (d.status === 'success') {
             popupWindow.style.display = 'none';
-            loadMarkers();
+            loadMarkers(); // Перезагрузка всех маркеров
         } else {
             alert(d.message || 'Ошибка сохранения.');
         }
@@ -2146,95 +2233,110 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
         saveBtn.disabled = false;
     }
 
-    refreshMarkers()
+    refreshMarkers(); // Обновление маркеров (включая изменение иконки/координат, если нужно)
 };
 
-            deleteBtn.onclick = async () => {
-                if (!currentEntryId) return;
+// --- Кнопка "Удалить" ---
+deleteBtn.onclick = async () => {
+    if (!currentEntryId) return; // Проверка, что ID метки существует
 
-                try {
-                    const r = await fetchWithAuth(`${SERVER_URL}/marker/${currentEntryId}`, { method: 'DELETE' });
-                    const d = await r.json();
-                    if (d.status === 'success') {
-                        if (markersMap[currentEntryId]) { map.removeLayer(markersMap[currentEntryId]); delete markersMap[currentEntryId]; }
-                        popupWindow.style.display = 'none';
-                        selectedFiles = [];
-                        existingPhotos = [];
-                    } else alert(d.message);
-                } catch (err) { console.error(err); alert('Ошибка при удалении'); }
-            };
+    // В коде убран confirm, предполагается, что он есть в UI
 
-            // --- GENERAL EVENT HANDLERS (без изменений) ---
-
-            photoInput.addEventListener('change', () => {
-                selectedFiles = Array.from(photoInput.files);
-                renderPhotoList();
-            });
-
-            popupClose.onclick = () => {
-                popupWindow.style.display = 'none';
-                currentEntryId = null;
-            };
-
-            closePhotoModal.onclick = () => photoModal.style.display = 'none';
-
-            copyCoordsBtn.onclick = async () => {
-                const coordsText = popupCoords.textContent;
-                if (coordsText && coordsText !== '—') {
-                    try {
-                        await navigator.clipboard.writeText(coordsText);
-                        copyCoordsBtn.textContent = COPIED_SYMBOL;
-                        setTimeout(() => {
-                            copyCoordsBtn.textContent = COPY_SYMBOL;
-                        }, 1500);
-
-                    } catch (err) {
-                        console.error('Ошибка копирования:', err);
-                        alert(`Не удалось скопировать. Координаты: ${coordsText}`);
-                    }
-                }
-            };
-
-            // --- LOGIN HANDLERS (без изменений) ---
-<!--            document.getElementById('loginBtn').onclick = async () => { await handleBrowserLogin(); };-->
-<!--            document.getElementById('loginUsername').addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleBrowserLogin(); } });-->
-<!--            document.getElementById('loginPassword').addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleBrowserLogin(); } });-->
-
-
-            // =========================================================
-            // ADMIN PANEL LOGIC (УБРАНЫ АЛЕРТЫ УСПЕХА И CONFIRM)
-            // =========================================================
-
-            // --- USER LOGIC ---
-            async function loadUsersTable() {
-                if (!isAdmin) return;
-                usersTableBody.innerHTML = '<tr><td colspan="2">Загрузка...</td></tr>';
-
-                try {
-                    const r = await fetchWithAuth(`${SERVER_URL}/admin/users`);
-                    const d = await r.json();
-
-                    usersTableBody.innerHTML = '';
-                    if (d.status === 'success' && d.users) {
-                        d.users.forEach(user => {
-                            const row = usersTableBody.insertRow();
-                            row.onclick = () => openUserEditModal(user.id);
-                            row.style.cursor = 'pointer';
-                            row.innerHTML = `
-                                <td>${user.full_name}</td>
-                                <td>${user.role}</td>
-                            `;
-                        });
-                    } else {
-                        usersTableBody.innerHTML = `<tr><td colspan="2">${d.message || 'Ошибка загрузки пользователей'}</td></tr>`;
-                    }
-                } catch (e) {
-                    usersTableBody.innerHTML = '<tr><td colspan="2">Ошибка соединения с сервером</td></tr>';
-                    console.error('Ошибка при загрузке пользователей:', e);
-                }
+    try {
+        const r = await fetchWithAuth(`${SERVER_URL}/marker/${currentEntryId}`, { method: 'DELETE' });
+        const d = await r.json();
+        if (d.status === 'success') {
+            // Удаление маркера с карты
+            if (markersMap[currentEntryId]) {
+                map.removeLayer(markersMap[currentEntryId]);
+                delete markersMap[currentEntryId];
             }
+            popupWindow.style.display = 'none'; // Скрытие формы
+            selectedFiles = []; // Очистка состояния
+            existingPhotos = [];
+        } else {
+            alert(d.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Ошибка при удалении');
+    }
+};
+// --- GENERAL EVENT HANDLERS ---
 
+// Обработчик выбора файлов: обновляет массив выбранных файлов и перерисовывает список
+photoInput.addEventListener('change', () => {
+    selectedFiles = Array.from(photoInput.files);
+    renderPhotoList(); // renderPhotoList должен быть определен ранее
+});
+
+// Закрытие модального окна метки
+popupClose.onclick = () => {
+    popupWindow.style.display = 'none';
+    currentEntryId = null; // Сброс ID текущей редактируемой метки
+};
+
+// Закрытие модального окна просмотра/редактирования фото
+closePhotoModal.onclick = () => photoModal.style.display = 'none';
+
+// Обработчик кнопки копирования координат
+copyCoordsBtn.onclick = async () => {
+    const coordsText = popupCoords.textContent;
+    if (coordsText && coordsText !== '—') {
+        try {
+            await navigator.clipboard.writeText(coordsText); // Копирование в буфер обмена
+            copyCoordsBtn.textContent = COPIED_SYMBOL; // Показать символ успеха
+            // Сброс символа через 1.5 секунды
+            setTimeout(() => {
+                copyCoordsBtn.textContent = COPY_SYMBOL;
+            }, 1500);
+
+        } catch (err) {
+            console.error('Ошибка копирования:', err);
+            alert(`Не удалось скопировать. Координаты: ${coordsText}`);
+        }
+    }
+};
+
+// --- LOGIN HANDLERS (закомментированы/удалены) ---
+// Логика входа в браузере (закомментирована в оригинале)
+
+// =========================================================
+// ADMIN PANEL LOGIC (Управление пользователями)
+// =========================================================
+
+// --- USER LOGIC: Загрузка таблицы пользователей ---
+async function loadUsersTable() {
+    if (!isAdmin) return; // Проверка прав администратора
+    usersTableBody.innerHTML = '<tr><td colspan="2">Загрузка...</td></tr>';
+
+    try {
+        const r = await fetchWithAuth(`${SERVER_URL}/admin/users`);
+        const d = await r.json();
+
+        usersTableBody.innerHTML = '';
+        if (d.status === 'success' && d.users) {
+            d.users.forEach(user => {
+                const row = usersTableBody.insertRow();
+                row.onclick = () => openUserEditModal(user.id); // Открытие модального окна редактирования
+                row.style.cursor = 'pointer';
+                row.innerHTML = `
+                    <td>${user.full_name}</td>
+                    <td>${user.role}</td>
+                `;
+            });
+        } else {
+            usersTableBody.innerHTML = `<tr><td colspan="2">${d.message || 'Ошибка загрузки пользователей'}</td></tr>`;
+        }
+    } catch (e) {
+        usersTableBody.innerHTML = '<tr><td colspan="2">Ошибка соединения с сервером</td></tr>';
+        console.error('Ошибка при загрузке пользователей:', e);
+    }
+}
+
+// --- USER LOGIC: Открытие модального окна для создания/редактирования пользователя ---
 async function openUserEditModal(userId = null) {
+    // Сброс полей
     editUserId.value = userId || '';
     editFullName.value = '';
     editRole.value = 'user';
@@ -2243,6 +2345,7 @@ async function openUserEditModal(userId = null) {
     editAdditionalInfo.value = '';
 
     if (userId) {
+        // РЕЖИМ РЕДАКТИРОВАНИЯ
         userEditTitle.textContent = 'Редактирование пользователя';
         deleteUserBtn.style.display = 'block';
 
@@ -2251,22 +2354,24 @@ async function openUserEditModal(userId = null) {
             const d = await r.json();
 
             if (d.status === 'success' && d.user) {
+                // Заполнение полей данными с сервера
                 editFullName.value = d.user.full_name || '';
                 editRole.value = d.user.role;
                 editPhone.value = d.user.phone || '';
                 editAdditionalInfo.value = d.user.additional_info || '';
-                editTelegramUsername.value = d.user.telegram_username || '';
+                editTelegramUsername.value = d.user.telegram_username || ''; // Имя Telegram
             } else {
                 alert(d.message || 'Не удалось загрузить данные пользователя.');
                 userEditModal.style.display = 'none';
                 return;
             }
         } catch (e) {
-            alert('Ошибка соединения.');
+            alert('Ошибка соединения при загрузке данных пользователя.');
             userEditModal.style.display = 'none';
             return;
         }
     } else {
+        // РЕЖИМ СОЗДАНИЯ
         userEditTitle.textContent = 'Создание нового пользователя';
         deleteUserBtn.style.display = 'none';
     }
@@ -2274,12 +2379,13 @@ async function openUserEditModal(userId = null) {
     userEditModal.style.display = 'flex';
 }
 
+// --- USER LOGIC: Сохранение данных пользователя (Создание/Обновление) ---
 saveUserBtn.onclick = async () => {
     const userId = editUserId.value;
 
     const url = userId
-        ? `${SERVER_URL}/admin/user/${userId}`
-        : `${SERVER_URL}/admin/user`;
+        ? `${SERVER_URL}/admin/user/${userId}` // Обновление
+        : `${SERVER_URL}/admin/user`; // Создание
 
     const data = {
         full_name: editFullName.value.trim(),
@@ -2293,7 +2399,7 @@ saveUserBtn.onclick = async () => {
         return;
     }
 
-    if (!userId) {
+    if (!userId) { // Проверка при создании
         data.telegram_username = editTelegramUsername.value.trim();
 
         if (!data.telegram_username) {
@@ -2313,253 +2419,264 @@ saveUserBtn.onclick = async () => {
 
         if (d.status === 'success') {
             userEditModal.style.display = 'none';
-            loadUsersTable();
+            loadUsersTable(); // Обновление таблицы пользователей
         } else {
             alert(d.message || 'Ошибка сохранения.');
         }
     } catch (e) {
-        alert('Ошибка соединения.');
+        alert('Ошибка соединения при сохранении пользователя.');
         console.error(e);
     }
 };
+// --- USER LOGIC: Удаление пользователя ---
+deleteUserBtn.onclick = async () => {
+    const userId = editUserId.value;
 
-            deleteUserBtn.onclick = async () => {
-                const userId = editUserId.value;
+    if (!userId) return;
 
-                if (!userId) return;
+    try {
+        const url = `${SERVER_URL}/admin/user/${userId}`;
+        const r = await fetchWithAuth(url, { method: 'DELETE' }); // Отправка DELETE-запроса
 
-                try {
-                    const url = `${SERVER_URL}/admin/user/${userId}`;
-                    const r = await fetchWithAuth(url, { method: 'DELETE' });
+        if (!r.ok) {
+            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+            return;
+        }
 
-                    if (!r.ok) {
-                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
-                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
-                        return;
-                    }
+        const d = await r.json();
 
-                    const d = await r.json();
+        if (d.status === 'success') {
+            userEditModal.style.display = 'none'; // Закрытие модального окна
+            loadUsersTable(); // Обновление таблицы
+        } else {
+            alert(d.message || 'Ошибка удаления.');
+        }
+    } catch (e) {
+        alert('Ошибка соединения при удалении пользователя.');
+        console.error("Delete User Error:", e);
+    }
+};
 
-                    if (d.status === 'success') {
-                        userEditModal.style.display = 'none';
-                        loadUsersTable();
-                    } else {
-                        alert(d.message || 'Ошибка удаления.');
-                    }
-                } catch (e) {
-                    alert('Ошибка соединения при удалении пользователя.');
-                    console.error("Delete User Error:", e);
-                }
-            };
+// --- USER LOGIC: Кнопки открытия/закрытия ---
+createUserBtn.onclick = () => openUserEditModal(); // Создание нового пользователя
+userEditModalClose.onclick = () => userEditModal.style.display = 'none'; // Закрытие модального окна
 
-            createUserBtn.onclick = () => openUserEditModal();
-            userEditModalClose.onclick = () => userEditModal.style.display = 'none';
+// --- OBJECT LOGIC: Загрузка таблицы объектов ---
+async function loadObjectsTable() {
+    if (!isAdmin) return;
+    objectsTableBody.innerHTML = '<tr><td>Загрузка...</td></tr>';
 
-            // --- OBJECT LOGIC ---
-            async function loadObjectsTable() {
-                if (!isAdmin) return;
-                objectsTableBody.innerHTML = '<tr><td>Загрузка...</td></tr>';
+    try {
+        const r = await fetchWithAuth(`${SERVER_URL}/admin/objects`);
+        const d = await r.json();
 
-                try {
-                    const r = await fetchWithAuth(`${SERVER_URL}/admin/objects`);
-                    const d = await r.json();
-
-                    objectsTableBody.innerHTML = '';
-                    if (d.status === 'success' && d.objects) {
-                        d.objects.forEach(obj => {
-                            const row = objectsTableBody.insertRow();
-                            row.onclick = () => openObjectEditModal(obj.id);
-                            row.style.cursor = 'pointer';
-                            row.innerHTML = `<td>${obj.name}</td>`;
-                        });
-
-                        loadObjectOptions();
-
-                    } else {
-                        objectsTableBody.innerHTML = `<tr><td>${d.message || 'Ошибка загрузки объектов'}</td></tr>`;
-                    }
-                } catch (e) {
-                    objectsTableBody.innerHTML = '<tr><td>Ошибка соединения с сервером</td></tr>';
-                    console.error('Ошибка при загрузке объектов:', e);
-                }
-            }
-
-            async function openObjectEditModal(objectId = null) {
-                editObjectId.value = objectId || '';
-                editObjectName.value = '';
-                editObjectInfo.value = '';
-
-                if (objectId) {
-                    objectEditTitle.textContent = 'Редактирование объекта';
-                    deleteObjectBtn.style.display = 'block';
-                    const objectPointsList = document.getElementById('objectPointsList');
-                    objectPointsList.style.display = 'block';
-                    try {
-                        const r = await fetchWithAuth(`${SERVER_URL}/admin/object/${objectId}`);
-                        const d = await r.json();
-
-                        if (d.status === 'success' && d.object) {
-                            editObjectName.value = d.object.name;
-                            editObjectInfo.value = d.object.additional_info || '';
-                        } else {
-                            alert(d.message || 'Не удалось загрузить данные объекта.');
-                            objectEditModal.style.display = 'none';
-                            return;
-                        }
-                    } catch (e) {
-                        alert('Ошибка соединения при загрузке данных объекта.');
-                        objectEditModal.style.display = 'none';
-                        return;
-                    }
-                } else {
-                    objectEditTitle.textContent = 'Создание нового объекта';
-                    deleteObjectBtn.style.display = 'none';
-                    objectPointsList.style.display = 'none';
-                }
-                loadObjectPoints(objectId);
-                objectEditModal.style.display = 'flex';
-
-
-            }
-
-            saveObjectBtn.onclick = async () => {
-                const objectId = editObjectId.value;
-                const url = objectId ? `${SERVER_URL}/admin/object/${objectId}` : `${SERVER_URL}/admin/object`;
-
-                const data = {
-                    name: editObjectName.value.trim(),
-                    additional_info: editObjectInfo.value.trim()
-                };
-
-                if (!data.name) {
-                    alert('Поле "Название объекта" обязательно.');
-                    return;
-                }
-
-                try {
-                    const r = await fetchWithAuth(url, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(data)
-                    });
-
-                    if (!r.ok) {
-                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
-                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
-                        return;
-                    }
-
-                    const d = await r.json();
-
-                    if (d.status === 'success') {
-                        objectEditModal.style.display = 'none';
-                        await loadObjectsTable();
-                    } else {
-                        alert(d.message || 'Ошибка сохранения.');
-                    }
-                } catch (e) {
-                    alert('Ошибка соединения при сохранении данных объекта.');
-                    console.error("Save Object Error:", e);
-                }
-            };
-
-            deleteObjectBtn.onclick = async () => {
-                const objectId = editObjectId.value;
-
-                if (!objectId) return;
-
-                try {
-                    const url = `${SERVER_URL}/admin/object/${objectId}`;
-                    const r = await fetchWithAuth(url, { method: 'DELETE' });
-
-                    if (!r.ok) {
-                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
-                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
-                        return;
-                    }
-
-                    const d = await r.json();
-
-                    if (d.status === 'success') {
-                        objectEditModal.style.display = 'none';
-                        loadObjectsTable();
-                    } else {
-                        alert(d.message || 'Ошибка удаления.');
-                    }
-                } catch (e) {
-                    alert('Ошибка соединения при удалении объекта.');
-                    console.error("Delete Object Error:", e);
-                }
-                refreshMarkers()
-            };
-
-            createObjectBtn.onclick = () => openObjectEditModal();
-            objectEditModalClose.onclick = () => objectEditModal.style.display = 'none';
-
-
-
-
-            // --- ADMIN PANEL GENERAL LOGIC (без изменений) ---
-            function switchAdminTab(tabName) {
-                const adminTabContentPanes = document.querySelectorAll('.adminTabContentPane');
-
-                adminTabButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.style.background = '#f4f4f4';
-                    btn.style.borderBottom = 'none';
-                });
-
-                adminTabContentPanes.forEach(pane => {
-                    pane.style.display = 'none';
-                });
-
-                const selectedButton = document.querySelector(`.adminTabButton[data-tab="${tabName}"]`);
-                const selectedContent = document.getElementById(`tab-${tabName}`);
-
-                if (selectedButton && selectedContent) {
-                    selectedButton.classList.add('active');
-                    selectedButton.style.background = 'white';
-
-                    selectedContent.style.display = 'block';
-                }
-            }
-
-            adminTabButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const tabName = btn.getAttribute('data-tab');
-                    switchAdminTab(tabName);
-
-                    if (tabName === 'users') {
-                        loadUsersTable();
-                    } else if (tabName === 'objects') {
-                        loadObjectsTable();
-                    } else if (tabName === 'assignments') {
-                        loadAssignmentData();
-                    }
-                });
+        objectsTableBody.innerHTML = '';
+        if (d.status === 'success' && d.objects) {
+            d.objects.forEach(obj => {
+                const row = objectsTableBody.insertRow();
+                row.onclick = () => openObjectEditModal(obj.id); // Открытие модального окна редактирования
+                row.style.cursor = 'pointer';
+                row.innerHTML = `<td>${obj.name}</td>`;
             });
 
-            adminPanelBtn.onclick = () => {
-                if (isAdmin) {
-                    adminPanelWindow.style.display = 'flex';
-                    switchAdminTab('users');
-                    loadUsersTable();
-                } else {
-                    alert('У вас нет прав администратора.');
-                }
-            };
-            adminPanelClose.onclick = () => {
-                adminPanelWindow.style.display = 'none';
-            };
+            loadObjectOptions(); // Обновление выпадающего списка объектов для меток
 
+        } else {
+            objectsTableBody.innerHTML = `<tr><td>${d.message || 'Ошибка загрузки объектов'}</td></tr>`;
+        }
+    } catch (e) {
+        objectsTableBody.innerHTML = '<tr><td>Ошибка соединения с сервером</td></tr>';
+        console.error('Ошибка при загрузке объектов:', e);
+    }
+}
 
+// --- OBJECT LOGIC: Открытие модального окна для создания/редактирования объекта ---
+async function openObjectEditModal(objectId = null) {
+    // Сброс полей
+    editObjectId.value = objectId || '';
+    editObjectName.value = '';
+    editObjectInfo.value = '';
+    const objectPointsList = document.getElementById('objectPointsList'); // Блок со списком меток
+
+    if (objectId) {
+        // РЕЖИМ РЕДАКТИРОВАНИЯ
+        objectEditTitle.textContent = 'Редактирование объекта';
+        deleteObjectBtn.style.display = 'block';
+        objectPointsList.style.display = 'block'; // Показ списка меток
+
+        try {
+            const r = await fetchWithAuth(`${SERVER_URL}/admin/object/${objectId}`);
+            const d = await r.json();
+
+            if (d.status === 'success' && d.object) {
+                editObjectName.value = d.object.name;
+                editObjectInfo.value = d.object.additional_info || '';
+            } else {
+                alert(d.message || 'Не удалось загрузить данные объекта.');
+                objectEditModal.style.display = 'none';
+                return;
+            }
+        } catch (e) {
+            alert('Ошибка соединения при загрузке данных объекта.');
+            objectEditModal.style.display = 'none';
+            return;
+        }
+    } else {
+        // РЕЖИМ СОЗДАНИЯ
+        objectEditTitle.textContent = 'Создание нового объекта';
+        deleteObjectBtn.style.display = 'none';
+        objectPointsList.style.display = 'none'; // Скрытие списка меток при создании
+    }
+    loadObjectPoints(objectId); // Загрузка меток, привязанных к объекту
+    objectEditModal.style.display = 'flex';
+}
+
+// --- OBJECT LOGIC: Сохранение данных объекта (Создание/Обновление) ---
+saveObjectBtn.onclick = async () => {
+    const objectId = editObjectId.value;
+    const url = objectId ? `${SERVER_URL}/admin/object/${objectId}` : `${SERVER_URL}/admin/object`;
+
+    const data = {
+        name: editObjectName.value.trim(),
+        additional_info: editObjectInfo.value.trim()
+    };
+
+    if (!data.name) {
+        alert('Поле "Название объекта" обязательно.');
+        return;
+    }
+
+    try {
+        const r = await fetchWithAuth(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        if (!r.ok) {
+            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+            return;
+        }
+
+        const d = await r.json();
+
+        if (d.status === 'success') {
+            objectEditModal.style.display = 'none';
+            await loadObjectsTable(); // Обновление таблицы объектов
+        } else {
+            alert(d.message || 'Ошибка сохранения.');
+        }
+    } catch (e) {
+        alert('Ошибка соединения при сохранении данных объекта.');
+        console.error("Save Object Error:", e);
+    }
+};
+
+// --- OBJECT LOGIC: Удаление объекта ---
+deleteObjectBtn.onclick = async () => {
+    const objectId = editObjectId.value;
+
+    if (!objectId) return;
+
+    try {
+        const url = `${SERVER_URL}/admin/object/${objectId}`;
+        const r = await fetchWithAuth(url, { method: 'DELETE' });
+
+        if (!r.ok) {
+            const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
+            alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
+            return;
+        }
+
+        const d = await r.json();
+
+        if (d.status === 'success') {
+            objectEditModal.style.display = 'none';
+            loadObjectsTable(); // Обновление таблицы
+        } else {
+            alert(d.message || 'Ошибка удаления.');
+        }
+    } catch (e) {
+        alert('Ошибка соединения при удалении объекта.');
+        console.error("Delete Object Error:", e);
+    }
+    refreshMarkers(); // Обновление маркеров после удаления объекта (если метки были удалены или изменены)
+};
+
+// --- OBJECT LOGIC: Кнопки открытия/закрытия ---
+createObjectBtn.onclick = () => openObjectEditModal();
+objectEditModalClose.onclick = () => objectEditModal.style.display = 'none';
+
+// --- ADMIN PANEL GENERAL LOGIC: Переключение вкладок ---
+function switchAdminTab(tabName) {
+    const adminTabContentPanes = document.querySelectorAll('.adminTabContentPane');
+
+    // Сброс стилей всех кнопок вкладок
+    adminTabButtons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.background = '#f4f4f4';
+        btn.style.borderBottom = 'none';
+    });
+
+    // Скрытие всего содержимого вкладок
+    adminTabContentPanes.forEach(pane => {
+        pane.style.display = 'none';
+    });
+
+    const selectedButton = document.querySelector(`.adminTabButton[data-tab="${tabName}"]`);
+    const selectedContent = document.getElementById(`tab-${tabName}`);
+
+    if (selectedButton && selectedContent) {
+        selectedButton.classList.add('active');
+        selectedButton.style.background = 'white';
+
+        selectedContent.style.display = 'block';
+    }
+}
+
+// Привязка обработчиков клика к кнопкам вкладок
+adminTabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tabName = btn.getAttribute('data-tab');
+        switchAdminTab(tabName);
+
+        // Загрузка данных, специфичных для вкладки
+        if (tabName === 'users') {
+            loadUsersTable();
+        } else if (tabName === 'objects') {
+            loadObjectsTable();
+        } else if (tabName === 'assignments') {
+            loadAssignmentData(); // loadAssignmentData должен быть определен ранее
+        }
+    });
+});
+
+// Открытие панели администратора
+adminPanelBtn.onclick = () => {
+    if (isAdmin) {
+        adminPanelWindow.style.display = 'flex';
+        switchAdminTab('users'); // Открытие вкладки "Пользователи" по умолчанию
+        loadUsersTable();
+    } else {
+        alert('У вас нет прав администратора.');
+    }
+};
+
+// Закрытие панели администратора
+adminPanelClose.onclick = () => {
+    adminPanelWindow.style.display = 'none';
+};
+
+// --- Загрузка списка меток, привязанных к объекту (для вкладки объектов) ---
 async function loadObjectPoints(objectId) {
     try {
         const response = await fetchWithAuth(`${SERVER_URL}/markers/by-object/${objectId}`);
         const data = await response.json();
 
         const tbody = document.querySelector("#pointTable tbody");
-        tbody.innerHTML = ""; // очищаем таблицу перед загрузкой
+        tbody.innerHTML = ""; // Очистка таблицы
 
         if (data.status === "success" && Array.isArray(data.markers) && data.markers.length > 0) {
             data.markers.forEach(marker => {
@@ -2570,7 +2687,7 @@ async function loadObjectPoints(objectId) {
                     <td style="padding: 6px; border-bottom: 1px solid #eee;">Метка #${marker.id}</td>
                 `;
 
-                // Клик по строке открывает попап с данными метки
+                // Клик по строке открывает попап с данными метки (handleOpenMarkerPopup должен быть определен ранее)
                 tr.onclick = () => handleOpenMarkerPopup(marker.id);
 
                 tbody.appendChild(tr);
@@ -2587,59 +2704,68 @@ async function loadObjectPoints(objectId) {
     }
 }
 
+// --- FINAL CALLS (После инициализации app) ---
+// Первая загрузка маркеров
+loadMarkers();
 
-
-
-            // --- FINAL CALLS ---
-            loadMarkers();
-            setInterval(refreshMarkers, 30000);
-        }
-
+// Периодическое обновление маркеров (каждые 30 секунд)
+setInterval(refreshMarkers, 30000);
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Проверяем токен из URL или localStorage
+    // --- 1. Определение и сохранение токена ---
     const urlParams = new URLSearchParams(window.location.search);
-    const tokenFromUrl = urlParams.get("token");
+    const tokenFromUrl = urlParams.get("token"); // Токен из URL-параметра
 
     if (tokenFromUrl) {
-        USER_TOKEN = tokenFromUrl;
+        // Если токен найден в URL, сохраняем его и используем
+        USER_TOKEN = tokenFromUrl; // Предполагается, что USER_TOKEN объявлен как глобальная переменная
         localStorage.setItem("userToken", USER_TOKEN);
-        console.log('Токен загружен в localStorage');
+        console.log('✅ Токен загружен из URL и сохранен в localStorage.');
     } else {
+        // Если токена в URL нет, пытаемся загрузить его из localStorage
         USER_TOKEN = localStorage.getItem("userToken");
         if (USER_TOKEN) {
-            console.log('Токен был в localStorage');
+            console.log('✅ Токен загружен из localStorage.');
         } else {
-            console.error('Нет токена в localStorage');
-            alert('Нет токена');
-            return; // Прерываем выполнение
+            // Если токен нигде не найден
+            console.error('❌ Ошибка: Токен авторизации отсутствует.');
+            alert('Для работы с приложением необходим токен авторизации.');
+            return; // Прерывание выполнения, так как авторизация невозможна
         }
     }
 
-    // Проверка токена через /me
+    // --- 2. Проверка токена через эндпоинт /me ---
     try {
+        // Предполагается, что fetchWithAuth использует USER_TOKEN для заголовка Authorization
         const r = await fetchWithAuth(`${SERVER_URL}/me`);
         const d = await r.json();
 
         if (d.status === "success") {
-            currentUsername = d.user.telegram_username;
-            isAdmin = d.user.role === 'admin';
+            // Аутентификация успешна: сохраняем данные пользователя
+            currentUsername = d.user.telegram_username; // Предполагается, что currentUsername объявлен
+            isAdmin = d.user.role === 'admin'; // Определение прав администратора (isAdmin объявлен)
 
-            updateUsernameDisplay();
-            updateAdminPanelVisibility();
+            updateUsernameDisplay(); // Предполагается, что эта функция обновляет отображение имени
+            updateAdminPanelVisibility(); // Предполагается, что эта функция показывает/скрывает кнопку админ-панели
 
-            // Только после успешного ответа инициализируем приложение
-            initApp();
+            // --- 3. Инициализация приложения ---
+            // Основная логика приложения запускается только после успешной авторизации
+            initApp(); // Вызов основной функции инициализации приложения
+
         } else {
-            console.error("Токен недействителен или пользователь не найден");
+            // Токен недействителен (сервер ответил 401/403 или status:"error")
+            console.error("❌ Ошибка: Токен недействителен или пользователь не найден.");
             alert("Не удалось авторизоваться. Проверьте токен.");
-            localStorage.removeItem("userToken"); // Можно очистить токен
+            localStorage.removeItem("userToken"); // Очистка недействительного токена
         }
     } catch (e) {
-        console.error("Ошибка соединения с сервером при проверке токена", e);
-        alert("Нет соединения с сервером");
+        // Ошибка сети или сервера при попытке проверить токен
+        console.error("❌ Ошибка соединения с сервером при проверке токена:", e);
+        alert("Нет соединения с сервером. Пожалуйста, проверьте подключение.");
     }
 });
+
 
     </script>
 </body>
