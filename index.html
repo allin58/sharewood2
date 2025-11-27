@@ -1325,32 +1325,42 @@ function resetDoodle() {
 
 // --- 1. ФУНКЦИЯ ЗАГРУЗКИ ДАННЫХ (Вызывается при switchAdminTab) ---
 async function loadAssignmentData() {
-    // Выводим сообщение о загрузке, пока ждем ответа
-    const bodyRows = document.getElementById('bodyRows');
-    if (bodyRows) bodyRows.innerHTML = '<tr><td colspan="100">Загрузка данных...</td></tr>';
-
     try {
-        const response = await fetchWithAuth(`${SERVER_URL}/assignments`);
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        const table = document.getElementById('assignmentTable');
+        if (table) {
+            table.innerHTML = '<tbody><tr><td colspan="100">Загрузка данных...</td></tr></tbody>';
         }
 
+        const response = await fetchWithAuth(`${SERVER_URL}/assignments`);
         const data = await response.json();
 
-        if (data.users && data.objects) {
-            currentAssignments = new Set(data.assignments);
-            renderAssignmentTable(data.users, data.objects, currentAssignments);
+        console.log("Assignments data:", data);
+
+        if (!data.users || !data.objects) {
+            throw new Error("Некорректные данные от сервера");
         }
+
+        // Гарантировано Set
+        currentAssignments = new Set(data.assignments || []);
+
+        renderAssignmentTable(data.users, data.objects, currentAssignments);
+
     } catch (error) {
         console.error('Ошибка загрузки данных назначения:', error);
-        if (assignmentTable) assignmentTable.innerHTML = '<tbody><tr><td colspan="100">Не удалось загрузить данные назначений.</td></tr></tbody>';
+        const table = document.getElementById('assignmentTable');
+        if (table) {
+            table.innerHTML = '<tbody><tr><td colspan="100">Не удалось загрузить данные назначений.</td></tr></tbody>';
+        }
     }
 }
 
 
+
 // --- 2. ФУНКЦИЯ ОТРЕСОВКИ ТАБЛИЦЫ ---
 function renderAssignmentTable(users, objects, assignments) {
+    console.log("Render table users:", users);
+console.log("Render table objects:", objects);
+console.log("Render table assignments:", assignments);
     const table = document.getElementById('assignmentTable');
     if (!table) return;
 
@@ -1372,9 +1382,9 @@ function renderAssignmentTable(users, objects, assignments) {
             const active = assignments.has(key);
 
             html += `
-                <td 
-                    class="assignCell ${active ? 'active' : ''}" 
-                    data-user="${user.id}" 
+                <td
+                    class="assignCell ${active ? 'active' : ''}"
+                    data-user="${user.id}"
                     data-object="${obj.id}">
                 </td>
             `;
