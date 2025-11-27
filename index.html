@@ -1354,43 +1354,40 @@ function renderAssignmentTable(users, objects, assignments) {
     const table = document.getElementById('assignmentTable');
     if (!table) return;
 
-    let html = '<thead><tr><th>Пользователь</th>';
+    let html = "<thead><tr><th>Пользователь</th>";
 
-    // Заголовки столбцов — объекты
     objects.forEach(obj => {
         html += `<th>${obj.name}</th>`;
     });
 
-    html += '</tr></thead><tbody>';
+    html += "</tr></thead><tbody>";
 
-    // Строки пользователей
     users.forEach(user => {
-        html += `<tr data-user="${user.id}">`;
+        const label = user.full_name || user.telegram_username || `User #${user.id}`;
 
-        // 🟢 Имя пользователя
-        html += `<td>${user.full_name} <br><small>@${user.telegram_username || ''}</small></td>`;
+        html += `<tr data-user="${user.id}"><td>${label}</td>`;
 
-        // Ячейки объектов
         objects.forEach(obj => {
             const key = `${user.id}_${obj.id}`;
-            const assigned = assignments.has(key);
+            const active = assignments.has(key);
 
             html += `
-                <td class="assign-cell ${assigned ? 'assigned' : ''}"
-                    data-user="${user.id}"
+                <td 
+                    class="assignCell ${active ? 'active' : ''}" 
+                    data-user="${user.id}" 
                     data-object="${obj.id}">
-                </td>`;
+                </td>
+            `;
         });
 
-        html += '</tr>';
+        html += "</tr>";
     });
 
-    html += '</tbody>';
-
+    html += "</tbody>";
     table.innerHTML = html;
 
-    // активности кликов
-    bindAssignmentCellEvents();
+    // привязать клики
+    bindAssignmentClicks();
 }
 
 
