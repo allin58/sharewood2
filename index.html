@@ -5,128 +5,136 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Geo-Point App</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
- <style>
-    /* ------------------------------------------- */
-    /* 1. БАЗОВЫЕ НАСТРОЙКИ И ТИПОГРАФИКА */
-    /* ------------------------------------------- */
-    html, body {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Улучшенная читабельность */
-        color: #333; /* Базовый цвет текста */
-    }
-    #map {
-        height: 100vh;
-        width: 100%;
-    }
-    :root{
-        --primary-color: #007bff;
-        --success-color: #28a745;
-        --danger-color: #dc3545;
-        --warning-color: #ffc107;
-        --cell-size: 48px;
-        --grid-gap-color: #e9ecef; /* Более светлый */
-        --line-size: 1px;
-        --header-bg: #f8f9fa;
-        --firstcol-bg: #f8f9fa;
-        --accent-hover: rgba(0, 123, 255, 0.15); /* Более заметный ховер */
-    }
+    <style>
+/* ------------------------------------------- */
+/* 1. БАЗОВЫЕ НАСТРОЙКИ */
+/* ------------------------------------------- */
 
-    /* ------------------------------------------- */
-    /* 2. ЭЛЕМЕНТЫ КАРТЫ И КНОПКИ ДЕЙСТВИЙ (FAB) */
-    /* ------------------------------------------- */
+/* Базовые настройки страницы и шрифтов */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+}
+/* Контейнер для карты Leaflet */
+#map {
+    height: 100vh;
+    width: 100%;
+}
+/* Определение основных переменных CSS (цвета, размеры) */
+:root{
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --cell-size: 48px;
+    --grid-gap-color: #e9ecef;
+    --line-size: 1px;
+    --header-bg: #f8f9fa;
+    --firstcol-bg: #f8f9fa;
+    --accent-hover: rgba(0, 123, 255, 0.15);
+}
 
-    /* Статус Соединения */
-    #connectionStatus {
-        position: fixed;
-        top: 15px;
-        right: 15px;
-        z-index: 3000;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        font-size: 14px;
-        font-weight: bold;
-        pointer-events: auto; /* Должен быть доступен для взаимодействия */
-        background: rgba(255, 255, 255, 0.95);
-        padding: 8px 12px;
-        border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-        transition: background 0.2s;
-        cursor: default;
-    }
-    #connectionStatusRow {
-        display: flex;
-        align-items: center;
-    }
-    #connectionDot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 6px;
-        background: var(--danger-color); /* Изначально красный (нет подключения/загрузка) */
-    }
-    #telegramUsername {
-        font-size: 11px; /* Меньше и менее заметно */
-        color: #888;
-        margin-top: 2px;
-        font-weight: normal;
-    }
 
-    /* Крестик */
-    #crosshair {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 24px; /* Чуть больше */
-        height: 24px;
-        margin-left: -12px;
-        margin-top: -12px;
-        pointer-events: none;
-        z-index: 999;
-        opacity: 0.7; /* Менее навязчивый */
-    }
-    #crosshair::before, #crosshair::after {
-        content: '';
-        position: absolute;
-        background: #000; /* Черный */
-    }
-    #crosshair::before {
-        left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px;
-    }
-    #crosshair::after {
-        top: 50%; left: 0; width: 100%; height: 2px; margin-top: -1px;
-    }
+/* ------------------------------------------- */
+/* 2. НАВИГАЦИЯ И КНОПКИ НА КАРТЕ */
+/* ------------------------------------------- */
 
-    /* Кнопки действий (FAB & Admin) */
-    #newPointBtn {
-        /* FAB стиль, правый нижний угол */
-        position: absolute;
-        bottom: 15px;
-        right: 15px;
-        left: auto;
-        transform: none;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background-color: var(--success-color);
-        color: white;
-        font-size: 28px;
-        line-height: 56px;
-        text-align: center;
-        padding: 0;
-        border: none;
-        cursor: pointer;
-        z-index: 1000;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        transition: background-color 0.2s, transform 0.2s;
-    }
-    #newPointBtn:hover {
-        background-color: #1e7e34;
-        transform: scale(1.05);
-    }
+/* Блок статуса соединения и информации о пользователе в верхнем правом углу */
+#connectionStatus {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 14px;
+    font-weight: bold;
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    transition: background 0.2s;
+    cursor: default;
+}
+#connectionStatusRow {
+    display: flex;
+    align-items: center;
+}
+/* Индикатор (точка) статуса соединения */
+#connectionDot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: var(--danger-color);
+}
+/* Отображение имени пользователя Telegram */
+#telegramUsername {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+    font-weight: normal;
+}
 
+/* Элемент Крестик (Crosshair) в центре карты для точного указания координат */
+#crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin-left: -12px;
+    margin-top: -12px;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.7;
+}
+/* Вертикальная и горизонтальная линии крестика */
+#crosshair::before, #crosshair::after {
+    content: '';
+    position: absolute;
+    background: #000;
+}
+#crosshair::before {
+    left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px;
+}
+#crosshair::after {
+    top: 50%; left: 0; width: 100%; height: 2px; margin-top: -1px;
+}
+
+/* Кнопка создания новой точки (FAB) в правом нижнем углу */
+#newPointBtn {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    left: auto;
+    transform: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--success-color);
+    color: white;
+    font-size: 28px;
+    line-height: 56px;
+    text-align: center;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: background-color 0.2s, transform 0.2s;
+}
+#newPointBtn:hover {
+    background-color: #1e7e34;
+    transform: scale(1.05);
+}
+
+/* Обертка для кнопки "Мои координаты" (Центр снизу) */
 #coordBtnWrapper {
     position: absolute;
     bottom: 15px;
@@ -137,6 +145,7 @@
     z-index: 1000;
 }
 
+/* Кнопка "Мои координаты" */
 #coordBtn {
     width: 56px;
     height: 56px;
@@ -155,198 +164,207 @@
     transition: background-color 0.2s;
 }
 
-/* Вращение компаса + лёгкая пульсация кнопки */
+/* Анимация вращения и пульсации при загрузке геопозиции */
 #coordBtn.loading {
     animation: rotateCompass 1s linear infinite, pulse 1.2s ease-in-out infinite;
 }
 
-/* Вращение компаса */
+/* Анимация вращения иконки компаса */
 @keyframes rotateCompass {
     to { transform: rotate(360deg); }
 }
 
-/* Пульсация / моргание кнопки */
+/* Анимация пульсации (моргания) кнопки */
 @keyframes pulse {
     0%, 100% { box-shadow: 0 4px 8px rgba(0,123,255,0.3); }
     50% { box-shadow: 0 0 12px rgba(0,123,255,0.7); }
 }
 
+/* Кнопка для панели администратора в левом нижнем углу */
+#adminPanelBtn {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    transform: none;
+    z-index: 1000;
+    background-color: #6c757d;
+    color: white;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s;
+}
+#adminPanelBtn:hover {
+    background-color: #5a6268;
+}
 
 
+/* ------------------------------------------- */
+/* 3. ОСНОВНОЕ ОКНО РЕДАКТИРОВАНИЯ (#popupWindow) */
+/* ------------------------------------------- */
 
+/* Мобильный стиль (по умолчанию) */
+#popupWindow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 999998 !important;
+    background: white;
+    display: none;
+    overflow-y: auto;
+    padding: 20px;
+    box-sizing: border-box;
+    transition: opacity 0.3s, transform 0.3s;
+}
 
-    #adminPanelBtn {
-        /* Второстепенная кнопка, левый нижний угол */
-        position: absolute;
-        bottom: 15px;
-        left: 15px;
-        transform: none;
-        z-index: 1000;
-        background-color: #6c757d;
-        color: white;
-        padding: 10px 16px; /* Чуть больше padding */
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        transition: background-color 0.2s;
-    }
-    #adminPanelBtn:hover {
-        background-color: #5a6268;
-    }
+/* Кнопка закрытия модального окна */
+#popupClose {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 30px;
+    color: #333;
+    cursor: pointer;
+    font-weight: 200;
+}
 
-    /* ------------------------------------------- */
-    /* 3. ОСНОВНОЕ ОКНО РЕДАКТИРОВАНИЯ (#popupWindow) */
-    /* ------------------------------------------- */
+/* Стиль для всех меток (label) в форме */
+#popupWindow label {
+    display: block;
+    margin-top: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #555;
+}
 
-    /* Мобильный стиль (по умолчанию) */
-    #popupWindow {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%; /* Занимает весь экран на мобильных */
-        z-index: 999998 !important;
-        background: white;
-        display: none;
-        overflow-y: auto;
-        padding: 20px;
-        box-sizing: border-box;
-        transition: opacity 0.3s, transform 0.3s;
-    }
+/* Стиль для всех полей ввода, текстовых областей, загрузки файлов и селекторов */
+#popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    font-size: 15px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+/* Эффект фокуса */
+#popupWindow input[type="text"]:focus, #popupWindow textarea:focus, #popupWindow select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+    outline: none;
+}
 
-    #popupClose {
-        position: absolute;
-        top: 10px;
-        right: 15px;
-        font-size: 30px;
-        color: #333;
-        cursor: pointer;
-        font-weight: 200;
-    }
+/* Возможность вертикального изменения размера для textarea */
+#popupWindow textarea {
+    resize: vertical;
+}
 
-    /* Стиль для всех полей ввода в формах */
-    #popupWindow label {
-        display: block;
-        margin-top: 12px;
-        font-weight: 600; /* Более жирный заголовок */
-        font-size: 14px;
-        color: #555;
-    }
-    #popupWindow input[type="text"], #popupWindow textarea, #popupWindow input[type="file"], #popupWindow select {
-        width: 100%;
-        padding: 8px; /* Чуть больше padding */
-        margin-top: 5px;
-        box-sizing: border-box;
-        border-radius: 4px;
-        border: 1px solid #ced4da; /* Светлее рамка */
-        font-size: 15px;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    #popupWindow input[type="text"]:focus, #popupWindow textarea:focus, #popupWindow select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
-        outline: none;
-    }
+/* Обводка для блока координат */
+.form-group > div {
+    border: 1px solid #ced4da;
+    padding: 8px;
+    border-radius: 4px;
+}
+/* Отображение текста координат */
+#popupCoords {
+    font-weight: 600;
+    color: #333;
+}
+/* Кнопка копирования координат */
+#copyCoordsBtn {
+    font-size: 16px;
+    opacity: 0.7;
+}
+#copyCoordsBtn:hover {
+    opacity: 1;
+    color: #0056b3;
+}
 
-    #popupWindow textarea {
-        resize: vertical;
-    }
+/* Контейнер для списка прикрепленных фото */
+#photoList {
+    margin-top: 10px;
+    max-height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border: 1px solid #eee;
+    padding: 8px 4px;
+    border-radius: 4px;
+}
+/* Обертка для отдельного фото */
+.photoItem {
+    position: relative;
+}
+/* Миниатюра фото */
+.photoItem img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+.photoItem img:hover {
+    transform: scale(1.05);
+}
+/* Кнопка удаления фото */
+.removePhoto {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--danger-color);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
 
-    /* Стиль для блока координат */
-    .form-group > div {
-        border: 1px solid #ced4da;
-        padding: 8px;
-        border-radius: 4px;
-    }
-    #popupCoords {
-        font-weight: 600;
-        color: #333;
-    }
-    #copyCoordsBtn {
-        font-size: 16px;
-        opacity: 0.7;
-    }
-    #copyCoordsBtn:hover {
-        opacity: 1;
-        color: #0056b3;
-    }
-
-    /* Список фото */
-    #photoList {
-        margin-top: 10px;
-        max-height: 180px; /* Чуть больше высота */
-        overflow-y: auto;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px; /* Промежутки между фото */
-        border: 1px solid #eee; /* Легкая рамка */
-        padding: 8px 4px;
-        border-radius: 4px;
-    }
-    .photoItem {
-        position: relative;
-    }
-    .photoItem img {
-        width: 80px;
-        height: 80px;
-        object-fit: cover;
-        border-radius: 6px;
-        cursor: pointer;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        transition: transform 0.2s;
-    }
-    .photoItem img:hover {
-        transform: scale(1.05);
-    }
-    .removePhoto {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        background: var(--danger-color);
-        color: white;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        text-align: center;
-        line-height: 20px;
-        font-size: 12px;
-        font-weight: bold;
-        cursor: pointer;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    }
-
-    /* Кнопки Сохранить/Удалить */
-    #saveBtn, #deleteBtn {
-        margin-top: 20px; /* Увеличить отступ */
-        padding: 10px 15px;
-        border: none;
-        border-radius: 4px;
-        color: white;
-        cursor: pointer;
-        transition: background-color 0.2s, box-shadow 0.2s;
-        font-weight: 600;
-    }
-    #saveBtn {
-        background: var(--primary-color);
-        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
-    }
-    #saveBtn:hover {
-        background: #0056b3;
-    }
-    #deleteBtn {
-        background: var(--danger-color);
-        opacity: 0.9;
-    }
-    #deleteBtn:hover {
-        opacity: 1;
-        background: #bd2130;
-    }
+/* Кнопки сохранения и удаления */
+#saveBtn, #deleteBtn {
+    margin-top: 20px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    font-weight: 600;
+}
+/* Стиль для кнопки сохранения */
+#saveBtn {
+    background: var(--primary-color);
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+#saveBtn:hover {
+    background: #0056b3;
+}
+/* Стиль для кнопки удаления */
+#deleteBtn {
+    background: var(--danger-color);
+    opacity: 0.9;
+}
+#deleteBtn:hover {
+    opacity: 1;
+    background: #bd2130;
+}
 
 /* Spinner фиксированно в центре popup */
 #spinner {
-    display: none;           /* по умолчанию скрыт */
-    position: absolute;       /* не влияет на layout */
+    display: none;
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -354,7 +372,7 @@
     text-align: center;
 }
 
-/* Сам loader */
+/* Сам loader - анимация вращения */
 .loader {
     border: 4px solid #f3f3f3;
     border-top: 4px solid var(--primary-color);
@@ -370,271 +388,393 @@
     100% { transform: rotate(360deg); }
 }
 
-
-    /* ------------------------------------------- */
-    /* 4. АДАПТАЦИЯ ДЛЯ ДЕСКТОПА (Popup) */
-    /* ------------------------------------------- */
-    @media (min-width: 768px) {
-        #popupWindow {
-            /* Ограничить размер и центрировать */
-            width: 450px; /* Фиксированная ширина */
-            height: auto;
-            max-height: 90vh;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 10px; /* Скругленные углы */
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-            padding: 30px;
-        }
-        #popupClose {
-            top: 15px;
-            right: 15px;
-        }
-    }
-
-
-    /* ------------------------------------------- */
-    /* 5. МОДАЛЬНОЕ ОКНО ФОТО (#photoModal) */
-    /* ------------------------------------------- */
-    #photoModal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9); /* Более темный фон для контраста */
-        justify-content: center;
-        align-items: center;
-        z-index: 999999;
-    }
-    #photoModal img {
-        max-width: 90%;
-        max-height: 90%;
-        border-radius: 6px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
-    }
-    #closePhotoModal { /* Переименовано из #photoModal span */
-        position: absolute;
-        top: 20px;
-        right: 30px;
-        font-size: 40px; /* Больше, легче попасть */
-        color: white;
-        cursor: pointer;
-        text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-    }
-    #photoWrapper {
-        position: relative;
-    }
-
-    /* Кнопки рисования (Doodle Buttons) */
-    .circleButton {
-        position: absolute;
-        bottom: 20px; /* Отступ от нижнего края фото */
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        border: none;
-        font-size: 24px;
-        color: white;
-        cursor: pointer;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        opacity: 1;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
-        transition: background-color 0.2s, transform 0.2s;
-    }
-    .circleButton:hover {
-        transform: scale(1.1);
-    }
-    #startDoodle {
+/* Адаптация для десктопа (768px и шире) */
+@media (min-width: 768px) {
+    #popupWindow {
+        /* Ограничить размер и центрировать на экране */
+        width: 450px;
+        height: auto;
+        max-height: 90vh;
+        top: 50%;
         left: 50%;
-        transform: translateX(-50%);
-        background-color: #17a2b8; /* Info Blue */
+        transform: translate(-50%, -50%);
+        border-radius: 10px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        padding: 30px;
     }
-    #saveDoodle {
-        left: 20px;
-        background-color: var(--success-color);
+    #popupClose {
+        top: 15px;
+        right: 15px;
     }
-    #cancelDoodle {
-        right: 20px;
-        background-color: var(--danger-color);
-    }
+}
 
 
-    /* ------------------------------------------- */
-    /* 6. АДМИН-ПАНЕЛЬ И МОДАЛЬНЫЕ ОКНА */
-    /* ------------------------------------------- */
+/* ------------------------------------------- */
+/* 5. МОДАЛЬНОЕ ОКНО ФОТО (#photoModal) */
+/* ------------------------------------------- */
+#photoModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    justify-content: center;
+    align-items: center;
+    z-index: 999999;
+}
+/* Стиль для полноразмерного изображения внутри модального окна */
+#photoModal img {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+}
+/* Кнопка закрытия модального окна фото */
+#closePhotoModal {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 40px;
+    color: white;
+    cursor: pointer;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+#photoWrapper {
+    position: relative;
+}
 
-    .admin-modal-window {
-        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: rgba(0, 0, 0, 0.7); z-index: 4000; justify-content: center; align-items: center;
-    }
-    .admin-modal-content {
-        background: white; padding: 25px; border-radius: 8px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
-        max-width: 90%; max-height: 90%; overflow-y: auto; position: relative;
-    }
-    #adminPanelWindow .admin-modal-content { width: 90%; max-width: 800px; min-height: 400px; } /* Чуть шире */
-    #userEditModal .admin-modal-content, #objectEditModal .admin-modal-content { width: 90%; max-width: 450px; }
-    .modal-close-btn { position: absolute; top: 10px; right: 15px; font-size: 30px; cursor: pointer; color: #555; }
-
-    /* Поля ввода в админке */
-    .admin-modal-content label { display: block; margin-top: 10px; font-weight: 600; font-size: 14px; color: #555; }
-    .admin-modal-content input[type="text"],
-    .admin-modal-content input[type="password"],
-    .admin-modal-content textarea,
-    .admin-modal-content select {
-        width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ced4da; font-size: 15px;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .admin-modal-content input:focus, .admin-modal-content textarea:focus, .admin-modal-content select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
-        outline: none;
-    }
-    .admin-modal-content textarea { resize: vertical; }
-
-    /* Кнопки в админке */
-    .admin-action-button {
-        padding: 8px 12px; border: none; border-radius: 4px; background-color: var(--primary-color); color: white;
-        cursor: pointer; margin-bottom: 10px; font-size: 14px; font-weight: 600;
-        transition: background-color 0.2s;
-    }
-    .admin-action-button:hover { background-color: #0056b3; }
-    #deleteUserBtn, #deleteObjectBtn { background: var(--danger-color); margin-left: 10px; }
-    #deleteUserBtn:hover, #deleteObjectBtn:hover { background: #bd2130; }
-
-    /* Вкладки в админке */
-    .admin-tabs { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 10px; }
-    .adminTabButton {
-        padding: 10px 15px; cursor: pointer; background: #f4f4f4; border-radius: 4px 4px 0 0;
-        border: 1px solid #ccc; border-bottom: none; margin-bottom: -2px; margin-right: 5px; font-size: 15px;
-        font-weight: 600; transition: background-color 0.2s;
-    }
-    .adminTabButton.active { background: white; border-bottom: 2px solid white; color: var(--primary-color); }
-    .adminTabButton:hover:not(.active) { background-color: #e9ecef; }
-    .adminTabContentPane { display: none; padding-top: 10px; }
-
-    /* Таблицы в админке - Общие стили */
-    .adminTabContentPane table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-    .adminTabContentPane th, .adminTabContentPane td { padding: 8px 10px; border: 1px solid #e9ecef; text-align: left; }
-    .adminTabContentPane th { background-color: #f8f9fa; font-weight: 600; }
-    /* Подсветка строк для кликабельных таблиц */
-    #usersTable tbody tr, #objectsTable tbody tr {
-        cursor: pointer;
-        transition: background-color 0.15s;
-    }
-    #usersTable tbody tr:hover, #objectsTable tbody tr:hover {
-        background-color: #e9ecef;
-    }
-
-    /* ------------------------------------------- */
-    /* 7. СЕТКА НАЗНАЧЕНИЙ (GRID) */
-    /* ------------------------------------------- */
-
-    .table-wrap{
-        border:1px solid #e2e8f0;
-        overflow:auto;
-        max-height:60vh;
-        max-width:100%;
-        position:relative;
-        cursor:grab; /* Для UX перетаскивания */
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-    .table-wrap::-webkit-scrollbar { display: none; }
-    .table-wrap:active { cursor: grabbing; } /* Курсор при активном перетаскивании */
-
-    #assignment-table{
-        border-collapse:separate;
-        border-spacing:0;
-        width:max-content;
-        min-width:100%;
-    }
-
-    /* Общие стили ячеек */
-    #assignment-table th, #assignment-table td{
-        width:var(--cell-size);
-        height:var(--cell-size);
-        min-width:var(--cell-size);
-        min-height:var(--cell-size);
-        padding:6px 8px;
-        box-sizing:border-box;
-        text-align:left;
-        vertical-align:middle;
-        border-right: var(--line-size) solid var(--grid-gap-color);
-        border-bottom: var(--line-size) solid var(--grid-gap-color);
-        white-space:nowrap;
-        overflow:hidden;
-        text-overflow:ellipsis;
-        cursor: pointer;
-        background-color: #fcfcfc; /* Очень светлый фон для неназначенной клетки */
-        transition: background-color 0.2s;
-        font-size: 13px;
-    }
-
-    /* Закрепленные заголовки */
-    #assignment-table thead th:first-child{
-        position: sticky; top:0; left:0;
-        background: var(--header-bg); z-index: 5;
-    }
-    #assignment-table thead th:not(:first-child){
-        position: sticky; top:0;
-        background: var(--header-bg); z-index: 4;
-        text-align:center; font-weight:700;
-    }
-    #assignment-table tbody td:first-child{
-        position: sticky; left:0;
-        background: var(--firstcol-bg); z-index: 3;
-        box-shadow:2px 0 4px rgba(0,0,0,0.04);
-        cursor: default;
-        font-weight: bold;
-    }
-
-    /* СТИЛИ ПОДСВЕТКИ И НАЗНАЧЕНИЯ */
-    .assigned {
-        background-color: var(--success-color) !important;
-        color: white;
-        text-align: center;
-        font-weight: bold;
-    }
-    .assigned::after {
-        content: '✓'; /* Визуальное подтверждение назначения */
-        font-size: 16px;
-    }
-    .unassigned {
-        background-color: #fcfcfc;
-    }
-
-    /* Подсветка при наведении */
-    .col-hover, .row-hover {
-        background-color: var(--accent-hover) !important; /* Более заметная подсветка */
-    }
-
-    /* Сброс подсветки для закрепленных ячеек */
-    .col-hover:first-child, .row-hover:first-child { background-color: var(--firstcol-bg) !important; }
-    #assignment-table thead th:first-child.col-hover { background-color: var(--header-bg) !important; }
-
-    /* Гарантируем, что назначенная ячейка не теряет цвет */
-    .assigned.col-hover,
-    .assigned.row-hover {
-        background-color: var(--success-color) !important;
-        color: white !important;
-    }
-
-    /* Подсветка строки при наведении */
-    #assignment-table tbody tr:hover td:not(:first-child){
-        background-color: rgba(0, 123, 255, 0.05); /* Легкий оттенок */
-    }
-    /* Сохраняем фон первого столбца при наведении на строку */
-    #assignment-table tbody tr:hover td:first-child{
-        background-color: var(--firstcol-bg) !important;
-    }
+/* Кнопки рисования (Doodle Buttons) */
+.circleButton {
+    position: absolute;
+    bottom: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    transition: background-color 0.2s, transform 0.2s;
+}
+.circleButton:hover {
+    transform: scale(1.1);
+}
+#startDoodle {
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #17a2b8;
+}
+#saveDoodle {
+    left: 20px;
+    background-color: var(--success-color);
+}
+#cancelDoodle {
+    right: 20px;
+    background-color: var(--danger-color);
+}
 
 
- /* ------------------------------------------- */
+/* ------------------------------------------- */
+/* 6. АДМИН-ПАНЕЛЬ И МОДАЛЬНЫЕ ОКНА */
+/* ------------------------------------------- */
+
+/* Общий стиль для модальных окон администратора */
+.admin-modal-window {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 4000;
+    justify-content: center;
+    align-items: center;
+}
+/* Контент модального окна администратора */
+.admin-modal-content {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    max-width: 90%;
+    max-height: 90%;
+    overflow-y: auto;
+    position: relative;
+}
+/* Специфическая ширина для главной админ-панели */
+#adminPanelWindow .admin-modal-content {
+    width: 90%;
+    max-width: 800px;
+    min-height: 400px;
+}
+/* Специфическая ширина для модальных окон редактирования */
+#userEditModal .admin-modal-content, #objectEditModal .admin-modal-content {
+    width: 90%;
+    max-width: 450px;
+}
+/* Кнопка закрытия модальных окон админки */
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 30px;
+    cursor: pointer;
+    color: #555;
+}
+
+/* Общие стили для полей ввода в админке */
+.admin-modal-content label {
+    display: block;
+    margin-top: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #555;
+}
+.admin-modal-content input[type="text"],
+.admin-modal-content input[type="password"],
+.admin-modal-content textarea,
+.admin-modal-content select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    font-size: 15px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+/* Эффект фокуса для полей ввода в админке */
+.admin-modal-content input:focus, .admin-modal-content textarea:focus, .admin-modal-content select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+    outline: none;
+}
+/* Возможность вертикального изменения размера для textarea */
+.admin-modal-content textarea {
+    resize: vertical;
+}
+
+/* Общий стиль для кнопок действий в админке */
+.admin-action-button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+.admin-action-button:hover {
+    background-color: #0056b3;
+}
+/* Стиль для кнопок удаления */
+#deleteUserBtn, #deleteObjectBtn {
+    background: var(--danger-color);
+    margin-left: 10px;
+}
+#deleteUserBtn:hover, #deleteObjectBtn:hover {
+    background: #bd2130;
+}
+
+/* Навигация по вкладкам в админке */
+.admin-tabs {
+    display: flex;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: 10px;
+}
+.adminTabButton {
+    padding: 10px 15px;
+    cursor: pointer;
+    background: #f4f4f4;
+    border-radius: 4px 4px 0 0;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    margin-bottom: -2px;
+    margin-right: 5px;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+/* Активная вкладка */
+.adminTabButton.active {
+    background: white;
+    border-bottom: 2px solid white;
+    color: var(--primary-color);
+}
+.adminTabButton:hover:not(.active) {
+    background-color: #e9ecef;
+}
+/* Контейнер содержимого вкладки */
+.adminTabContentPane {
+    display: none;
+    padding-top: 10px;
+}
+
+/* Таблицы в админке - Общие стили */
+.adminTabContentPane table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 14px;
+}
+.adminTabContentPane th, .adminTabContentPane td {
+    padding: 8px 10px;
+    border: 1px solid #e9ecef;
+    text-align: left;
+}
+.adminTabContentPane th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+/* Подсветка строк для кликабельных таблиц */
+#usersTable tbody tr, #objectsTable tbody tr {
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+#usersTable tbody tr:hover, #objectsTable tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+
+/* ------------------------------------------- */
+/* 7. СЕТКА НАЗНАЧЕНИЙ (GRID) */
+/* ------------------------------------------- */
+
+/* Обертка для таблицы с горизонтальным и вертикальным скроллом */
+.table-wrap{
+    border:1px solid #e2e8f0;
+    overflow:auto;
+    max-height:60vh;
+    max-width:100%;
+    position:relative;
+    cursor:grab;
+    -ms-overflow-style: none; /* Скрыть скроллбар IE и Edge */
+    scrollbar-width: none; /* Скрыть скроллбар Firefox */
+}
+.table-wrap::-webkit-scrollbar {
+    display: none; /* Скрыть скроллбар Chrome, Safari, Opera */
+}
+/* Курсор при активном перетаскивании */
+.table-wrap:active {
+    cursor: grabbing;
+}
+
+#assignment-table{
+    border-collapse:separate;
+    border-spacing:0;
+    width:max-content;
+    min-width:100%;
+}
+
+/* Общие стили ячеек */
+#assignment-table th, #assignment-table td{
+    width:var(--cell-size);
+    height:var(--cell-size);
+    min-width:var(--cell-size);
+    min-height:var(--cell-size);
+    padding:6px 8px;
+    box-sizing:border-box;
+    text-align:left;
+    vertical-align:middle;
+    border-right: var(--line-size) solid var(--grid-gap-color);
+    border-bottom: var(--line-size) solid var(--grid-gap-color);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    cursor: pointer;
+    background-color: #fcfcfc;
+    transition: background-color 0.2s;
+    font-size: 13px;
+}
+
+/* Закрепленные заголовки */
+/* Закрепленная ячейка (левый верхний угол) */
+#assignment-table thead th:first-child{
+    position: sticky;
+    top:0;
+    left:0;
+    background: var(--header-bg);
+    z-index: 5;
+}
+/* Закрепленные заголовки колонок (пользователи) */
+#assignment-table thead th:not(:first-child){
+    position: sticky;
+    top:0;
+    background: var(--header-bg);
+    z-index: 4;
+    text-align:center;
+    font-weight:700;
+}
+/* Закрепленный первый столбец (объекты) */
+#assignment-table tbody td:first-child{
+    position: sticky;
+    left:0;
+    background: var(--firstcol-bg);
+    z-index: 3;
+    box-shadow:2px 0 4px rgba(0,0,0,0.04);
+    cursor: default;
+    font-weight: bold;
+}
+
+/* СТИЛИ ПОДСВЕТКИ И НАЗНАЧЕНИЯ */
+/* Стиль для назначенных ячеек */
+.assigned {
+    background-color: var(--success-color) !important;
+    color: white;
+    text-align: center;
+    font-weight: bold;
+}
+/* Визуальное подтверждение назначения */
+.assigned::after {
+    content: '✓';
+    font-size: 16px;
+}
+.unassigned {
+    background-color: #fcfcfc;
+}
+
+/* Подсветка при наведении на столбец/строку */
+.col-hover, .row-hover {
+    background-color: var(--accent-hover) !important;
+}
+
+/* Сброс подсветки для закрепленных ячеек */
+.col-hover:first-child, .row-hover:first-child {
+    background-color: var(--firstcol-bg) !important;
+}
+#assignment-table thead th:first-child.col-hover {
+    background-color: var(--header-bg) !important;
+}
+
+/* Гарантируем, что назначенная ячейка не теряет цвет при подсветке */
+.assigned.col-hover,
+.assigned.row-hover {
+    background-color: var(--success-color) !important;
+    color: white !important;
+}
+
+/* Подсветка строки при наведении */
+#assignment-table tbody tr:hover td:not(:first-child){
+    background-color: rgba(0, 123, 255, 0.05);
+}
+/* Сохраняем фон первого столбца при наведении на строку */
+#assignment-table tbody tr:hover td:first-child{
+    background-color: var(--firstcol-bg) !important;
+}
+
+
+/* ------------------------------------------- */
 /* 8. ФОРМА ВХОДА (#loginForm) */
 /* ------------------------------------------- */
 
@@ -688,8 +828,6 @@
 #loginForm button:hover {
     background-color: #0056b3;
 }
-
-
 </style>
 </head>
 <body>
@@ -709,20 +847,8 @@
     </div>
 
     <button id="newPointBtn" title="Создать новую метку">➕</button>
-<!--    <button id="coordBtn" title="Определить мое местоположение">🧭</button>-->
     <div id="coordBtnWrapper"> <button id="coordBtn">🧭</button></div>
-
-
-
     <button id="adminPanelBtn" class="admin-action-button hidden-by-default" title="Открыть Административную панель">Админка</button>
-
-
-<!--    <div id="loginForm">-->
-<!--        <h3>Вход</h3>-->
-<!--        <input type="text" id="loginUsername" placeholder="Логин (Username)" required aria-label="Логин">-->
-<!--        <input type="password" id="loginPassword" placeholder="Пароль" required aria-label="Пароль">-->
-<!--        <button id="loginBtn">Войти</button>-->
-<!--    </div>-->
 
     <div id="popupWindow" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
         <span id="popupClose" title="Закрыть" aria-label="Закрыть окно">&times;</span>
