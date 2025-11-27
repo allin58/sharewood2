@@ -2122,99 +2122,94 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
                 }
             }
 
-            async function openUserEditModal(userId = null) {
-                editUserId.value = userId || '';
-                editFullName.value = '';
-                editRole.value = 'user';
-                editTelegramUsername.value = '';
-                editPhone.value = '';
-                editAdditionalInfo.value = '';
+async function openUserEditModal(userId = null) {
+    editUserId.value = userId || '';
+    editFullName.value = '';
+    editRole.value = 'user';
+    editTelegramUsername.value = '';
+    editPhone.value = '';
+    editAdditionalInfo.value = '';
 
-                if (userId) {
-                    userEditTitle.textContent = 'Редактирование пользователя';
-                    newAccountFields.style.display = 'none';
-                    optionalInfoFields.style.display = 'block';
-                    deleteUserBtn.style.display = 'block';
-                    try {
-                        const r = await fetchWithAuth(`${SERVER_URL}/admin/user/${userId}`);
-                        const d = await r.json();
+    if (userId) {
+        userEditTitle.textContent = 'Редактирование пользователя';
+        deleteUserBtn.style.display = 'block';
 
-                        if (d.status === 'success' && d.user) {
-                            editFullName.value = d.user.full_name || '';
-                            editRole.value = d.user.role;
-                            editPhone.value = d.user.phone || '';
-                            editAdditionalInfo.value = d.user.additional_info || '';
-                        } else {
-                            alert(d.message || 'Не удалось загрузить данные пользователя.');
-                            userEditModal.style.display = 'none';
-                            return;
-                        }
-                    } catch (e) {
-                        alert('Ошибка соединения при загрузке данных пользователя.');
-                        userEditModal.style.display = 'none';
-                        return;
-                    }
-                } else {
-                    userEditTitle.textContent = 'Создание нового пользователя';
-                    newAccountFields.style.display = 'block';
-                    optionalInfoFields.style.display = 'block';
-                    deleteUserBtn.style.display = 'none';
-                }
+        try {
+            const r = await fetchWithAuth(`${SERVER_URL}/admin/user/${userId}`);
+            const d = await r.json();
 
-                userEditModal.style.display = 'flex';
+            if (d.status === 'success' && d.user) {
+                editFullName.value = d.user.full_name || '';
+                editRole.value = d.user.role;
+                editPhone.value = d.user.phone || '';
+                editAdditionalInfo.value = d.user.additional_info || '';
+                editTelegramUsername.value = d.user.telegram_username || '';
+            } else {
+                alert(d.message || 'Не удалось загрузить данные пользователя.');
+                userEditModal.style.display = 'none';
+                return;
             }
+        } catch (e) {
+            alert('Ошибка соединения.');
+            userEditModal.style.display = 'none';
+            return;
+        }
+    } else {
+        userEditTitle.textContent = 'Создание нового пользователя';
+        deleteUserBtn.style.display = 'none';
+    }
 
-            saveUserBtn.onclick = async () => {
-                const userId = editUserId.value;
-                const url = userId ? `${SERVER_URL}/admin/user/${userId}` : `${SERVER_URL}/admin/user`;
+    userEditModal.style.display = 'flex';
+}
 
-                const data = {
-                    full_name: editFullName.value.trim(),
-                    role: editRole.value,
-                    phone: editPhone.value.trim(),
-                    additional_info: editAdditionalInfo.value.trim()
-                };
+saveUserBtn.onclick = async () => {
+    const userId = editUserId.value;
 
-                if (!data.full_name) {
-                    alert('Поле ФИО обязательно.');
-                    return;
-                }
+    const url = userId
+        ? `${SERVER_URL}/admin/user/${userId}`
+        : `${SERVER_URL}/admin/user`;
 
-                if (!userId) {
-                    data.telegram_username = editTelegramUsername.value.trim();
+    const data = {
+        full_name: editFullName.value.trim(),
+        role: editRole.value,
+        phone: editPhone.value.trim(),
+        additional_info: editAdditionalInfo.value.trim()
+    };
 
-                    if (!(data.telegram_username )) {
-                        alert('Для создания необходимо указать Telegram ID');
-                        return;
-                    }
-                }
+    if (!data.full_name) {
+        alert('Поле ФИО обязательно.');
+        return;
+    }
 
-                try {
-                    const r = await fetchWithAuth(url, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(data)
-                    });
+    if (!userId) {
+        data.telegram_username = editTelegramUsername.value.trim();
 
-                    if (!r.ok) {
-                        const errorData = await r.json().catch(() => ({ message: `HTTP Error: ${r.status}` }));
-                        alert(errorData.message || `Ошибка сервера: ${r.statusText}`);
-                        return;
-                    }
+        if (!data.telegram_username) {
+            alert('Для создания пользователя необходимо указать Telegram Username.');
+            return;
+        }
+    }
 
-                    const d = await r.json();
+    try {
+        const r = await fetchWithAuth(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
 
-                    if (d.status === 'success') {
-                        userEditModal.style.display = 'none';
-                        loadUsersTable();
-                    } else {
-                        alert(d.message || 'Ошибка сохранения.');
-                    }
-                } catch (e) {
-                    alert('Ошибка соединения при сохранении данных.');
-                    console.error("Save User Error:", e);
-                }
-            };
+        const d = await r.json();
+
+        if (d.status === 'success') {
+            userEditModal.style.display = 'none';
+            loadUsersTable();
+        } else {
+            alert(d.message || 'Ошибка сохранения.');
+        }
+    } catch (e) {
+        alert('Ошибка соединения.');
+        console.error(e);
+    }
+};
 
             deleteUserBtn.onclick = async () => {
                 const userId = editUserId.value;
