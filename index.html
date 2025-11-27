@@ -867,9 +867,7 @@
 
             <div id="newAccountFields" style="border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 10px;">
                 <label style="font-size: 12px; font-weight: normal;">Данные для входа (заполнить ИЛИ Telegram ID):</label>
-                <input type="text" id="editUsername" placeholder="Username">
-                <input type="password" id="editPassword" placeholder="Пароль">
-                <input type="text" id="editTelegramId" placeholder="Telegram ID">
+                <input type="text" id="editTelegramUsername" placeholder="Telegram Username">
             </div>
 
             <div id="optionalInfoFields">
@@ -1190,8 +1188,6 @@ async function fetchMeAndStatus() {
             const editFullName = document.getElementById('editFullName');
             const editRole = document.getElementById('editRole');
             const editTelegramId = document.getElementById('editTelegramId');
-            const editUsername = document.getElementById('editUsername');
-            const editPassword = document.getElementById('editPassword');
             const editPhone = document.getElementById('editPhone');
             const editAdditionalInfo = document.getElementById('editAdditionalInfo');
             const newAccountFields = document.getElementById('newAccountFields');
@@ -2130,9 +2126,7 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
                 editUserId.value = userId || '';
                 editFullName.value = '';
                 editRole.value = 'user';
-                editTelegramId.value = '';
-                editUsername.value = '';
-                editPassword.value = '';
+                editTelegramUsername.value = '';
                 editPhone.value = '';
                 editAdditionalInfo.value = '';
 
@@ -2187,12 +2181,10 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
                 }
 
                 if (!userId) {
-                    data.telegram_id = editTelegramId.value.trim();
-                    data.username = editUsername.value.trim();
-                    data.password = editPassword.value.trim();
+                    data.telegram_username = editTelegramUsername.value.trim();
 
-                    if (!(data.telegram_id || (data.username && data.password))) {
-                        alert('Для создания необходимо указать Telegram ID ИЛИ Username и Password.');
+                    if (!(data.telegram_username )) {
+                        alert('Для создания необходимо указать Telegram ID');
                         return;
                     }
                 }
