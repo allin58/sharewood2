@@ -1050,7 +1050,7 @@ async function fetchMeAndStatus() {
             connectionDot.style.background = "#28a745";
             connectionText.textContent = "Подключено";
 
-            currentUsername = d.user.username;
+            currentUsername = d.user.telegram_username;
             isAdmin = d.user.role === 'admin';
 
             updateUsernameDisplay();
