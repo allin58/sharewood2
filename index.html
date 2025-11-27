@@ -1324,9 +1324,10 @@ function resetDoodle() {
 
 
 // --- 1. ФУНКЦИЯ ЗАГРУЗКИ ДАННЫХ (Вызывается при switchAdminTab) ---
+
 async function loadAssignmentData() {
     try {
-        const table = document.getElementById('assignmentTable');
+        const table = document.getElementById('assignment-table');
         if (table) {
             table.innerHTML = '<tbody><tr><td colspan="100">Загрузка данных...</td></tr></tbody>';
         }
@@ -1340,51 +1341,42 @@ async function loadAssignmentData() {
             throw new Error("Некорректные данные от сервера");
         }
 
-        // Гарантировано Set
         currentAssignments = new Set(data.assignments || []);
 
         renderAssignmentTable(data.users, data.objects, currentAssignments);
 
     } catch (error) {
         console.error('Ошибка загрузки данных назначения:', error);
-        const table = document.getElementById('assignmentTable');
+        const table = document.getElementById('assignment-table');
         if (table) {
             table.innerHTML = '<tbody><tr><td colspan="100">Не удалось загрузить данные назначений.</td></tr></tbody>';
         }
     }
 }
 
-
-
 // --- 2. ФУНКЦИЯ ОТРЕСОВКИ ТАБЛИЦЫ ---
 function renderAssignmentTable(users, objects, assignments) {
-    const table = document.getElementById('assignment-table'); // ✅ используем правильный id
+    const table = document.getElementById('assignment-table');
     if (!table) return;
 
     let html = "<thead><tr><th>Пользователь</th>";
-
     objects.forEach(obj => {
         html += `<th>${obj.name}</th>`;
     });
-
     html += "</tr></thead><tbody>";
 
     users.forEach(user => {
         const label = user.full_name || user.telegram_username || `User #${user.id}`;
-
         html += `<tr data-user="${user.id}"><td>${label}</td>`;
 
         objects.forEach(obj => {
             const key = `${user.id}_${obj.id}`;
             const active = assignments.has(key);
-
-            html += `
-                <td
-                    class="assignCell ${active ? 'active' : ''}"
-                    data-user="${user.id}"
-                    data-object="${obj.id}">
-                </td>
-            `;
+            html += `<td
+                        class="assignCell ${active ? 'assigned' : 'unassigned'}"
+                        data-user="${user.id}"
+                        data-object="${obj.id}">
+                    </td>`;
         });
 
         html += "</tr>";
@@ -1393,21 +1385,20 @@ function renderAssignmentTable(users, objects, assignments) {
     html += "</tbody>";
     table.innerHTML = html;
 
-    bindAssignmentClicks();
+    // Привязываем клики по ячейкам
+    const cells = table.querySelectorAll('.assignCell');
+    cells.forEach(cell => {
+        cell.addEventListener('click', handleAssignmentToggle);
+    });
 }
 
-
-
-
-// --- 3. ФУНКЦИЯ ОБРАБОТКИ КЛИКА (Переключение назначения) ---
+// --- 3. ФУНКЦИЯ ОБРАБОТКИ КЛИКА ---
 async function handleAssignmentToggle(event) {
-    const cell = event.target;
-    if (cell.tagName !== 'TD' || cell.cellIndex === 0) return;
+    const cell = event.currentTarget; // td.assignCell
+    const userId = cell.dataset.user;
+    const objectId = cell.dataset.object;
 
     cell.style.pointerEvents = 'none';
-
-    const userId = cell.dataset.userId;
-    const objectId = cell.dataset.objectId;
 
     try {
         const response = await fetchWithAuth(`${SERVER_URL}/assignments/toggle`, {
@@ -1437,50 +1428,77 @@ async function handleAssignmentToggle(event) {
     } finally {
         cell.style.pointerEvents = 'auto';
     }
-    refreshMarkers()
+
+    // Обновление маркеров, если нужно
+    if (typeof refreshMarkers === 'function') refreshMarkers();
 }
 
+// --- 4. ПОДСВЕТКА СТРОК И СТОЛБЦОВ ---
+const assignmentTable = document.getElementById('assignment-table');
+const assignmentWrap = document.getElementById('assignmentWrap');
+const headerRow = document.getElementById('headerRow');
 
-// --- 4. ЛОГИКА ИНТЕРАКТИВНОСТИ (Подсветка и Drag-Scroll) ---
-
-// Подсветка строки и столбца
-assignmentTable.addEventListener('mousemove', e=>{
-    assignmentTable.querySelectorAll('.col-hover').forEach(c=>c.classList.remove('col-hover'));
-    assignmentTable.querySelectorAll('.row-hover').forEach(c=>c.classList.remove('row-hover'));
-
+assignmentTable.addEventListener('mousemove', e => {
+    assignmentTable.querySelectorAll('.col-hover, .row-hover').forEach(c => c.classList.remove('col-hover', 'row-hover'));
     const cell = e.target.closest('td, th');
-    if(!cell) return;
+    if (!cell) return;
     const colIndex = cell.cellIndex;
     const row = cell.parentElement;
 
-    // Подсветка колонки (тело и шапка, кроме первого столбца)
-    if(colIndex > 0){
-        assignmentTable.querySelectorAll('tbody tr').forEach(r=>{
+    // Подсветка колонки
+    if (colIndex > 0) {
+        assignmentTable.querySelectorAll('tbody tr').forEach(r => {
             const c = r.children[colIndex];
-            if(c) c.classList.add('col-hover');
+            if (c) c.classList.add('col-hover');
         });
-        // Подсветка заголовка столбца
         headerRow.children[colIndex].classList.add('col-hover');
     }
 
-    // Подсветка строки (только тело)
-    if(row.parentElement.tagName==='TBODY'){
+    // Подсветка строки
+    if (row.parentElement.tagName === 'TBODY') {
         row.querySelectorAll('td').forEach(c => c.classList.add('row-hover'));
     }
 });
 
-assignmentTable.addEventListener('mouseleave', ()=>{
-    assignmentTable.querySelectorAll('.col-hover').forEach(c=>c.classList.remove('col-hover'));
-    assignmentTable.querySelectorAll('.row-hover').forEach(c=>c.classList.remove('row-hover'));
+assignmentTable.addEventListener('mouseleave', () => {
+    assignmentTable.querySelectorAll('.col-hover, .row-hover').forEach(c => c.classList.remove('col-hover', 'row-hover'));
 });
 
-// Выделение ячейки кликом (можно убрать, если не нужно)
-assignmentTable.addEventListener('click', e=>{
-    if(e.target.tagName==='TD' && e.target.cellIndex !== 0){
-        assignmentTable.querySelectorAll('td').forEach(x=>x.style.outline='');
-        e.target.style.outline='2px solid rgba(11,105,255,0.25)';
+// --- 5. DRAG-SCROLL ---
+let isDown = false, startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
+
+assignmentWrap.addEventListener('mousedown', e => {
+    const cell = e.target.closest('td, th');
+    if (!cell) return;
+    const row = cell.parentElement;
+
+    if (cell.tagName === 'TH' && row.parentElement.tagName === 'THEAD' && cell.cellIndex > 0) {
+        isDown = 'hor';
+    } else if (cell.tagName === 'TD' && cell.cellIndex === 0) {
+        isDown = 'ver';
+    } else {
+        isDown = false;
+        return;
     }
+
+    startX = e.pageX - assignmentWrap.offsetLeft;
+    startY = e.pageY - assignmentWrap.offsetTop;
+    scrollLeft = assignmentWrap.scrollLeft;
+    scrollTop = assignmentWrap.scrollTop;
+    assignmentWrap.style.cursor = 'grabbing';
 });
+
+assignmentWrap.addEventListener('mouseup', () => { isDown = false; assignmentWrap.style.cursor = 'grab'; });
+assignmentWrap.addEventListener('mouseleave', () => { isDown = false; assignmentWrap.style.cursor = 'grab'; });
+assignmentWrap.addEventListener('mousemove', e => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - assignmentWrap.offsetLeft;
+    const y = e.pageY - assignmentWrap.offsetTop;
+    if (isDown === 'hor') assignmentWrap.scrollLeft = scrollLeft - (x - startX);
+    if (isDown === 'ver') assignmentWrap.scrollTop = scrollTop - (y - startY);
+});
+
 
 // Drag-scroll
 let isDown=false, startX=0, startY=0, scrollLeft=0, scrollTop=0;
