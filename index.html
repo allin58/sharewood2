@@ -1358,10 +1358,7 @@ async function loadAssignmentData() {
 
 // --- 2. ФУНКЦИЯ ОТРЕСОВКИ ТАБЛИЦЫ ---
 function renderAssignmentTable(users, objects, assignments) {
-    console.log("Render table users:", users);
-console.log("Render table objects:", objects);
-console.log("Render table assignments:", assignments);
-    const table = document.getElementById('assignmentTable');
+    const table = document.getElementById('assignment-table'); // ✅ используем правильный id
     if (!table) return;
 
     let html = "<thead><tr><th>Пользователь</th>";
@@ -1396,9 +1393,9 @@ console.log("Render table assignments:", assignments);
     html += "</tbody>";
     table.innerHTML = html;
 
-    // привязать клики
     bindAssignmentClicks();
 }
+
 
 
 
