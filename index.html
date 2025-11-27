@@ -1376,7 +1376,7 @@ function renderAssignmentTable(users, objects, assignments) {
             const assigned = assignments.has(key);
 
             html += `
-                <td class="assign-cell ${assigned ? 'assigned' : ''}" 
+                <td class="assign-cell ${assigned ? 'assigned' : ''}"
                     data-user="${user.id}"
                     data-object="${obj.id}">
                 </td>`;
@@ -1608,29 +1608,34 @@ assignmentWrap.addEventListener('mousemove', e=>{
 async function fetchProtectedImage(filename) {
     const url = `${SERVER_URL}/photo/${filename}`;
 
-
     const options = {
         method: 'GET',
-        headers: {},
-        credentials: 'include' // 🔥 ВАЖНО: Это гарантирует отправку куки сессии в браузере
+        credentials: 'include', // отправляем куки
+        headers: {}
     };
 
+    // ⬅️ Добавляем Bearer-токен точно как fetchWithAuth
+    if (USER_TOKEN) {
+        options.headers['Authorization'] = `Bearer ${USER_TOKEN}`;
+    }
 
     try {
         const response = await fetch(url, options);
+
         if (!response.ok) {
             console.error(`Ошибка загрузки ${filename}: ${response.status} ${response.statusText}`);
             return null;
         }
 
-        // Получаем изображение и создаем локальный URL
         const blob = await response.blob();
         return URL.createObjectURL(blob);
+
     } catch (e) {
         console.error("Ошибка сети при загрузке фото:", e);
         return null;
     }
 }
+
 
 
 function renderPhotoList() {
