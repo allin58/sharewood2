@@ -866,7 +866,7 @@
             </select>
 
             <div id="newAccountFields" style="border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 10px;">
-                <label style="font-size: 12px; font-weight: normal;">Данные для входа (заполнить ИЛИ Telegram ID):</label>
+                <label style="font-size: 12px; font-weight: normal;">Telegram ID:</label>
                 <input type="text" id="editTelegramUsername" placeholder="Telegram Username">
             </div>
 
@@ -1350,51 +1350,49 @@ async function loadAssignmentData() {
 
 
 // --- 2. ФУНКЦИЯ ОТРЕСОВКИ ТАБЛИЦЫ ---
-function renderAssignmentTable(users, objects, assignmentsSet) {
-    const headerRow = document.getElementById('headerRow');
-    const bodyRows = document.getElementById('bodyRows');
+function renderAssignmentTable(users, objects, assignments) {
+    const table = document.getElementById('assignmentTable');
+    if (!table) return;
 
-    // Очищаем существующие заголовки и тело
-    headerRow.innerHTML = '<th>Пользователь \\ Объект</th>';
-    bodyRows.innerHTML = '';
+    let html = '<thead><tr><th>Пользователь</th>';
 
-    // 1. Заголовки столбцов (Объекты)
+    // Заголовки столбцов — объекты
     objects.forEach(obj => {
-        const th = document.createElement('th');
-        th.textContent = obj.name;
-        th.title = `Объект ID: ${obj.id}`;
-        th.dataset.objectId = obj.id;
-        headerRow.appendChild(th);
+        html += `<th>${obj.name}</th>`;
     });
 
-    // 2. Строки таблицы (Пользователи)
+    html += '</tr></thead><tbody>';
+
+    // Строки пользователей
     users.forEach(user => {
-        const tr = document.createElement('tr');
+        html += `<tr data-user="${user.id}">`;
 
-        const displayName = user.full_name && user.full_name.trim() !== '' ? user.full_name : user.username;
+        // 🟢 Имя пользователя
+        html += `<td>${user.full_name} <br><small>@${user.telegram_username || ''}</small></td>`;
 
-        const firstCell = document.createElement('td');
-        firstCell.innerHTML = `<strong>${displayName}</strong>`;
-        firstCell.dataset.userId = user.id;
-        tr.appendChild(firstCell);
-
-        // Ячейки пересечения
+        // Ячейки объектов
         objects.forEach(obj => {
-            const assignmentKey = `${user.id}_${obj.id}`;
-            const isAssigned = assignmentsSet.has(assignmentKey);
-            const cellClass = isAssigned ? 'assigned' : 'unassigned';
+            const key = `${user.id}_${obj.id}`;
+            const assigned = assignments.has(key);
 
-            const td = document.createElement('td');
-            td.className = cellClass;
-            td.dataset.userId = user.id;
-            td.dataset.objectId = obj.id;
-            td.onclick = handleAssignmentToggle;
-
-            tr.appendChild(td);
+            html += `
+                <td class="assign-cell ${assigned ? 'assigned' : ''}" 
+                    data-user="${user.id}"
+                    data-object="${obj.id}">
+                </td>`;
         });
-        bodyRows.appendChild(tr);
+
+        html += '</tr>';
     });
+
+    html += '</tbody>';
+
+    table.innerHTML = html;
+
+    // активности кликов
+    bindAssignmentCellEvents();
 }
+
 
 
 // --- 3. ФУНКЦИЯ ОБРАБОТКИ КЛИКА (Переключение назначения) ---
