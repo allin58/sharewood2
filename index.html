@@ -717,12 +717,12 @@
     <button id="adminPanelBtn" class="admin-action-button hidden-by-default" title="Открыть Административную панель">Админка</button>
 
 
-    <div id="loginForm">
-        <h3>Вход</h3>
-        <input type="text" id="loginUsername" placeholder="Логин (Username)" required aria-label="Логин">
-        <input type="password" id="loginPassword" placeholder="Пароль" required aria-label="Пароль">
-        <button id="loginBtn">Войти</button>
-    </div>
+<!--    <div id="loginForm">-->
+<!--        <h3>Вход</h3>-->
+<!--        <input type="text" id="loginUsername" placeholder="Логин (Username)" required aria-label="Логин">-->
+<!--        <input type="password" id="loginPassword" placeholder="Пароль" required aria-label="Пароль">-->
+<!--        <button id="loginBtn">Войти</button>-->
+<!--    </div>-->
 
     <div id="popupWindow" role="dialog" aria-modal="true" aria-labelledby="popupTitle">
         <span id="popupClose" title="Закрыть" aria-label="Закрыть окно">&times;</span>
@@ -1081,28 +1081,28 @@ async function fetchMeAndStatus() {
 
 
 
-async function handleBrowserLogin() {
-    const username = document.getElementById("loginUsername").value;
-    const password = document.getElementById("loginPassword").value;
+<!--async function handleBrowserLogin() {-->
+<!--    const username = document.getElementById("loginUsername").value;-->
+<!--    const password = document.getElementById("loginPassword").value;-->
 
-    const res = await fetch(`${SERVER_URL}/login`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({username, password})
-    });
+<!--    const res = await fetch(`${SERVER_URL}/login`, {-->
+<!--        method: "POST",-->
+<!--        headers: {"Content-Type": "application/json"},-->
+<!--        body: JSON.stringify({username, password})-->
+<!--    });-->
 
-    const data = await res.json();
+<!--    const data = await res.json();-->
 
-    if (data.status === "success") {
-        // Получаем токен сессии от сервера (если хотите, сервер может возвращать JWT)
-        USER_TOKEN = data.token;
-        localStorage.setItem("userToken", USER_TOKEN);
-        document.getElementById('loginForm').style.display = 'none';
-        initApp();
-    } else {
-        alert("Неверный логин или пароль");
-    }
-}
+<!--    if (data.status === "success") {-->
+<!--        // Получаем токен сессии от сервера (если хотите, сервер может возвращать JWT)-->
+<!--        USER_TOKEN = data.token;-->
+<!--        localStorage.setItem("userToken", USER_TOKEN);-->
+<!--        document.getElementById('loginForm').style.display = 'none';-->
+<!--        initApp();-->
+<!--    } else {-->
+<!--        alert("Неверный логин или пароль");-->
+<!--    }-->
+<!--}-->
 
 
 
@@ -2088,9 +2088,9 @@ coordBtn.onclick = () => { // ИЗМЕНЕНО: centerActionBtn -> CoordBtn
             };
 
             // --- LOGIN HANDLERS (без изменений) ---
-            document.getElementById('loginBtn').onclick = async () => { await handleBrowserLogin(); };
-            document.getElementById('loginUsername').addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleBrowserLogin(); } });
-            document.getElementById('loginPassword').addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleBrowserLogin(); } });
+<!--            document.getElementById('loginBtn').onclick = async () => { await handleBrowserLogin(); };-->
+<!--            document.getElementById('loginUsername').addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleBrowserLogin(); } });-->
+<!--            document.getElementById('loginPassword').addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleBrowserLogin(); } });-->
 
 
             // =========================================================
@@ -2505,14 +2505,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tokenFromUrl) {
         USER_TOKEN = tokenFromUrl;
         localStorage.setItem("userToken", USER_TOKEN);
-        document.getElementById('loginForm').style.display = 'none';
+        console.error('Токен загружен в localStorage');
+        //document.getElementById('loginForm').style.display = 'none';
         initApp();
     } else {
         USER_TOKEN = localStorage.getItem("userToken");
         if (USER_TOKEN) {
-            document.getElementById('loginForm').style.display = 'none';
+            //document.getElementById('loginForm').style.display = 'none';
+            console.error('Токен в localStorage');
         } else {
-            document.getElementById('loginForm').style.display = 'flex';
+             console.error('Нет токена в localStorage');
+            //document.getElementById('loginForm').style.display = 'flex';
         }
         initApp();
     }
