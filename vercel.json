@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/:path*",
-      "destination": "https://7jfbbg-45-76-32-31.ru.tuna.am/:path*"
+      "destination": "https://z69gy4-45-76-32-31.ru.tuna.am/:path*"
     }
   ]
 }
