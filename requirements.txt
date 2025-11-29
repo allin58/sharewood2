@@ -3,4 +3,4 @@ flask-cors
 PyJWT
 asgiref
 libsql-client>=0.3.0
-vercel>=0.3.0  # Официальный SDK с поддержкой Blob
+vercel_blob>=0.4.0  # Неофициальная, но стабильная обёртка для Blob
