@@ -10,7 +10,7 @@ from flask_cors import CORS
 from asgiref.wsgi import WsgiToAsgi
 
 from libsql_client import create_client_sync, LibsqlError
-import vercel
+import vercel_blob
 # ==================== Flask app ====================
 app = Flask(__name__)
 
@@ -27,7 +27,7 @@ CORS(app, supports_credentials=True, origins=["*"])  # подстрой под �
 JWT_ALGO = "HS256"
 
 # Vercel Blob — автоматически доступен в serverless функциях
-blob_storage = vercel.blob
+blob_storage = vercel_blob
 
 
 # Turso клиент (синхронный — идеально для Vercel Python)
