@@ -43,7 +43,11 @@ db_ready = False
 
 def execute_query(query, params=None):
     logging.warning(f"[FAKE DB] Запрос пропущен: {query[:60]}...")
-    return 1
+    class Fake:
+        rows = []
+        last_insert_rowid = 999
+        rows_affected = 0
+    return Fake()
 
 def init_db():
     logging.info("init_db() отключена — работаем в режиме без БД")
