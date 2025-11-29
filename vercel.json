@@ -1,8 +1,24 @@
 {
   "rewrites": [
     {
-      "source": "/:path*",
-      "destination": "https://o3ivsm-45-76-32-31.ru.tuna.am/:path*"
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/photo/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/public/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.12",
+      "maxDuration": 10
+    }
+  },
+  "cleanUrls": true,
+  "trailingSlash": false
 }
