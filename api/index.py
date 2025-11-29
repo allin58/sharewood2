@@ -10,8 +10,7 @@ from flask_cors import CORS
 from asgiref.wsgi import WsgiToAsgi
 
 from libsql_client import create_client_sync, LibsqlError
-from vercel_storage import blob
-from vercel_storage.blob import BlobStorage
+import vercel
 # ==================== Flask app ====================
 app = Flask(__name__)
 
@@ -28,13 +27,14 @@ CORS(app, supports_credentials=True, origins=["*"])  # подстрой под �
 JWT_ALGO = "HS256"
 
 # Vercel Blob — автоматически доступен в serverless функциях
-blob_storage: BlobStorage = blob  # это уже готовый клиент
+blob_storage = vercel.blob
 
 
 # Turso клиент (синхронный — идеально для Vercel Python)
 JWT_SECRET = os.getenv("JWT_SECRET", "12345")
 TURSO_URL = os.getenv("TURSO_DATABASE_URL")
 TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN")
+VERCEL_BLOB_READ_WRITE_TOKEN = os.getenv("VERCEL_BLOB_READ_WRITE_TOKEN")
 
 if not TURSO_URL or not TURSO_TOKEN:
     raise RuntimeError("Не заданы TURSO_DATABASE_URL или TURSO_AUTH_TOKEN в переменных окружения!")
