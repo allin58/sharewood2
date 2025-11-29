@@ -41,46 +41,18 @@ TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN")
 client = None
 db_ready = False
 
-if TURSO_URL and TURSO_TOKEN and TURSO_URL.startswith("libsql://"):
-    try:
-        from libsql_client import create_client_sync
-        client = create_client_sync(url=TURSO_URL, auth_token=TURSO_TOKEN)
-        # Пробуем лёгкий запрос
-        client.execute("SELECT 1")
-        db_ready = True
-        logging.info("Turso подключён успешно!")
-    except Exception as e:
-        logging.error(f"Turso НЕДОСТУПЕН: {e} — работаем без БД (для дебага)")
-        client = None
-else:
-    logging.warning("Turso URL/токен не заданы или неправильные — работаем без БД")
-
-# Фейковый результат, если БД недоступна
-class FakeResult:
-    rows = []
-    last_insert_rowid = 0
-    rows_affected = 0
-
 def execute_query(query, params=None):
-    if not client or not db_ready:
-        return FakeResult()
-    try:
-        return client.execute(query, params or ())
-    except Exception as e:
-        logging.error(f"Query error: {e}")
-        return FakeResult()
+    logging.warning(f"[FAKE DB] Запрос пропущен: {query[:60]}...")
+    class Fake:
+        rows = []
+        last_insert_rowid = 999
+        rows_affected = 0
+    return Fake()
 
-# init_db — теперь НЕ вызывается при старте!
 def init_db():
-    if not client or not db_ready:
-        logging.warning("init_db пропущен — Turso недоступен")
-        return
-    # Твой код создания таблиц — оставь как есть, но в try-except
-    try:
-        # ... все твои CREATE TABLE и INSERT OR IGNORE ...
-        logging.info("БД инициализирована")
-    except Exception as e:
-        logging.warning(f"init_db ошибка (возможно, уже сделано): {e}")
+    logging.info("init_db() отключена — работаем в режиме без БД")
+    # Ничего не делаем
+    pass
 
 
 # ==================== JWT хелперы ====================
@@ -190,12 +162,12 @@ def get_user_associated_object_ids(user_id: int):
 # ==================== Пинг ====================
 @app.route("/ping")
 def ping():
-    init_db()  # Попробуем инициализировать при первом запросе
     return jsonify({
-        "status": "success",
+        "status": "ALIVE",
         "message": "pong",
-        "turso": "connected" if db_ready else "disabled (check env)",
-        "time": datetime.utcnow().isoformat()
+        "time": datetime.utcnow().isoformat() + "Z",
+        "turso": "disabled for debug",
+        "blob": "ready" if 'vercel_blob' in globals() else "missing"
     })
 
 
