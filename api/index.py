@@ -10,7 +10,7 @@ from flask_cors import CORS
 from asgiref.wsgi import WsgiToAsgi
 
 from libsql_client import create_client_sync, LibsqlError
-import vercel_blob
+#import vercel_blob
 # ==================== Flask app ====================
 app = Flask(__name__)
 
@@ -27,7 +27,7 @@ CORS(app, supports_credentials=True, origins=["*"])  # подстрой под �
 JWT_ALGO = "HS256"
 
 # Vercel Blob — автоматически доступен в serverless функциях
-blob_storage = vercel_blob
+#blob_storage = vercel_blob
 
 
 # Turso клиент (синхронный — идеально для Vercel Python)
@@ -222,7 +222,7 @@ def upload():
             blob_key = f"photos/{marker_id}_{timestamp}{ext}"
 
             # Загружаем напрямую из потока
-            blob_result = blob_storage.put(
+            #blob_result = blob_storage.put(
                 blob_key,
                 photo.stream,
                 {
@@ -359,7 +359,7 @@ def get_marker(marker_id):
     for row in photos_result.rows:
         blob_path = row['blob_path']
         try:
-            blob_info = blob_storage.head(blob_path)
+          #  blob_info = blob_storage.head(blob_path)
             url = blob_info.url if blob_info else None
         except:
             url = None
@@ -426,7 +426,7 @@ def edit_marker(marker_id):
                     if row['filename'] not in keep_original_names:
                         # Удаляем из Blob
                         try:
-                            blob_storage.delete(row['blob_path'])
+                         #   blob_storage.delete(row['blob_path'])
                         except:
                             pass  # если уже удалено — ок
                         execute_query("DELETE FROM photos WHERE blob_path = ?", (row['blob_path'],))
@@ -445,11 +445,7 @@ def edit_marker(marker_id):
             ext = os.path.splitext(photo.filename)[1].lower() or '.jpg'
             blob_key = f"photos/{marker_id}_{timestamp}{ext}"
 
-            blob_storage.put(
-                blob_key,
-                photo.stream,
-                {"content_type": photo.content_type or "image/jpeg"}
-            )
+           # blob_storage.put( blob_key, photo.stream, {"content_type": photo.content_type or "image/jpeg"} )
 
             execute_query("""
                 INSERT INTO photos (marker_id, filename, blob_path)
@@ -474,7 +470,8 @@ def delete_marker(marker_id):
         # Удаляем из Vercel Blob (можно батчем)
         if blob_paths:
             try:
-                blob_storage.delete(blob_paths)  # поддерживает список!
+                #blob_storage.delete(blob_paths)  # поддерживает список!
+                print("h")
             except Exception as e:
                 logging.warning(f"Не удалось удалить некоторые файлы из Blob: {e}")
 
@@ -498,7 +495,8 @@ def get_photo(blob_path):
     Например: photos/123_20250101...jpg
     """
     try:
-        blob_info = blob_storage.head(blob_path)
+        #blob_info = blob_storage.head(blob_path)
+        blob_info = 1 
         if not blob_info:
             return jsonify({"status": "error", "message": "Photo not found"}), 404
 
