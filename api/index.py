@@ -43,7 +43,6 @@ db_ready = False
 
 def execute_query(query, params=None):
     logging.warning(f"[FAKE DB] Запрос пропущен: {query[:60]}...")
-
     return 1
 
 def init_db():
