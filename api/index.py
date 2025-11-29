@@ -32,14 +32,29 @@ blob_storage = vercel_blob
 
 # Turso клиент (синхронный — идеально для Vercel Python)
 JWT_SECRET = os.getenv("JWT_SECRET", "12345")
-TURSO_URL = os.getenv("TURSO_DATABASE_URL")
-TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN")
 VERCEL_BLOB_READ_WRITE_TOKEN = os.getenv("VERCEL_BLOB_READ_WRITE_TOKEN")
 
-if not TURSO_URL or not TURSO_TOKEN:
-    raise RuntimeError("Не заданы TURSO_DATABASE_URL или TURSO_AUTH_TOKEN в переменных окружения!")
+# ==================== Turso клиент (с проверками для Vercel) ====================
+TURSO_URL = os.getenv("TURSO_DATABASE_URL")
+TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN")
 
-client = create_client_sync(url=TURSO_URL, auth_token=TURSO_TOKEN)
+if not TURSO_URL or not TURSO_TOKEN:
+    raise RuntimeError("Установи TURSO_DATABASE_URL и TURSO_AUTH_TOKEN в переменных окружения!")
+
+# ✅ ПРОВЕРКА: URL должен начинаться с libsql://
+if not TURSO_URL.startswith("libsql://"):
+    raise ValueError(f"TURSO_DATABASE_URL должен начинаться с 'libsql://', а не '{TURSO_URL[:50]}...'! Исправь в Vercel env.")
+
+try:
+    client = create_client_sync(url=TURSO_URL, auth_token=TURSO_TOKEN)
+    # Тест-подключения: простой SELECT
+    test_result = client.execute("SELECT 1 AS test")
+    if test_result.rows[0][0] != 1:
+        raise RuntimeError("Тест-запрос к Turso провалился!")
+    logging.info("Turso подключён успешно!")
+except Exception as e:
+    logging.error(f"Ошибка подключения к Turso: {e}")
+    raise RuntimeError(f"Turso недоступен: {e}. Проверь URL/токен в Vercel env.")
 
 
 # ==================== Хелперы для Turso ====================
@@ -127,12 +142,11 @@ def init_db():
     try:
         for q in queries[:-1]:
             execute_query(q)
-        # Последний запрос с параметрами
         execute_query(queries[-1], ('a11in', 'admin', 'Nikita'))
-        print("Database initialized successfully (Turso).")
+        logging.info("Database initialized successfully (Turso).")
     except Exception as e:
-        print(f"Ошибка при инициализации БД: {e}")
-        raise
+        logging.warning(f"Предупреждение: Не удалось инициализировать БД (возможно, уже сделано): {e}")
+        # НЕ raise — не крашит деплой, но в логах видно
 
 
 # ==================== JWT хелперы ====================
